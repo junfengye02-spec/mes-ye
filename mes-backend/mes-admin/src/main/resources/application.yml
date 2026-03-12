@@ -1,0 +1,72 @@
+server:
+  port: 9091
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  profiles:
+    active: dev
+  application:
+    name: mes-backend
+
+  # Jackson 全局配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    deserialization:
+      fail-on-unknown-properties: false
+
+  # 文件上传限制
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+# MyBatis Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.mes.**.domain.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# Knife4j (Swagger) 配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# 文件存储配置
+mes:
+  file:
+    upload-path: ./uploads
+    access-prefix: /files
+  jwt:
+    secret: MesSystemDefaultSecretKeyThatIsAtLeast256BitsLong!!
+    access-expiration: 7200000
+    refresh-expiration: 604800000
+
+# APS 集成配置（运行时从 mes_aps_sync_config 表读取，此处为启动默认值）
+aps:
+  base-url: http://localhost:8081
+  api-key: mes-default-api-key
+  sync:
+    enabled: true
+    interval-minutes: 5
+    batch-size: 200

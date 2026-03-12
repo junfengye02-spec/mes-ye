@@ -1,0 +1,56 @@
+package com.mes.quality.controller;
+
+import com.mes.common.core.PageResult;
+import com.mes.common.result.R;
+import com.mes.quality.domain.dto.RecheckRequestDTO;
+import com.mes.quality.domain.query.RecheckRequestQuery;
+import com.mes.quality.domain.vo.RecheckRequestVO;
+import com.mes.quality.service.IRecheckRequestService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+@Tag(name = "复检申请", description = "成品复检申请管理接口")
+@RestController
+@RequestMapping("/quality/recheck")
+@RequiredArgsConstructor
+public class RecheckRequestController {
+
+    private final IRecheckRequestService recheckRequestService;
+
+    @Operation(summary = "分页查询复检申请")
+    @GetMapping("/page")
+    public R<PageResult<RecheckRequestVO>> page(RecheckRequestQuery query) {
+        return R.ok(recheckRequestService.page(query));
+    }
+
+    @Operation(summary = "获取复检申请详情")
+    @GetMapping("/{id}")
+    public R<RecheckRequestVO> getDetail(@Parameter(description = "ID") @PathVariable Long id) {
+        return R.ok(recheckRequestService.getDetail(id));
+    }
+
+    @Operation(summary = "新增复检申请")
+    @PostMapping
+    public R<Long> create(@Valid @RequestBody RecheckRequestDTO dto) {
+        return R.ok("新增成功", recheckRequestService.create(dto));
+    }
+
+    @Operation(summary = "修改复检申请")
+    @PutMapping("/{id}")
+    public R<Void> update(@Parameter(description = "ID") @PathVariable Long id,
+                          @Valid @RequestBody RecheckRequestDTO dto) {
+        recheckRequestService.update(id, dto);
+        return R.ok();
+    }
+
+    @Operation(summary = "删除复检申请")
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@Parameter(description = "ID") @PathVariable Long id) {
+        recheckRequestService.delete(id);
+        return R.ok();
+    }
+}

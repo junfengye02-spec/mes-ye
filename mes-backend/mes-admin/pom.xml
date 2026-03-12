@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.mes</groupId>
+        <artifactId>mes-backend</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>mes-admin</artifactId>
+    <name>mes-admin</name>
+    <description>启动模块 - 聚合所有业务模块</description>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <!-- 聚合所有业务模块 -->
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-basic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-team</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-process</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-plan</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-workorder</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-dispatch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-abnormal</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-quality</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-query</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-material</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-aps</artifactId>
+        </dependency>
+
+        <!-- 监控 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

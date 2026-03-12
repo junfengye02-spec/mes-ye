@@ -1,0 +1,44 @@
+package com.mes.framework.web;
+
+import com.mes.common.result.R;
+import com.mes.framework.file.FileService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
+
+/**
+ * 文件上传 Controller
+ */
+@Tag(name = "文件管理", description = "文件上传/删除接口")
+@RestController
+@RequestMapping("/file")
+@RequiredArgsConstructor
+public class FileController {
+
+    private final FileService fileService;
+
+    @Operation(summary = "上传文件")
+    @PostMapping("/upload")
+    public R<Map<String, String>> upload(
+            @Parameter(description = "上传文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "子目录") @RequestParam(value = "directory", defaultValue = "common") String directory) {
+        String fileUrl = fileService.upload(file, directory);
+        return R.ok(Map.of(
+                "fileUrl", fileUrl,
+                "fileName", file.getOriginalFilename() != null ? file.getOriginalFilename() : "",
+                "fileSize", String.valueOf(file.getSize())
+        ));
+    }
+
+    @Operation(summary = "删除文件")
+    @DeleteMapping
+    public R<Void> delete(@Parameter(description = "文件URL") @RequestParam("fileUrl") String fileUrl) {
+        fileService.delete(fileUrl);
+        return R.ok();
+    }
+}

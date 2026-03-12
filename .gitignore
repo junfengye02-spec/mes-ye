@@ -1,0 +1,36 @@
+# Java / Maven
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# IDE
+**/.idea/
+**/.vscode/
+**/.cursor/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# Node / Frontend
+**/node_modules/
+**/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+**/uploads/
+
+# Env
+.env
+.env.*
+
+# Agent transcripts
+**/agent-transcripts/
