@@ -1,0 +1,141 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mes-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        - id: mes-auth
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-system
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/system/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-basic
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/basic/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-team
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/team/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-process
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/process/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-plan
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/plan/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-workorder
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/workorder/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-dispatch
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/dispatch/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-quality
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/quality/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-abnormal
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/abnormal/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-material
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/material/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-aps
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/aps/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-query
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/query/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-files
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/files/**
+          filters:
+            - StripPrefix=0
+
+        - id: mes-actuator
+          uri: lb://mes-backend
+          predicates:
+            - Path=/api/actuator/**
+          filters:
+            - StripPrefix=0
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: "*"
+            allowed-methods: "*"
+            allowed-headers: "*"
+            allow-credentials: false
+
+mes:
+  jwt:
+    secret: MesSystemDefaultSecretKeyThatIsAtLeast256BitsLong!!
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always

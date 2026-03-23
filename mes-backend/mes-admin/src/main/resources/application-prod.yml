@@ -1,5 +1,8 @@
 # ==================== 生产环境配置 ====================
 
+server:
+  port: 9090
+
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -8,9 +11,9 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:12345678}
 
     druid:
-      initial-size: 10
-      min-idle: 10
-      max-active: 50
+      initial-size: 20
+      min-idle: 20
+      max-active: 100
       max-wait: 60000
       time-between-eviction-runs-millis: 60000
       min-evictable-idle-time-millis: 300000
@@ -18,13 +21,50 @@ spring:
       test-while-idle: true
       test-on-borrow: false
       test-on-return: false
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
 
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
       database: 0
       timeout: 5000ms
+      sentinel:
+        master: ${SPRING_DATA_REDIS_SENTINEL_MASTER:mes-redis-master}
+        nodes: ${SPRING_DATA_REDIS_SENTINEL_NODES:localhost:26379,localhost:26380,localhost:26381}
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 20
+          min-idle: 5
+          max-wait: 3000ms
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:mes}
+    password: ${SPRING_RABBITMQ_PASSWORD:mes_rabbitmq_2024}
+    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:mes}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 10
+        concurrency: 5
+        max-concurrency: 20
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2.0
 
 # 生产环境关闭 SQL 日志
 logging:
@@ -52,12 +92,22 @@ mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
 
-# Actuator 监控
+# Actuator 监控 + Prometheus
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# 限流配置
+mes:
+  rate-limit:
+    enabled: true
+    default-qps: 100
+    window-seconds: 1

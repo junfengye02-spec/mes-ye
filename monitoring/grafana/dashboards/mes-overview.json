@@ -1,0 +1,55 @@
+{
+  "dashboard": {
+    "title": "MES System Overview",
+    "tags": ["mes"],
+    "timezone": "Asia/Shanghai",
+    "panels": [
+      {
+        "title": "JVM Memory Usage",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{job='mes-backend'}",
+            "legendFormat": "{{instance}} - {{area}}"
+          }
+        ]
+      },
+      {
+        "title": "HTTP Request Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_count{job='mes-backend'}[5m])",
+            "legendFormat": "{{method}} {{uri}}"
+          }
+        ]
+      },
+      {
+        "title": "Database Connection Pool",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active{job='mes-backend'}",
+            "legendFormat": "Active Connections"
+          }
+        ]
+      },
+      {
+        "title": "Redis Hit Rate",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "redis_keyspace_hits_total / (redis_keyspace_hits_total + redis_keyspace_misses_total) * 100",
+            "legendFormat": "Hit Rate %"
+          }
+        ]
+      }
+    ],
+    "time": {"from": "now-1h", "to": "now"},
+    "refresh": "10s"
+  }
+}

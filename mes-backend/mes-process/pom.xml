@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.mes</groupId>
         <artifactId>mes-backend</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.1.0</version>
     </parent>
     <artifactId>mes-process</artifactId>
     <name>mes-process</name>

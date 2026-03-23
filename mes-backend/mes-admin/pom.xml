@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.mes</groupId>
         <artifactId>mes-backend</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.1.0</version>
     </parent>
 
     <artifactId>mes-admin</artifactId>
@@ -60,6 +60,20 @@
         <dependency>
             <groupId>com.mes</groupId>
             <artifactId>mes-aps</artifactId>
+        </dependency>
+
+        <!-- Spring Cloud -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
         <!-- 监控 -->

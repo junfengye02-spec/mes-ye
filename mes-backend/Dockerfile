@@ -15,10 +15,11 @@ COPY mes-query/pom.xml mes-query/pom.xml
 COPY mes-material/pom.xml mes-material/pom.xml
 COPY mes-aps/pom.xml mes-aps/pom.xml
 COPY mes-admin/pom.xml mes-admin/pom.xml
-RUN mvn dependency:go-offline -B
+COPY mes-gateway/pom.xml mes-gateway/pom.xml
+RUN mvn dependency:go-offline -B || true
 
 COPY . .
-RUN mvn clean package -DskipTests -B
+RUN mvn clean package -DskipTests -pl mes-admin -am -B
 
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app

@@ -13,7 +13,7 @@
 
     <groupId>com.mes</groupId>
     <artifactId>mes-backend</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.0</version>
     <packaging>pom</packaging>
     <name>MES Backend</name>
     <description>制造执行系统 - 后端</description>
@@ -33,12 +33,13 @@
         <module>mes-material</module>
         <module>mes-aps</module>
         <module>mes-admin</module>
+        <module>mes-gateway</module>
     </modules>
 
     <properties>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <mes.version>1.0.0-SNAPSHOT</mes.version>
+        <mes.version>1.1.0</mes.version>
 
         <!-- 核心依赖版本 -->
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
@@ -49,12 +50,37 @@
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <easyexcel.version>3.3.3</easyexcel.version>
         <jjwt.version>0.12.5</jjwt.version>
+
+        <!-- Spring Cloud -->
+        <spring-cloud.version>2023.0.1</spring-cloud.version>
+        <spring-cloud-alibaba.version>2023.0.1.0</spring-cloud-alibaba.version>
     </properties>
 
     <!-- 统一依赖版本管理 -->
     <dependencyManagement>
         <dependencies>
+            <!-- ==================== Spring Cloud BOM ==================== -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>${spring-cloud-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- ==================== 内部模块 ==================== -->
+            <dependency>
+                <groupId>com.mes</groupId>
+                <artifactId>mes-gateway</artifactId>
+                <version>${mes.version}</version>
+            </dependency>
             <dependency>
                 <groupId>com.mes</groupId>
                 <artifactId>mes-common</artifactId>
