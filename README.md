@@ -114,16 +114,16 @@ mes/
 │   └── mes-admin/                 # 启动模块（聚合所有业务模块）
 │
 └── sql/                            # 数据库脚本
-    ├── V1.0__basic_data.sql       # 基础数据表
-    ├── V1.1__team_management.sql  # 班组管理表
-    ├── V1.2__process_management.sql
-    ├── V1.3__plan_management.sql
-    ├── V1.4__work_order.sql
-    ├── V1.5__dispatch.sql
-    ├── V1.6__abnormal_contact.sql
-    ├── V1.7__quality_management.sql
-    ├── V1.8__work_query.sql
-    ├── V1.9__material_management.sql
+    ├── V1.00__basic_data.sql      # 基础数据表（两位序号保证 Docker init 字典序正确）
+    ├── V1.01__team_management.sql # 班组管理表
+    ├── V1.02__process_management.sql
+    ├── V1.03__plan_management.sql
+    ├── V1.04__work_order.sql
+    ├── V1.05__dispatch.sql
+    ├── V1.06__abnormal_contact.sql
+    ├── V1.07__quality_management.sql
+    ├── V1.08__work_query.sql
+    ├── V1.09__material_management.sql
     ├── V1.10__aps_integration.sql
     ├── V1.11__auth_rbac.sql       # 用户/角色/菜单/RBAC
     ├── V1.12__add_missing_deleted_columns.sql
@@ -210,8 +210,8 @@ mes/
 mysql -u root -p -e "CREATE DATABASE mes DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 
 # 按顺序执行 SQL 脚本
-mysql -u root -p mes < sql/V1.0__basic_data.sql
-mysql -u root -p mes < sql/V1.1__team_management.sql
+mysql -u root -p mes < sql/V1.00__basic_data.sql
+mysql -u root -p mes < sql/V1.01__team_management.sql
 # ... 依次执行到 V1.12
 mysql -u root -p mes < sql/V1.11__auth_rbac.sql
 mysql -u root -p mes < sql/V1.12__add_missing_deleted_columns.sql

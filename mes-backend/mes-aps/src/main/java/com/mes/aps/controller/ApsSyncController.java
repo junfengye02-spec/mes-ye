@@ -1,11 +1,12 @@
 package com.mes.aps.controller;
 
 import com.mes.aps.client.ApsClient;
-import com.mes.aps.domain.dto.ApsSyncRequestDTO;
 import com.mes.aps.domain.vo.ApsSyncResultVO;
 import com.mes.aps.service.IApsCompensationService;
 import com.mes.aps.service.IApsDownstreamSyncService;
+import com.mes.aps.service.IApsMasterDataSyncService;
 import com.mes.aps.service.IApsUpstreamSyncService;
+import com.mes.common.exception.BusinessException;
 import com.mes.common.result.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,7 @@ public class ApsSyncController {
     private final IApsDownstreamSyncService downstreamSyncService;
     private final IApsUpstreamSyncService upstreamSyncService;
     private final IApsCompensationService compensationService;
+    private final IApsMasterDataSyncService masterDataSyncService;
     private final ApsClient apsClient;
 
     @Operation(summary = "手动触发下行同步（全量）")
@@ -45,7 +47,7 @@ public class ApsSyncController {
             case "CALENDAR" -> downstreamSyncService.syncCalendars();
             case "OUTSOURCE" -> downstreamSyncService.syncOutsourceOrders();
             case "TRANSFER" -> downstreamSyncService.syncTransferOrders();
-            default -> throw new RuntimeException("不支持的同步类型: " + syncType);
+            default -> throw new BusinessException("不支持的同步类型: " + syncType);
         };
         return R.ok(result);
     }
@@ -84,5 +86,27 @@ public class ApsSyncController {
                 "circuitBreakerState", cbState
         );
         return R.ok(health);
+    }
+
+    // ==================== 主数据同步（MES→APS） ====================
+
+    @Operation(summary = "手动触发主数据全量同步")
+    @PostMapping("/master-data")
+    public R<ApsSyncResultVO> triggerMasterDataSync() {
+        return R.ok(masterDataSyncService.syncAllMasterData());
+    }
+
+    @Operation(summary = "手动触发主数据同步（指定类型）")
+    @PostMapping("/master-data/{dataType}")
+    public R<ApsSyncResultVO> triggerMasterDataSyncByType(@PathVariable String dataType) {
+        ApsSyncResultVO result = switch (dataType.toUpperCase()) {
+            case "WORK_CENTER" -> masterDataSyncService.syncWorkCenters();
+            case "PROCESS_ROUTE" -> masterDataSyncService.syncProcessRoutes();
+            case "BOM" -> masterDataSyncService.syncBoms();
+            case "MATERIAL" -> masterDataSyncService.syncMaterials();
+            case "TEAM" -> masterDataSyncService.syncTeams();
+            default -> throw new BusinessException("不支持的主数据类型: " + dataType);
+        };
+        return R.ok(result);
     }
 }

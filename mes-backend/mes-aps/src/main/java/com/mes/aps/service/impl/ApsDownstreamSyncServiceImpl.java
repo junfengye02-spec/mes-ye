@@ -334,14 +334,23 @@ public class ApsDownstreamSyncServiceImpl implements IApsDownstreamSyncService {
         Long apsOrderId = orderNode.path("id").asLong();
         String orderNo = orderNode.path("orderNo").asText(null);
 
+        // 编码映射：APS 物料编码 -> MES 物料编码
+        String apsProductCode = orderNode.path("productCode").asText(null);
+        String mesProductCode = apsProductCode;
+        if (apsProductCode != null) {
+            String mapped = dataMappingService.getMesCode("MATERIAL", apsProductCode);
+            if (mapped != null) {
+                mesProductCode = mapped;
+            }
+        }
+
         // 查找是否已存在（增量同步）
         OrderPlan existing = orderPlanMapper.selectOne(
                 new LambdaQueryWrapper<OrderPlan>()
                         .eq(OrderPlan::getApsOrderId, apsOrderId));
 
         if (existing != null) {
-            // 更新现有订单
-            existing.setProductCode(orderNode.path("productCode").asText(existing.getProductCode()));
+            existing.setProductCode(mesProductCode != null ? mesProductCode : existing.getProductCode());
             existing.setProductName(orderNode.path("productName").asText(existing.getProductName()));
             existing.setPlanQty(orderNode.has("planQty") ?
                     new java.math.BigDecimal(orderNode.path("planQty").asText("0")) : existing.getPlanQty());
@@ -350,11 +359,10 @@ public class ApsDownstreamSyncServiceImpl implements IApsDownstreamSyncService {
             orderPlanMapper.updateById(existing);
             log.debug("更新排程订单: apsOrderId={}, orderNo={}", apsOrderId, orderNo);
         } else {
-            // 新增订单
             OrderPlan newPlan = new OrderPlan();
             newPlan.setApsOrderId(apsOrderId);
             newPlan.setOrderNo(orderNo);
-            newPlan.setProductCode(orderNode.path("productCode").asText(null));
+            newPlan.setProductCode(mesProductCode);
             newPlan.setProductName(orderNode.path("productName").asText(null));
             newPlan.setPlanQty(orderNode.has("planQty") ?
                     new java.math.BigDecimal(orderNode.path("planQty").asText("0")) : null);
@@ -366,7 +374,6 @@ public class ApsDownstreamSyncServiceImpl implements IApsDownstreamSyncService {
             log.debug("新增排程订单: apsOrderId={}, orderNo={}", apsOrderId, orderNo);
         }
 
-        // 记录同步明细
         saveSyncDetail(batchId, SyncType.ORDER.getCode(), apsOrderId, orderNo,
                 SyncStatus.SUCCESS.getCode(), null, orderNode.toString());
     }
@@ -426,13 +433,17 @@ public class ApsDownstreamSyncServiceImpl implements IApsDownstreamSyncService {
             resourceCalendarMapper.insert(calendar);
         }
 
-        // 同步班次
+        // 同步班次：先删除旧班次再插入新班次（全量替换）
         JsonNode shifts = calendarNode.path("shifts");
         if (shifts.isArray()) {
             Long calendarId = existing != null ? existing.getId() :
                     resourceCalendarMapper.selectOne(
                             new LambdaQueryWrapper<ResourceCalendar>()
                                     .eq(ResourceCalendar::getApsCalendarId, apsCalendarId)).getId();
+
+            resourceCalendarShiftMapper.delete(
+                    new LambdaQueryWrapper<ResourceCalendarShift>()
+                            .eq(ResourceCalendarShift::getCalendarId, calendarId));
 
             for (JsonNode shiftNode : shifts) {
                 ResourceCalendarShift shift = new ResourceCalendarShift();
@@ -449,19 +460,28 @@ public class ApsDownstreamSyncServiceImpl implements IApsDownstreamSyncService {
     private void syncSingleOutsourceOrder(JsonNode node) {
         String orderNo = node.path("outsourceOrderNo").asText(null);
 
+        // 物料编码映射
+        String apsMaterialCode = node.path("materialCode").asText(null);
+        String mesMaterialCode = apsMaterialCode;
+        if (apsMaterialCode != null) {
+            String mapped = dataMappingService.getMesCode("MATERIAL", apsMaterialCode);
+            if (mapped != null) mesMaterialCode = mapped;
+        }
+
         OutsourceOrder existing = outsourceOrderMapper.selectOne(
                 new LambdaQueryWrapper<OutsourceOrder>()
                         .eq(OutsourceOrder::getOutsourceOrderNo, orderNo));
 
         if (existing != null) {
             existing.setApsStatus(node.path("status").asText(existing.getApsStatus()));
+            existing.setMaterialCode(mesMaterialCode != null ? mesMaterialCode : existing.getMaterialCode());
             outsourceOrderMapper.updateById(existing);
         } else {
             OutsourceOrder order = new OutsourceOrder();
             order.setOutsourceOrderNo(orderNo);
             order.setParentOrderNo(node.path("parentOrderNo").asText(null));
             order.setApsOrderId(node.path("apsOrderId").asLong(0));
-            order.setMaterialCode(node.path("materialCode").asText(null));
+            order.setMaterialCode(mesMaterialCode);
             order.setMaterialName(node.path("materialName").asText(null));
             order.setSupplierName(node.path("supplierName").asText(null));
             order.setApsStatus(node.path("status").asText(null));
@@ -473,18 +493,27 @@ public class ApsDownstreamSyncServiceImpl implements IApsDownstreamSyncService {
     private void syncSingleTransferOrder(JsonNode node) {
         String transferNo = node.path("transferNo").asText(null);
 
+        // 物料编码映射
+        String apsMaterialCode = node.path("materialCode").asText(null);
+        String mesMaterialCode = apsMaterialCode;
+        if (apsMaterialCode != null) {
+            String mapped = dataMappingService.getMesCode("MATERIAL", apsMaterialCode);
+            if (mapped != null) mesMaterialCode = mapped;
+        }
+
         TransferOrder existing = transferOrderMapper.selectOne(
                 new LambdaQueryWrapper<TransferOrder>()
                         .eq(TransferOrder::getTransferNo, transferNo));
 
         if (existing != null) {
             existing.setApsStatus(node.path("status").asText(existing.getApsStatus()));
+            existing.setMaterialCode(mesMaterialCode != null ? mesMaterialCode : existing.getMaterialCode());
             transferOrderMapper.updateById(existing);
         } else {
             TransferOrder order = new TransferOrder();
             order.setTransferNo(transferNo);
             order.setParentOrderNo(node.path("parentOrderNo").asText(null));
-            order.setMaterialCode(node.path("materialCode").asText(null));
+            order.setMaterialCode(mesMaterialCode);
             order.setMaterialName(node.path("materialName").asText(null));
             order.setFromFactory(node.path("fromFactory").asText(null));
             order.setToFactory(node.path("toFactory").asText(null));

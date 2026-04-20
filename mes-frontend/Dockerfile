@@ -6,8 +6,9 @@ COPY . .
 RUN npm run build
 
 FROM nginx:alpine
+ARG NGINX_CONF=nginx.conf
 COPY --from=builder /build/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY ${NGINX_CONF} /etc/nginx/conf.d/default.conf
 
 ENV TZ=Asia/Shanghai
 

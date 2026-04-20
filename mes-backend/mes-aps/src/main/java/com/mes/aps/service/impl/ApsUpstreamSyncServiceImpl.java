@@ -13,12 +13,17 @@ import com.mes.aps.mapper.ApsSyncQueueMapper;
 import com.mes.aps.service.IApsUpstreamSyncService;
 import com.mes.aps.service.IApsSyncConfigService;
 import com.mes.aps.service.IApsSyncLogService;
+import com.mes.plan.domain.entity.OrderPlan;
+import com.mes.plan.mapper.OrderPlanMapper;
+import com.mes.workorder.domain.entity.WorkOrder;
+import com.mes.workorder.mapper.WorkOrderMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +42,8 @@ public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
     private final IApsSyncConfigService configService;
     private final IApsSyncLogService syncLogService;
     private final ObjectMapper objectMapper;
+    private final OrderPlanMapper orderPlanMapper;
+    private final WorkOrderMapper workOrderMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -137,30 +144,52 @@ public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
         String syncType = item.getSyncType();
 
         switch (syncType) {
-            case "WORKORDER" -> {
-                apsClient.post("/api/mes/status/sync",
-                        buildPayload(item), Map.class);
-            }
-            case "INVENTORY" -> {
-                apsClient.post("/api/mes/inventory/sync",
-                        buildPayload(item), Map.class);
-            }
-            case "QUALITY" -> {
-                apsClient.post("/api/mes/quality/sync",
-                        buildPayload(item), Map.class);
-            }
-            case "OUTSOURCE" -> {
-                apsClient.post("/api/mes/outsource/status",
-                        buildPayload(item), Map.class);
-            }
-            case "TRANSFER" -> {
-                apsClient.post("/api/mes/transfer/status",
-                        buildPayload(item), Map.class);
-            }
-            case "ABNORMAL" -> {
-                apsClient.post("/api/schedule/combined",
-                        buildPayload(item), Map.class);
-            }
+            // ===== 原有类型 =====
+            case "WORKORDER" ->
+                apsClient.post("/api/mes/status/sync", buildPayload(item), Map.class);
+            case "INVENTORY" ->
+                apsClient.post("/api/mes/inventory/sync", buildPayload(item), Map.class);
+            case "QUALITY" ->
+                apsClient.post("/api/mes/quality/sync", buildPayload(item), Map.class);
+            case "OUTSOURCE" ->
+                apsClient.post("/api/mes/outsource/status", buildPayload(item), Map.class);
+            case "TRANSFER" ->
+                apsClient.post("/api/mes/transfer/status", buildPayload(item), Map.class);
+            case "ABNORMAL" ->
+                apsClient.postAsync("/api/mes/reschedule", buildPayload(item));
+
+            // ===== 主数据同步 =====
+            case "WORK_CENTER" ->
+                apsClient.post("/api/mes/master-data/work-center", buildPayload(item), Map.class);
+            case "PROCESS_ROUTE" ->
+                apsClient.post("/api/mes/master-data/process-route", buildPayload(item), Map.class);
+            case "BOM" ->
+                apsClient.post("/api/mes/master-data/bom", buildPayload(item), Map.class);
+            case "MATERIAL_MASTER" ->
+                apsClient.post("/api/mes/master-data/material", buildPayload(item), Map.class);
+            case "TEAM" ->
+                apsClient.post("/api/mes/master-data/team", buildPayload(item), Map.class);
+
+            // ===== 执行反馈 =====
+            case "DISPATCH" ->
+                apsClient.post("/api/mes/feedback/dispatch", buildPayload(item), Map.class);
+            case "START_CHECK" ->
+                apsClient.post("/api/mes/feedback/start-check", buildPayload(item), Map.class);
+            case "CONSTRAINT" ->
+                apsClient.post("/api/mes/feedback/constraint", buildPayload(item), Map.class);
+            case "SHIFT_OUTPUT" ->
+                apsClient.post("/api/mes/feedback/shift-output", buildPayload(item), Map.class);
+            case "MATERIAL_SHORTAGE" ->
+                apsClient.post("/api/mes/feedback/material-shortage", buildPayload(item), Map.class);
+            case "REQUISITION" ->
+                apsClient.post("/api/mes/feedback/requisition", buildPayload(item), Map.class);
+            case "SUPPLY_PROGRESS" ->
+                apsClient.post("/api/mes/feedback/supply-progress", buildPayload(item), Map.class);
+            case "STATUS_CHANGE" ->
+                apsClient.post("/api/mes/feedback/status-change", buildPayload(item), Map.class);
+            case "PROCESS_CHANGE" ->
+                apsClient.post("/api/mes/feedback/process-change", buildPayload(item), Map.class);
+
             default -> {
                 log.warn("未知的同步类型: {}", syncType);
                 throw new RuntimeException("未知的同步类型: " + syncType);
@@ -171,18 +200,56 @@ public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
     private Map<String, Object> buildPayload(ApsSyncQueue item) {
         try {
             if (item.getPayload() != null) {
-                return objectMapper.readValue(item.getPayload(),
+                Map<String, Object> parsed = objectMapper.readValue(item.getPayload(),
                         new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                enrichPayload(parsed, item);
+                return parsed;
             }
         } catch (Exception e) {
             log.warn("解析同步载荷失败: {}", e.getMessage());
         }
-        // 回退到基本信息
-        return Map.of(
-                "dataType", item.getDataType(),
-                "dataId", item.getDataId() != null ? item.getDataId() : 0,
-                "dataNo", item.getDataNo() != null ? item.getDataNo() : ""
-        );
+        return buildFallbackPayload(item);
+    }
+
+    private void enrichPayload(Map<String, Object> payload, ApsSyncQueue item) {
+        switch (item.getSyncType()) {
+            case "WORKORDER" -> {
+                if (!payload.containsKey("apsOrderId") && payload.containsKey("workOrderNo")) {
+                    Long apsOrderId = lookupApsOrderId(String.valueOf(payload.get("workOrderNo")));
+                    if (apsOrderId != null) {
+                        payload.put("apsOrderId", apsOrderId);
+                    }
+                }
+            }
+            default -> { /* 其他类型暂不做额外补充 */ }
+        }
+    }
+
+    private Long lookupApsOrderId(String workOrderNo) {
+        try {
+            WorkOrder wo = workOrderMapper.selectOne(
+                    new LambdaQueryWrapper<WorkOrder>()
+                            .eq(WorkOrder::getWorkOrderNo, workOrderNo)
+                            .last("LIMIT 1"));
+            if (wo == null || wo.getOrderPlanNo() == null) return null;
+
+            OrderPlan plan = orderPlanMapper.selectOne(
+                    new LambdaQueryWrapper<OrderPlan>()
+                            .eq(OrderPlan::getOrderNo, wo.getOrderPlanNo())
+                            .last("LIMIT 1"));
+            return plan != null ? plan.getApsOrderId() : null;
+        } catch (Exception e) {
+            log.warn("查询 apsOrderId 失败: workOrderNo={}", workOrderNo);
+            return null;
+        }
+    }
+
+    private Map<String, Object> buildFallbackPayload(ApsSyncQueue item) {
+        Map<String, Object> fallback = new HashMap<>();
+        fallback.put("dataType", item.getDataType());
+        fallback.put("dataId", item.getDataId() != null ? item.getDataId() : 0);
+        fallback.put("dataNo", item.getDataNo() != null ? item.getDataNo() : "");
+        return fallback;
     }
 
     private void handleSyncFailure(ApsSyncQueue item, Exception e) {

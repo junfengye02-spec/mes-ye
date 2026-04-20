@@ -1,0 +1,83 @@
+-- ============================================================
+-- 租户隔离：为所有业务表添加 tenant_id 列
+-- 默认值 1 = 默认租户，与 sys_tenant 表关联
+-- ============================================================
+
+ALTER TABLE mes_abnormal_contact ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_abnormal_contact_attachment ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_abnormal_contact_log ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_aps_data_mapping ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_aps_sync_detail ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_aps_sync_log ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_aps_sync_queue ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_bom_substitute ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_bom_version_log ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_delivery_sign ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_dispatch_assignment ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_dispatch_status_log ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_dispatch_task ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_finished_goods_receipt ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_finished_goods_receipt_item ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_finished_goods_receipt_request ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_inspection_work ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_instruction ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_instruction_flow_log ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_instruction_serial ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_instruction_stage ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_machining_program ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_manufacturing_bom ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_manufacturing_bom_item ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_material ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_material_price ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_material_requisition ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_material_requisition_item ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_material_return ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_order_plan ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_order_start_check ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_outsource_order ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_plan_status_log ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_process_info ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_process_template ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_production_plan ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_production_team ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_production_work ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_recheck_order_plan ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_recheck_request ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_recheck_serial ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_requisition_order ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_resource_calendar ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_resource_calendar_shift ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_shift_handover ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_shift_handover_attachment ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_spray_condition ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_storage_inventory ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_transfer_order ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_center ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_instruction ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_instruction_person ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order_attachment ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order_constraint ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order_input_material ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order_output_material ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order_quality_item ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order_status_log ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order_supply_plan ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order_task ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_order_task_segment ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_start_check ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+ALTER TABLE mes_work_status_view ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID';
+
+-- 为常用查询表建索引
+CREATE INDEX idx_tenant_material ON mes_material(tenant_id);
+CREATE INDEX idx_tenant_work_center ON mes_work_center(tenant_id);
+CREATE INDEX idx_tenant_work_order ON mes_work_order(tenant_id);
+CREATE INDEX idx_tenant_order_plan ON mes_order_plan(tenant_id);
+CREATE INDEX idx_tenant_dispatch_task ON mes_dispatch_task(tenant_id);
+CREATE INDEX idx_tenant_process_info ON mes_process_info(tenant_id);
+CREATE INDEX idx_tenant_production_team ON mes_production_team(tenant_id);
+CREATE INDEX idx_tenant_manufacturing_bom ON mes_manufacturing_bom(tenant_id);
+CREATE INDEX idx_tenant_quality ON mes_inspection_work(tenant_id);
+CREATE INDEX idx_tenant_material_req ON mes_material_requisition(tenant_id);
+CREATE INDEX idx_tenant_abnormal ON mes_abnormal_contact(tenant_id);
+CREATE INDEX idx_tenant_shift ON mes_shift_handover(tenant_id);

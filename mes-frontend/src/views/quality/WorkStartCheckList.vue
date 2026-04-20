@@ -5,13 +5,10 @@
         <el-form-item label="工单号">
           <el-input v-model="query.workOrderNo" placeholder="工单号" clearable style="width: 160px" />
         </el-form-item>
-        <el-form-item label="检查人">
-          <el-input v-model="query.checker" placeholder="检查人" clearable style="width: 120px" />
-        </el-form-item>
-        <el-form-item label="检查结果">
-          <el-select v-model="query.checkResult" placeholder="检查结果" clearable style="width: 120px">
-            <el-option label="合格" value="合格" />
-            <el-option label="不合格" value="不合格" />
+        <el-form-item label="检查状态">
+          <el-select v-model="query.checkStatus" placeholder="检查状态" clearable style="width: 120px">
+            <el-option label="通过" value="PASSED" />
+            <el-option label="不通过" value="FAILED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -36,18 +33,19 @@
       </template>
 
       <el-table v-loading="loading" :data="tableData" border stripe>
-        <el-table-column prop="checkNo" label="检查单号" min-width="120" />
         <el-table-column prop="workOrderNo" label="工单号" min-width="120" />
-        <el-table-column prop="checkDate" label="检查日期" width="120" />
-        <el-table-column prop="checker" label="检查人" width="100" />
-        <el-table-column prop="checkResult" label="检查结果" width="100" align="center">
+        <el-table-column prop="workNo" label="工作编号" min-width="120" />
+        <el-table-column prop="checkItem" label="检查项" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="checkResult" label="检查结果" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="checkStatus" label="检查状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.checkResult === '合格' ? 'success' : 'danger'">
-              {{ row.checkResult || '-' }}
+            <el-tag :type="row.checkStatus === 'PASSED' ? 'success' : 'danger'">
+              {{ row.checkStatus === 'PASSED' ? '通过' : row.checkStatus === 'FAILED' ? '不通过' : row.checkStatus || '-' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="checker" label="检查人" width="100" />
+        <el-table-column prop="checkTime" label="检查时间" width="170" />
         <el-table-column label="操作" width="100" fixed="right" align="center">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
@@ -73,34 +71,34 @@
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑开工检查' : '新增开工检查'"
-      width="520px"
+      width="560px"
       destroy-on-close
       @close="resetForm"
     >
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
-        <el-form-item label="工单号" prop="workOrderNo">
-          <el-input v-model="form.workOrderNo" placeholder="输入工单号" />
+        <el-form-item label="工单ID" prop="workOrderId">
+          <el-input-number v-model="form.workOrderId" :min="1" :controls="false" placeholder="工单ID" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="检查日期" prop="checkDate">
-          <el-date-picker
-            v-model="form.checkDate"
-            type="date"
-            placeholder="检查日期"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
+        <el-form-item label="工作编号" prop="workNo">
+          <el-input v-model="form.workNo" placeholder="工作编号" />
         </el-form-item>
-        <el-form-item label="检查人" prop="checker">
-          <el-input v-model="form.checker" placeholder="检查人" />
+        <el-form-item label="检查项" prop="checkItem">
+          <el-input v-model="form.checkItem" placeholder="检查项" />
+        </el-form-item>
+        <el-form-item label="检查状态" prop="checkStatus">
+          <el-select v-model="form.checkStatus" placeholder="检查状态" style="width: 100%">
+            <el-option label="通过" value="PASSED" />
+            <el-option label="不通过" value="FAILED" />
+          </el-select>
         </el-form-item>
         <el-form-item label="检查结果" prop="checkResult">
-          <el-radio-group v-model="form.checkResult">
-            <el-radio value="合格">合格</el-radio>
-            <el-radio value="不合格">不合格</el-radio>
-          </el-radio-group>
+          <el-input v-model="form.checkResult" type="textarea" :rows="2" placeholder="检查结果" />
+        </el-form-item>
+        <el-form-item label="检查备注" prop="checkRemark">
+          <el-input v-model="form.checkRemark" type="textarea" :rows="2" placeholder="检查备注" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="备注" />
+          <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -117,18 +115,16 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import type { WorkStartCheckVO, WorkStartCheckDTO } from '@/types/quality'
+import type { WorkStartCheckVO, WorkStartCheckDTO, WorkStartCheckQuery } from '@/types/quality'
 import { workStartCheckApi } from '@/api/quality/workStartCheck'
-import { workOrderApi } from '@/api/workorder/workOrder'
 
 const loading = ref(false)
 const submitLoading = ref(false)
 const tableData = ref<WorkStartCheckVO[]>([])
 const total = ref(0)
-const query = reactive({
+const query = reactive<WorkStartCheckQuery>({
   workOrderNo: '',
-  checker: '',
-  checkResult: '',
+  checkStatus: '',
   pageNum: 1,
   pageSize: 20,
 })
@@ -137,17 +133,23 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const editId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
-const form = reactive<WorkStartCheckDTO & { workOrderNo?: string }>({
+const form = reactive<
+  WorkStartCheckDTO & { workOrderTaskId?: number; workOrderNo?: string }
+>({
   workOrderId: undefined,
+  workOrderTaskId: undefined,
   workOrderNo: '',
-  checkDate: '',
-  checker: '',
-  checkResult: '合格',
+  workNo: '',
+  checkItem: '',
+  checkResult: '',
+  checkStatus: 'PASSED',
+  checkRemark: '',
   remark: '',
 })
 const formRules: FormRules = {
-  workOrderNo: [{ required: true, message: '请输入工单号', trigger: 'blur' }],
-  checkDate: [{ required: true, message: '请选择检查日期', trigger: 'change' }],
+  workOrderId: [{ required: true, message: '请输入工单ID', trigger: 'blur' }],
+  checkItem: [{ required: true, message: '请输入检查项', trigger: 'blur' }],
+  checkStatus: [{ required: true, message: '请选择检查状态', trigger: 'change' }],
 }
 
 async function fetchList() {
@@ -168,8 +170,7 @@ function handleSearch() {
 
 function handleReset() {
   query.workOrderNo = ''
-  query.checker = ''
-  query.checkResult = ''
+  query.checkStatus = ''
   query.pageNum = 1
   fetchList()
 }
@@ -186,10 +187,13 @@ function handleEdit(row: WorkStartCheckVO) {
   editId.value = row.id
   Object.assign(form, {
     workOrderId: row.workOrderId,
+    workOrderTaskId: row.workOrderTaskId,
     workOrderNo: row.workOrderNo,
-    checkDate: row.checkDate,
-    checker: row.checker,
-    checkResult: row.checkResult || '合格',
+    workNo: row.workNo,
+    checkItem: row.checkItem || '',
+    checkResult: row.checkResult,
+    checkStatus: row.checkStatus || 'PASSED',
+    checkRemark: row.checkRemark,
     remark: row.remark,
   })
   dialogVisible.value = true
@@ -198,50 +202,46 @@ function handleEdit(row: WorkStartCheckVO) {
 function resetForm() {
   Object.assign(form, {
     workOrderId: undefined,
+    workOrderTaskId: undefined,
     workOrderNo: '',
-    checkDate: '',
-    checker: '',
-    checkResult: '合格',
+    workNo: '',
+    checkItem: '',
+    checkResult: '',
+    checkStatus: 'PASSED',
+    checkRemark: '',
     remark: '',
   })
 }
 
-async function resolveWorkOrderId(workOrderNo: string): Promise<number | undefined> {
-  const res = await workOrderApi.page({ workOrderNo, pageNum: 1, pageSize: 1 })
-  return res?.list?.[0]?.id
-}
-
 async function handleSubmitForm() {
   if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitLoading.value = true
-    try {
-      const workOrderId = form.workOrderId ?? (form.workOrderNo ? await resolveWorkOrderId(form.workOrderNo) : undefined)
-      const payload: WorkStartCheckDTO = {
-        workOrderId,
-        checkDate: form.checkDate,
-        checker: form.checker,
-        checkResult: form.checkResult,
-        remark: form.remark,
-      }
-      if (isEdit.value && editId.value) {
-        await workStartCheckApi.update(editId.value, payload)
-        ElMessage.success('更新成功')
-      } else {
-        if (!workOrderId) {
-          ElMessage.warning('未找到对应工单，请检查工单号')
-          return
-        }
-        await workStartCheckApi.create(payload)
-        ElMessage.success('创建成功')
-      }
-      dialogVisible.value = false
-      fetchList()
-    } finally {
-      submitLoading.value = false
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+  submitLoading.value = true
+  try {
+    const payload: WorkStartCheckDTO = {
+      workNo: form.workNo,
+      workOrderTaskId: form.workOrderTaskId,
+      workOrderId: form.workOrderId,
+      workOrderNo: form.workOrderNo || undefined,
+      checkItem: form.checkItem,
+      checkResult: form.checkResult,
+      checkStatus: form.checkStatus,
+      checkRemark: form.checkRemark,
+      remark: form.remark,
     }
-  })
+    if (isEdit.value && editId.value !== null) {
+      await workStartCheckApi.update(editId.value!, payload)
+      ElMessage.success('更新成功')
+    } else {
+      await workStartCheckApi.create(payload)
+      ElMessage.success('创建成功')
+    }
+    dialogVisible.value = false
+    fetchList()
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 onMounted(() => {

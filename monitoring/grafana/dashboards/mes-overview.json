@@ -1,55 +1,245 @@
 {
-  "dashboard": {
-    "title": "MES System Overview",
-    "tags": ["mes"],
-    "timezone": "Asia/Shanghai",
-    "panels": [
+  "title": "MES System Overview",
+  "tags": ["mes"],
+  "timezone": "Asia/Shanghai",
+  "editable": true,
+  "templating": {
+    "list": [
       {
-        "title": "JVM Memory Usage",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
-        "targets": [
-          {
-            "expr": "jvm_memory_used_bytes{job='mes-backend'}",
-            "legendFormat": "{{instance}} - {{area}}"
-          }
-        ]
-      },
-      {
-        "title": "HTTP Request Rate",
-        "type": "timeseries",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
-        "targets": [
-          {
-            "expr": "rate(http_server_requests_seconds_count{job='mes-backend'}[5m])",
-            "legendFormat": "{{method}} {{uri}}"
-          }
-        ]
-      },
-      {
-        "title": "Database Connection Pool",
-        "type": "gauge",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
-        "targets": [
-          {
-            "expr": "hikaricp_connections_active{job='mes-backend'}",
-            "legendFormat": "Active Connections"
-          }
-        ]
-      },
-      {
-        "title": "Redis Hit Rate",
-        "type": "stat",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
-        "targets": [
-          {
-            "expr": "redis_keyspace_hits_total / (redis_keyspace_hits_total + redis_keyspace_misses_total) * 100",
-            "legendFormat": "Hit Rate %"
-          }
-        ]
+        "name": "service",
+        "type": "query",
+        "query": "label_values(up, job)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
       }
-    ],
-    "time": {"from": "now-1h", "to": "now"},
-    "refresh": "10s"
-  }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Service Health Status",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "up{job=~\"mes-.*\"}",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"options": {"0": {"text": "DOWN", "color": "red"}}, "type": "value"},
+            {"options": {"1": {"text": "UP", "color": "green"}}, "type": "value"}
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "JVM Heap Memory Usage",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{area=\"heap\",job=~\"$service\"}",
+          "legendFormat": "{{job}} - Used"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{area=\"heap\",job=~\"$service\"}",
+          "legendFormat": "{{job}} - Max"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "HTTP Request Rate (per second)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\"}[1m])) by (job)",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "HTTP Response Time (p99)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\"}[5m])) by (le, job))",
+          "legendFormat": "{{job}} p99"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\"}[5m])) by (le, job))",
+          "legendFormat": "{{job}} p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "HTTP Error Rate (5xx)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\",job=~\"$service\"}[5m])) by (job)",
+          "legendFormat": "{{job}} 5xx"
+        },
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{status=~\"4..\",job=~\"$service\"}[5m])) by (job)",
+          "legendFormat": "{{job}} 4xx"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Database Connection Pool",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "targets": [
+        {
+          "expr": "hikaricp_connections_active{job=~\"$service\"}",
+          "legendFormat": "{{job}} Active"
+        },
+        {
+          "expr": "hikaricp_connections_idle{job=~\"$service\"}",
+          "legendFormat": "{{job}} Idle"
+        },
+        {
+          "expr": "hikaricp_connections_pending{job=~\"$service\"}",
+          "legendFormat": "{{job}} Pending"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Redis Performance",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "targets": [
+        {
+          "expr": "redis_connected_clients",
+          "legendFormat": "Connected Clients"
+        },
+        {
+          "expr": "rate(redis_commands_processed_total[1m])",
+          "legendFormat": "Commands/sec"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "MySQL Connections",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+      "targets": [
+        {
+          "expr": "mysql_global_status_threads_connected",
+          "legendFormat": "Active Connections"
+        },
+        {
+          "expr": "mysql_global_variables_max_connections",
+          "legendFormat": "Max Connections"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "MySQL Query Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+      "targets": [
+        {
+          "expr": "rate(mysql_global_status_queries[1m])",
+          "legendFormat": "Queries/sec"
+        },
+        {
+          "expr": "rate(mysql_global_status_slow_queries[1m])",
+          "legendFormat": "Slow Queries/sec"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "JVM GC Time",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36},
+      "targets": [
+        {
+          "expr": "rate(jvm_gc_pause_seconds_sum{job=~\"$service\"}[5m])",
+          "legendFormat": "{{job}} - {{action}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "JVM Thread Count",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36},
+      "targets": [
+        {
+          "expr": "jvm_threads_live_threads{job=~\"$service\"}",
+          "legendFormat": "{{job}} Live"
+        },
+        {
+          "expr": "jvm_threads_peak_threads{job=~\"$service\"}",
+          "legendFormat": "{{job}} Peak"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "RabbitMQ Queue Depth",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 44},
+      "targets": [
+        {
+          "expr": "rabbitmq_queue_messages",
+          "legendFormat": "{{queue}} - Total"
+        },
+        {
+          "expr": "rabbitmq_queue_messages_ready",
+          "legendFormat": "{{queue}} - Ready"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Nacos Registered Services",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 44},
+      "targets": [
+        {
+          "expr": "nacos_monitor{name=\"serviceCount\"}",
+          "legendFormat": "Service Count"
+        },
+        {
+          "expr": "nacos_monitor{name=\"ipCount\"}",
+          "legendFormat": "Instance Count"
+        }
+      ]
+    }
+  ],
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "10s"
 }

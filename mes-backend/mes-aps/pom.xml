@@ -29,6 +29,32 @@
             <groupId>com.mes</groupId>
             <artifactId>mes-plan</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-basic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-process</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-team</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-dispatch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-quality</artifactId>
+        </dependency>
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Resilience4j 熔断器 -->
         <dependency>
             <groupId>io.github.resilience4j</groupId>

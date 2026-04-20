@@ -14,11 +14,30 @@ const service: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json;charset=UTF-8' },
 })
 
+type PendingEntry = {
+  resolve: (token: string) => void
+  reject: (err: unknown) => void
+}
+
 let isRefreshing = false
-let pendingRequests: Array<(token: string) => void> = []
+let pendingRequests: PendingEntry[] = []
 
 function getToken(): string | null {
   return localStorage.getItem('token')
+}
+
+function flushPending(token: string) {
+  pendingRequests.forEach((p) => p.resolve(token))
+  pendingRequests = []
+}
+
+function rejectPending(err: unknown) {
+  pendingRequests.forEach((p) => p.reject(err))
+  pendingRequests = []
+}
+
+function isRefreshUrl(url?: string): boolean {
+  return !!url && /\/auth\/refresh\b/.test(url)
 }
 
 service.interceptors.request.use(
@@ -42,19 +61,35 @@ service.interceptors.response.use(
     return res.data as any
   },
   async (error) => {
-    const originalRequest = error.config
-    if (error.response?.status === 401 && !originalRequest._retried) {
+    const originalRequest = error.config || {}
+    const status = error.response?.status
+
+    // 刷新接口本身 401 → 直接登出，避免死锁：既不入队列也不重试
+    if (status === 401 && isRefreshUrl(originalRequest.url)) {
+      rejectPending(error)
+      isRefreshing = false
+      handleLogout()
+      return Promise.reject(error)
+    }
+
+    if (status === 401 && !originalRequest._retried) {
       const storedRefreshToken = localStorage.getItem('refreshToken')
       if (!storedRefreshToken) {
+        rejectPending(error)
         handleLogout()
         return Promise.reject(error)
       }
 
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          pendingRequests.push((newToken: string) => {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`
-            resolve(service(originalRequest))
+        return new Promise((resolve, reject) => {
+          pendingRequests.push({
+            resolve: (newToken: string) => {
+              originalRequest.headers = originalRequest.headers || {}
+              originalRequest.headers.Authorization = `Bearer ${newToken}`
+              originalRequest._retried = true
+              resolve(service(originalRequest))
+            },
+            reject,
           })
         })
       }
@@ -67,11 +102,12 @@ service.interceptors.response.use(
         const authStore = useAuthStore()
         await authStore.doRefreshToken()
         const newToken = authStore.accessToken
-        pendingRequests.forEach(cb => cb(newToken))
-        pendingRequests = []
+        flushPending(newToken)
+        originalRequest.headers = originalRequest.headers || {}
         originalRequest.headers.Authorization = `Bearer ${newToken}`
         return service(originalRequest)
-      } catch {
+      } catch (e) {
+        rejectPending(e)
         handleLogout()
         return Promise.reject(error)
       } finally {
@@ -89,8 +125,10 @@ function handleLogout() {
   localStorage.removeItem('token')
   localStorage.removeItem('refreshToken')
   const currentPath = window.location.pathname
-  if (currentPath !== '/login') {
-    window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
+  const isAppSide = currentPath.startsWith('/app')
+  const loginPath = isAppSide ? '/app/login' : '/login'
+  if (currentPath !== loginPath) {
+    window.location.href = `${loginPath}?redirect=${encodeURIComponent(currentPath)}`
   }
 }
 
@@ -111,9 +149,8 @@ const request = {
     const formData = new FormData()
     formData.append('file', file)
     if (directory) formData.append('directory', directory)
-    return service.post(url, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    // 不手动设置 Content-Type；浏览器会自动附带正确的 multipart boundary
+    return service.post(url, formData)
   },
 }
 

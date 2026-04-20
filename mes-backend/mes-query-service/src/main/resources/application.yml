@@ -1,0 +1,54 @@
+server:
+  port: 9007
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  profiles:
+    active: dev
+  application:
+    name: mes-query-svc
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    deserialization:
+      fail-on-unknown-properties: false
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.mes.**.domain.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+mes:
+  file:
+    upload-path: ./uploads
+    access-prefix: /files
+  jwt:
+    # 生产必须通过环境变量 MES_JWT_SECRET 注入（>=32 字节强随机）
+    secret: ${MES_JWT_SECRET:dev-only-NOT-FOR-PRODUCTION-pls-override-me-with-random-32bytes+}
+    access-expiration: 7200000
+    refresh-expiration: 604800000

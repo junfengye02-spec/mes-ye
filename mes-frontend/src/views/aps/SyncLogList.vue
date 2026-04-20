@@ -18,7 +18,16 @@
           </el-select>
         </el-form-item>
         <el-form-item label="时间范围">
-          <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" style="width: 260px" @change="handleDateChange" />
+          <el-date-picker
+            v-model="dateRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始"
+            end-placeholder="结束"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width: 360px"
+            @change="handleDateChange"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
@@ -36,22 +45,36 @@
             <el-tag :type="getDictType('syncDirection', row.syncDirection)">{{ getDictLabel('syncDirection', row.syncDirection) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="syncType" label="类型" width="80" align="center">
+        <el-table-column prop="syncType" label="类型" width="100" align="center">
           <template #default="{ row }">{{ getDictLabel('syncType', row.syncType) }}</template>
         </el-table-column>
         <el-table-column prop="totalCount" label="总数" width="70" align="right" />
         <el-table-column prop="successCount" label="成功" width="70" align="right" />
         <el-table-column prop="failCount" label="失败" width="70" align="right" />
-        <el-table-column prop="status" label="状态" width="90" align="center">
+        <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="getDictType('syncStatus', row.status)">{{ getDictLabel('syncStatus', row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="durationMs" label="耗时" width="90" align="right">
+          <template #default="{ row }">
+            {{ row.durationMs != null ? `${row.durationMs}ms` : '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="startTime" label="开始时间" width="170" />
         <el-table-column prop="endTime" label="结束时间" width="170" />
       </el-table>
+      <el-empty v-if="!loading && tableData.length === 0" description="暂无同步日志" />
       <div class="pagination-wrapper">
-        <el-pagination v-model:current-page="query.pageNum" v-model:page-size="query.pageSize" :page-sizes="[10, 20, 50, 100]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
+        <el-pagination
+          v-model:current-page="query.pageNum"
+          v-model:page-size="query.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="loadData"
+          @current-change="loadData"
+        />
       </div>
     </el-card>
 
@@ -67,6 +90,7 @@
           <el-descriptions-item label="状态">
             <el-tag :type="getDictType('syncStatus', currentLog.status)">{{ getDictLabel('syncStatus', currentLog.status) }}</el-tag>
           </el-descriptions-item>
+          <el-descriptions-item label="耗时">{{ currentLog.durationMs != null ? `${currentLog.durationMs}ms` : '-' }}</el-descriptions-item>
           <el-descriptions-item label="开始时间">{{ currentLog.startTime }}</el-descriptions-item>
           <el-descriptions-item label="结束时间">{{ currentLog.endTime }}</el-descriptions-item>
           <el-descriptions-item v-if="currentLog.errorMessage" label="错误信息">
@@ -80,6 +104,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { Search, Refresh } from '@element-plus/icons-vue'
 import { apsSyncLogApi } from '@/api/aps/apsSync'
 import { getDictList, getDictLabel, getDictType } from '@/utils/dict'
 import type { ApsSyncLogVO, ApsSyncLogQuery } from '@/types/aps'
@@ -97,17 +122,17 @@ const query = reactive<ApsSyncLogQuery>({
   syncDirection: undefined,
   syncType: undefined,
   status: undefined,
-  startTime: undefined,
-  endTime: undefined,
+  startTimeFrom: undefined,
+  startTimeTo: undefined,
 })
 
 function handleDateChange(val: string[] | null) {
   if (val && val.length === 2) {
-    query.startTime = val[0]
-    query.endTime = val[1]
+    query.startTimeFrom = val[0]
+    query.startTimeTo = val[1]
   } else {
-    query.startTime = undefined
-    query.endTime = undefined
+    query.startTimeFrom = undefined
+    query.startTimeTo = undefined
   }
 }
 
@@ -131,15 +156,16 @@ function handleReset() {
   query.syncDirection = undefined
   query.syncType = undefined
   query.status = undefined
-  query.startTime = undefined
-  query.endTime = undefined
+  query.startTimeFrom = undefined
+  query.startTimeTo = undefined
   dateRange.value = []
   handleSearch()
 }
 
 async function handleRowClick(row: ApsSyncLogVO) {
+  if (!row.id) return
   try {
-    const res = await apsSyncLogApi.getDetail(row.id!)
+    const res = await apsSyncLogApi.getDetail(row.id)
     currentLog.value = res
     drawerVisible.value = true
   } catch { /* handled by interceptor */ }
@@ -149,7 +175,18 @@ onMounted(() => loadData())
 </script>
 
 <style scoped>
-.search-card { margin-bottom: 16px; }
-.search-card :deep(.el-card__body) { padding-bottom: 0; }
-.pagination-wrapper { display: flex; justify-content: flex-end; margin-top: 16px; }
+.sync-log-list {
+  padding: 16px;
+}
+.search-card {
+  margin-bottom: 16px;
+}
+.search-card :deep(.el-card__body) {
+  padding-bottom: 0;
+}
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
 </style>

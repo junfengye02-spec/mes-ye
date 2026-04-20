@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final StaffPortalRestrictionFilter staffPortalRestrictionFilter;
     private final ObjectMapper objectMapper;
 
     private static final String[] PUBLIC_URLS = {
@@ -49,6 +50,8 @@ public class SecurityConfig {
             "/actuator/**",
             // Druid 监控
             "/druid/**",
+            // APS 回调端点（系统间调用，无需 JWT）
+            "/aps/callback/**",
     };
 
     @Bean
@@ -76,7 +79,8 @@ public class SecurityConfig {
                                 R.fail(ResultCode.FORBIDDEN)));
                     })
             )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(staffPortalRestrictionFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

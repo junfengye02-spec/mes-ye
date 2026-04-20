@@ -1,8 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <!--
+      统一日志 pattern：在原内容前附加 MDC 中的租户 / 用户 / 追踪上下文：
+        [traceId] [tid=租户 uid=用户 user=用户名]
+      未设置时默认 '-'，保证格式稳定、ELK 可切分。
+    -->
+    <property name="MDC_PATTERN"
+              value="[%X{traceId:--}] [tid=%X{tenantId:--} uid=%X{userId:--} user=%X{username:--}]"/>
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level ${MDC_PATTERN} %logger{36} - %msg%n"/>
+
     <springProfile name="dev">
         <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>${LOG_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
@@ -14,7 +29,7 @@
 
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                <pattern>${LOG_PATTERN}</pattern>
                 <charset>UTF-8</charset>
             </encoder>
         </appender>
@@ -22,7 +37,7 @@
         <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>${LOG_FILE}.log</file>
             <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                <pattern>${LOG_PATTERN}</pattern>
                 <charset>UTF-8</charset>
             </encoder>
             <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -39,7 +54,7 @@
                 <level>ERROR</level>
             </filter>
             <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                <pattern>${LOG_PATTERN}</pattern>
                 <charset>UTF-8</charset>
             </encoder>
             <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">

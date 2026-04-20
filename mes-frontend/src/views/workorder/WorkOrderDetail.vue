@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onActivated, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -127,15 +127,22 @@ import { workOrderApi } from '@/api/workorder/workOrder'
 
 const route = useRoute()
 const router = useRouter()
-const id = Number(route.params.id)
 const loading = ref(false)
 const detail = ref<WorkOrderVO | null>(null)
 const activeTab = ref('tasks')
 
+function isAppSide(): boolean {
+  return route.path.startsWith('/app')
+}
+function listPath(): string {
+  return isAppSide() ? '/app/workorder/list' : '/workorder/list'
+}
+
 async function loadDetail() {
+  const id = Number(route.params.id)
   if (isNaN(id) || id <= 0) {
     ElMessage.error('无效的工单ID')
-    router.push('/workorder/list')
+    router.push(listPath())
     return
   }
   loading.value = true
@@ -151,11 +158,21 @@ async function loadDetail() {
 }
 
 function handleBack() {
-  router.push('/workorder/list')
+  router.push(listPath())
 }
 
-onMounted(() => {
-  loadDetail()
+onMounted(loadDetail)
+// keep-alive 下 URL 中的 id 变化时不会重新 mount：手动监听 + onActivated 刷新
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId && newId !== oldId && route.path.includes('/workorder/detail/')) {
+    activeTab.value = 'tasks'
+    loadDetail()
+  }
+})
+onActivated(() => {
+  if (route.path.includes('/workorder/detail/')) {
+    loadDetail()
+  }
 })
 </script>
 

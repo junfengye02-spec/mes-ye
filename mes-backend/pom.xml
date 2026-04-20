@@ -19,8 +19,14 @@
     <description>制造执行系统 - 后端</description>
 
     <modules>
+        <!-- 基础模块 -->
         <module>mes-common</module>
         <module>mes-framework</module>
+        <module>mes-system</module>
+
+        <module>mes-api</module>
+
+        <!-- 业务模块（库） -->
         <module>mes-basic</module>
         <module>mes-team</module>
         <module>mes-process</module>
@@ -32,8 +38,19 @@
         <module>mes-query</module>
         <module>mes-material</module>
         <module>mes-aps</module>
+
+        <!-- 单体聚合（兼容模式） -->
         <module>mes-admin</module>
+
+        <!-- 微服务启动器 -->
         <module>mes-gateway</module>
+        <module>mes-system-service</module>
+        <module>mes-master-data-service</module>
+        <module>mes-production-service</module>
+        <module>mes-quality-service</module>
+        <module>mes-material-service</module>
+        <module>mes-integration-service</module>
+        <module>mes-query-service</module>
     </modules>
 
     <properties>
@@ -79,6 +96,16 @@
             <dependency>
                 <groupId>com.mes</groupId>
                 <artifactId>mes-gateway</artifactId>
+                <version>${mes.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mes</groupId>
+                <artifactId>mes-system</artifactId>
+                <version>${mes.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mes</groupId>
+                <artifactId>mes-api</artifactId>
                 <version>${mes.version}</version>
             </dependency>
             <dependency>
@@ -211,6 +238,12 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <!-- 测试依赖：JUnit 5 + Mockito + AssertJ 等由 Spring Boot BOM 统一管理 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

@@ -3,6 +3,10 @@ import request from '@/utils/request'
 export interface LoginParams {
   username: string
   password: string
+  /** ADMIN=管理端 USER=现场端，与后端校验账号类型 */
+  loginClient?: 'ADMIN' | 'USER'
+  /** 租户编码（子域名自动识别；同名账号跨租户时必须显式传） */
+  tenantCode?: string
 }
 
 export interface LoginResult {
@@ -18,6 +22,10 @@ export interface UserInfo {
   phone?: string
   email?: string
   factoryCode?: string
+  tenantId?: number
+  tenantCode?: string
+  /** ADMIN=管理端+现场端 STAFF=仅现场端 */
+  accountType?: string
   roles: string[]
   permissions: string[]
 }

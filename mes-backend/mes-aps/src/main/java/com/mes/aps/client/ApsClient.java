@@ -14,6 +14,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -134,6 +135,38 @@ public class ApsClient {
         } catch (Exception e) {
             log.error("APS PUT 请求失败: path={}, cbState={}, error={}", path, getCircuitBreakerState(), e.getMessage());
             return (T) getFallbackValue(responseType);
+        }
+    }
+
+    /**
+     * 异步 POST — 处理 202 Accepted 响应，返回 requestId
+     */
+    public String postAsync(String path, Object body) {
+        String url = getBaseUrl() + path;
+        HttpHeaders headers = buildHeaders();
+
+        Supplier<String> supplier = CircuitBreaker.decorateSupplier(circuitBreaker, () -> {
+            HttpEntity<Object> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, entity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Object data = response.getBody().get("data");
+                if (data instanceof Map<?, ?> dataMap) {
+                    Object reqId = dataMap.get("requestId");
+                    return reqId != null ? String.valueOf(reqId) : null;
+                }
+            }
+            return null;
+        });
+
+        supplier = Retry.decorateSupplier(retry, supplier);
+
+        try {
+            return supplier.get();
+        } catch (Exception e) {
+            log.error("APS 异步 POST 请求失败: path={}, cbState={}, error={}", path, getCircuitBreakerState(), e.getMessage());
+            return null;
         }
     }
 

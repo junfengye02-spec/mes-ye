@@ -1,0 +1,56 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'mes-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['mes-gateway:8080']
+
+  - job_name: 'mes-system'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['mes-system-service:9001']
+
+  - job_name: 'mes-master-data'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['mes-master-data-service:9002']
+
+  - job_name: 'mes-production'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['mes-production-service:9003']
+
+  - job_name: 'mes-quality'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['mes-quality-service:9004']
+
+  - job_name: 'mes-material'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['mes-material-service:9005']
+
+  - job_name: 'mes-integration'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['mes-integration-service:9006']
+
+  - job_name: 'mes-query'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['mes-query-service:9007']
+
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql-exporter:9104']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']

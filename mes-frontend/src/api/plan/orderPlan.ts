@@ -12,7 +12,7 @@ export const orderPlanApi = {
   delete: (id: number) => request.delete(`${BASE}/${id}`),
   release: (id: number) => request.post(`${BASE}/${id}/release`),
   complete: (id: number) => request.post(`${BASE}/${id}/complete`),
-  terminate: (id: number) => request.post(`${BASE}/${id}/terminate`),
+  terminate: (id: number, reason: string) => request.post(`${BASE}/${id}/terminate`, null, { params: { reason } }),
   expand: (id: number) => request.post(`${BASE}/${id}/expand`),
   getStatusLogs: (id: number) => request.get(`${BASE}/${id}/status-logs`),
 }

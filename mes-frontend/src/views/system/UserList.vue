@@ -29,6 +29,13 @@
         <el-table-column prop="phone" label="手机号" width="130" />
         <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
         <el-table-column prop="factoryCode" label="所属工厂" width="110" />
+        <el-table-column prop="accountType" label="账号类型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.accountType === 'ADMIN' ? 'warning' : 'info'" size="small">
+              {{ row.accountType === 'ADMIN' ? '管理端' : '现场端' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="角色" min-width="160">
           <template #default="{ row }">
             <el-tag v-for="r in (row.roles || [])" :key="r.id" size="small" style="margin-right: 4px">
@@ -73,6 +80,12 @@
         <el-form-item label="手机号"><el-input v-model="form.phone" /></el-form-item>
         <el-form-item label="邮箱"><el-input v-model="form.email" /></el-form-item>
         <el-form-item label="所属工厂"><el-input v-model="form.factoryCode" /></el-form-item>
+        <el-form-item label="账号类型">
+          <el-select v-model="form.accountType" placeholder="默认现场端" style="width: 100%">
+            <el-option label="管理端+现场端 (ADMIN)" value="ADMIN" />
+            <el-option label="仅现场端 (STAFF)" value="STAFF" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="角色">
           <el-select v-model="form.roleIds" multiple placeholder="请选择角色" style="width: 100%">
             <el-option v-for="r in roleOptions" :key="r.id" :label="r.roleName" :value="r.id" />
@@ -111,7 +124,7 @@ const roleOptions = ref<SysRoleVO[]>([])
 
 const form = reactive<SysUserDTO>({
   username: '', password: '', realName: '', phone: '', email: '',
-  enabled: true, factoryCode: '', roleIds: [],
+  enabled: true, factoryCode: '', accountType: 'STAFF', roleIds: [],
 })
 const rules: FormRules = { username: [{ required: true, message: '请输入用户名', trigger: 'blur' }] }
 
@@ -140,6 +153,7 @@ function openDialog(row: SysUserVO | null) {
   form.email = row?.email || ''
   form.enabled = row?.enabled ?? true
   form.factoryCode = row?.factoryCode || ''
+  form.accountType = (row?.accountType as 'ADMIN' | 'STAFF') || 'STAFF'
   form.roleIds = row?.roles?.map(r => r.id) || []
   dialogVisible.value = true
 }

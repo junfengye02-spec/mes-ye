@@ -5,10 +5,10 @@
         <el-form-item label="工单号">
           <el-input v-model="query.workOrderNo" placeholder="工单号" clearable style="width: 180px" />
         </el-form-item>
-        <el-form-item label="检查结果">
-          <el-select v-model="query.checkResult" placeholder="检查结果" clearable style="width: 120px">
-            <el-option label="已通过" value="已通过" />
-            <el-option label="未通过" value="未通过" />
+        <el-form-item label="检查状态">
+          <el-select v-model="query.checkStatus" placeholder="检查状态" clearable style="width: 120px">
+            <el-option label="通过" value="PASSED" />
+            <el-option label="不通过" value="FAILED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -30,18 +30,21 @@
       </template>
 
       <el-table v-loading="loading" :data="tableData" border stripe @row-click="handleRowClick">
-        <el-table-column prop="checkNo" label="检查单号" min-width="140" />
         <el-table-column prop="workOrderNo" label="工单号" min-width="140" />
-        <el-table-column prop="checkResult" label="开工检查状态" width="130" align="center">
+        <el-table-column prop="workNo" label="工作编号" min-width="120" />
+        <el-table-column prop="checkItem" label="检查项" min-width="130" show-overflow-tooltip />
+        <el-table-column prop="checkResult" label="检查结果" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="checkStatus" label="检查状态" width="130" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.checkResult === '已通过' ? 'success' : 'danger'">
-              {{ row.checkResult || '-' }}
+            <el-tag :type="row.checkStatus === 'PASSED' ? 'success' : 'danger'">
+              {{ row.checkStatus === 'PASSED' ? '通过' : row.checkStatus === 'FAILED' ? '不通过' : row.checkStatus || '-' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="checker" label="检查人" width="100" />
-        <el-table-column prop="checkDate" label="检查日期" width="120" />
-        <el-table-column prop="remark" label="开工检查备注" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="checkTime" label="检查时间" width="170" />
+        <el-table-column prop="checkRemark" label="检查备注" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip />
         <el-table-column prop="createdTime" label="创建时间" width="170" />
         <el-table-column prop="createdBy" label="创建人" width="100" />
         <el-table-column prop="updatedTime" label="修改时间" width="170" />
@@ -72,16 +75,19 @@
     >
       <template v-if="detailData">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="检查单号">{{ detailData.checkNo }}</el-descriptions-item>
           <el-descriptions-item label="工单号">{{ detailData.workOrderNo }}</el-descriptions-item>
+          <el-descriptions-item label="工作编号">{{ detailData.workNo }}</el-descriptions-item>
+          <el-descriptions-item label="检查项" :span="2">{{ detailData.checkItem }}</el-descriptions-item>
           <el-descriptions-item label="检查人">{{ detailData.checker }}</el-descriptions-item>
-          <el-descriptions-item label="检查日期">{{ detailData.checkDate }}</el-descriptions-item>
-          <el-descriptions-item label="检查结果">
-            <el-tag :type="detailData.checkResult === '已通过' ? 'success' : 'danger'">
-              {{ detailData.checkResult || '-' }}
+          <el-descriptions-item label="检查时间">{{ detailData.checkTime }}</el-descriptions-item>
+          <el-descriptions-item label="检查结果" :span="2">{{ detailData.checkResult }}</el-descriptions-item>
+          <el-descriptions-item label="检查状态">
+            <el-tag :type="detailData.checkStatus === 'PASSED' ? 'success' : 'danger'">
+              {{ detailData.checkStatus === 'PASSED' ? '通过' : detailData.checkStatus === 'FAILED' ? '不通过' : detailData.checkStatus || '-' }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ detailData.createdTime }}</el-descriptions-item>
+          <el-descriptions-item label="检查备注" :span="2">{{ detailData.checkRemark }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="2">{{ detailData.remark }}</el-descriptions-item>
         </el-descriptions>
       </template>
@@ -99,7 +105,7 @@ const tableData = ref<OrderStartCheckVO[]>([])
 const total = ref(0)
 const query = reactive<OrderStartCheckQuery>({
   workOrderNo: '',
-  checkResult: '',
+  checkStatus: '',
   pageNum: 1,
   pageSize: 20,
 })
@@ -125,7 +131,7 @@ function handleSearch() {
 
 function handleReset() {
   query.workOrderNo = ''
-  query.checkResult = ''
+  query.checkStatus = ''
   query.pageNum = 1
   fetchList()
 }

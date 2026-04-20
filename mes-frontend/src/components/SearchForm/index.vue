@@ -1,9 +1,9 @@
 <template>
   <el-card shadow="never" class="search-form-card">
-    <el-form :model="modelValue" inline @submit.prevent="$emit('search')">
+    <el-form :model="modelValue" inline @submit.prevent="handleSearch">
       <slot />
       <el-form-item>
-        <el-button type="primary" @click="$emit('search')">
+        <el-button type="primary" @click="handleSearch">
           <el-icon><Search /></el-icon> 查询
         </el-button>
         <el-button @click="handleReset">
@@ -25,15 +25,21 @@ const emit = defineEmits<{
 
 const PRESERVED_KEYS = new Set(['pageNum', 'pageSize'])
 
+function handleSearch() {
+  // 任何新的搜索都回到第一页，避免在 N 页改条件后查询仍停留在 N 页导致空列表
+  if ('pageNum' in props.modelValue) {
+    props.modelValue.pageNum = 1
+  }
+  emit('search')
+}
+
 function handleReset() {
   for (const key of Object.keys(props.modelValue)) {
     if (!PRESERVED_KEYS.has(key)) {
       props.modelValue[key] = undefined
     }
   }
-  if (PRESERVED_KEYS.has('pageNum')) {
-    props.modelValue.pageNum = 1
-  }
+  props.modelValue.pageNum = 1
   emit('reset')
   emit('search')
 }

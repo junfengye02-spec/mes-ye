@@ -28,9 +28,8 @@ spring:
     redis:
       database: 0
       timeout: 5000ms
-      sentinel:
-        master: ${SPRING_DATA_REDIS_SENTINEL_MASTER:mes-redis-master}
-        nodes: ${SPRING_DATA_REDIS_SENTINEL_NODES:localhost:26379,localhost:26380,localhost:26381}
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
       lettuce:
         pool:
           max-active: 50

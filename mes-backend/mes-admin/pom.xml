@@ -16,6 +16,11 @@
     <packaging>jar</packaging>
 
     <dependencies>
+        <!-- 系统管理模块 -->
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-system</artifactId>
+        </dependency>
         <!-- 聚合所有业务模块 -->
         <dependency>
             <groupId>com.mes</groupId>

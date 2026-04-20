@@ -1,0 +1,1387 @@
+﻿# table -> columns
+TABLE: mes_abnormal_contact
+  - id
+  - contact_no
+  - subject
+  - occur_stage
+  - event_category
+  - product_division
+  - order_no
+  - customer_project
+  - initiate_dept
+  - product_model
+  - product_type
+  - product_name
+  - initiate_process
+  - qty
+  - storage_location
+  - discovery_date
+  - abnormal_desc
+  - status
+  - affect_schedule
+  - publish_time
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_abnormal_contact_attachment
+  - id
+  - contact_id
+  - file_no
+  - file_name
+  - file_url
+  - file_type
+  - responsible_person
+  - team
+  - publish_time
+  - submit_time
+  - fadada_flag
+  - signed
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_abnormal_contact_log
+  - id
+  - contact_id
+  - from_status
+  - to_status
+  - action
+  - operator
+  - operated_time
+  - remark
+  - tenant_id
+
+TABLE: mes_aps_capacity_load
+  - id
+  - schedule_batch_id
+  - work_center_code
+  - work_center_name
+  - load_date
+  - available_capacity
+  - scheduled_capacity
+  - load_rate
+  - overloaded
+  - calculated_at
+  - created_time
+
+TABLE: mes_aps_data_mapping
+  - id
+  - mapping_type
+  - mes_code
+  - mes_name
+  - aps_code
+  - aps_name
+  - enabled
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_aps_gantt_cache
+  - id
+  - schedule_batch_id
+  - task_id
+  - work_order_no
+  - order_no
+  - product_code
+  - product_name
+  - process_no
+  - process_name
+  - resource_code
+  - resource_name
+  - start_time
+  - end_time
+  - duration
+  - status
+  - priority
+  - predecessors
+  - range_start
+  - range_end
+  - created_time
+
+TABLE: mes_aps_schedule_change
+  - id
+  - schedule_batch_id
+  - change_reason
+  - change_time
+  - work_order_no
+  - order_no
+  - change_type
+  - old_start_time
+  - new_start_time
+  - old_end_time
+  - new_end_time
+  - remark
+  - applied
+  - created_time
+
+TABLE: mes_aps_sync_config
+  - id
+  - config_key
+  - config_value
+  - config_desc
+  - enabled
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+
+TABLE: mes_aps_sync_detail
+  - id
+  - batch_id
+  - data_type
+  - data_id
+  - data_no
+  - sync_action
+  - sync_status
+  - aps_data
+  - mes_data
+  - error_message
+  - retry_count
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_aps_sync_log
+  - id
+  - batch_id
+  - sync_direction
+  - sync_type
+  - total_count
+  - success_count
+  - fail_count
+  - status
+  - start_time
+  - end_time
+  - duration_ms
+  - error_message
+  - created_time
+  - tenant_id
+
+TABLE: mes_aps_sync_queue
+  - id
+  - sync_direction
+  - sync_type
+  - data_type
+  - data_id
+  - data_no
+  - priority
+  - sync_status
+  - retry_count
+  - max_retry
+  - next_retry_time
+  - payload
+  - error_message
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_bom_substitute
+  - id
+  - bom_item_id
+  - main_material_id
+  - main_material_code
+  - substitute_material_id
+  - substitute_material_code
+  - substitute_material_name
+  - priority
+  - substitute_ratio
+  - effective_date
+  - expiry_date
+  - remark
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_bom_version_log
+  - id
+  - bom_id
+  - from_version
+  - to_version
+  - action
+  - operator
+  - operated_time
+  - change_summary
+  - tenant_id
+
+TABLE: mes_delivery_sign
+  - id
+  - line_no
+  - work_order_id
+  - work_order_no
+  - material_id
+  - material_code
+  - material_name
+  - plan_delivery_qty
+  - pending_sign_qty
+  - unit
+  - delivery_warehouse
+  - delivery_location
+  - order_creator
+  - order_create_time
+  - deliverer
+  - delivery_time
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_dispatch_assignment
+  - id
+  - dispatch_task_id
+  - assign_type
+  - assignee_id
+  - assignee_code
+  - assignee_name
+  - assigned_qty
+  - qty_unit
+  - status
+  - assigned_by
+  - assigned_time
+  - revoked_by
+  - revoked_time
+  - tenant_id
+
+TABLE: mes_dispatch_status_log
+  - id
+  - dispatch_task_id
+  - from_status
+  - to_status
+  - action
+  - operator
+  - operated_time
+  - remark
+  - tenant_id
+
+TABLE: mes_dispatch_task
+  - id
+  - work_order_id
+  - work_order_task_id
+  - order_no
+  - process_no
+  - work_name
+  - plan_work_center_id
+  - serial_no
+  - project_name
+  - plan_qty
+  - qty_unit
+  - dispatch_status
+  - plan_start_time
+  - plan_end_time
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_finished_goods_receipt
+  - id
+  - receipt_no
+  - receipt_type
+  - warehouse
+  - movement_type
+  - plan_receipt_time
+  - actual_receipt_time
+  - status
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_finished_goods_receipt_item
+  - id
+  - receipt_id
+  - item_code
+  - work_order_id
+  - work_order_no
+  - material_id
+  - material_code
+  - material_name
+  - receipt_qty
+  - unit
+  - storage_location
+  - staging_area
+  - staging_bin
+  - stock_status
+  - special_stock
+  - customer
+  - wbs_element
+  - sales_order_line
+  - variance_qty
+  - variance_reason
+  - tenant_id
+
+TABLE: mes_finished_goods_receipt_request
+  - id
+  - request_no
+  - receipt_type
+  - work_order_id
+  - work_order_no
+  - project_name
+  - wbs_element
+  - material_id
+  - material_code
+  - material_name
+  - serial_no
+  - qty
+  - unqualified_qty
+  - qualified_qty
+  - unit
+  - description
+  - plan_receipt_time
+  - actual_production_qty
+  - pending_receipt_qty
+  - status
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_inspection_work
+  - id
+  - work_no
+  - work_name
+  - plan_inspect_qty
+  - inspected_qty
+  - qualified_qty
+  - unqualified_qty
+  - judgment
+  - is_check_point
+  - dispatch_status
+  - sampling_in_inspect
+  - work_status
+  - inspect_type
+  - inspect_category
+  - qc_org
+  - inspect_factory
+  - plan_team_lab
+  - actual_start_time
+  - actual_end_time
+  - is_report_point
+  - work_order_id
+  - work_order_no
+  - order_status
+  - description
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_instruction
+  - id
+  - instruction_no
+  - version
+  - status
+  - upgrade_from_id
+  - project_no
+  - wbs
+  - new_or_repair_type
+  - main_type
+  - gt_type
+  - product_category
+  - product_type
+  - part_name
+  - work_order_no
+  - finish_date
+  - qty
+  - issue_date
+  - final_delivery_date
+  - check_submit_date
+  - drawing_no
+  - repair_guide_drawing
+  - assignee
+  - processing_status
+  - raw_material_arrival_date
+  - raw_material_purchase_name
+  - purchase_request_no
+  - receive_time
+  - remark
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_instruction_flow_log
+  - id
+  - instruction_id
+  - action
+  - operator
+  - operated_time
+  - detail
+  - tenant_id
+
+TABLE: mes_instruction_serial
+  - id
+  - instruction_id
+  - product_type
+  - qty
+  - receive_kg_code
+  - send_g_code
+  - scheduled_check_time
+  - receive_time
+  - remark
+  - tenant_id
+
+TABLE: mes_instruction_stage
+  - id
+  - instruction_id
+  - stage
+  - role
+  - content
+  - required_date
+  - actual_date
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_machining_program
+  - id
+  - g_code
+  - program_table
+  - product_name
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_manufacturing_bom
+  - id
+  - bom_code
+  - bom_name
+  - product_id
+  - product_code
+  - product_name
+  - product_category
+  - machine_model
+  - product_type
+  - new_or_repair_type
+  - bom_version
+  - status
+  - effective_date
+  - expiry_date
+  - factory_org
+  - upgrade_from_id
+  - remark
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_manufacturing_bom_item
+  - id
+  - bom_id
+  - parent_item_id
+  - level
+  - material_id
+  - material_code
+  - material_name
+  - material_spec
+  - material_type
+  - quantity
+  - loss_rate
+  - unit
+  - supply_type
+  - process_id
+  - process_no
+  - is_substitute
+  - substitute_group
+  - is_key_part
+  - sequence_no
+  - remark
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_material
+  - id
+  - material_code
+  - material_name
+  - material_type
+  - category_level1
+  - category_level2
+  - g_code
+  - product_type
+  - product_category
+  - machine_model
+  - part_name
+  - factory
+  - base_unit
+  - trace_mode
+  - serial_generator
+  - batch_generator
+  - barcode_type
+  - need_inspection
+  - drawing_no
+  - material_brand
+  - product_image
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_material_price
+  - id
+  - material_id
+  - unit_price
+  - unit
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_material_requisition
+  - id
+  - requisition_no
+  - work_order_id
+  - work_order_no
+  - product_code
+  - product_name
+  - plan_qty
+  - actual_qty
+  - qualified_qty
+  - qty_unit
+  - main_org
+  - plan_start_time
+  - plan_end_time
+  - actual_start_time
+  - actual_end_time
+  - sales_order_line
+  - project_name
+  - wbs_element
+  - status
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_material_requisition_item
+  - id
+  - requisition_id
+  - work_order_id
+  - work_id
+  - material_id
+  - material_code
+  - material_name
+  - demand_qty
+  - pending_qty
+  - issue_qty
+  - unit
+  - issue_location
+  - demand_time
+  - description
+  - is_final
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_material_return
+  - id
+  - return_no
+  - work_order_id
+  - work_order_no
+  - order_no
+  - product_code
+  - product_name
+  - project_name
+  - wbs_element
+  - new_or_repair_type
+  - work_type
+  - machine_model
+  - product_category
+  - product_type
+  - plan_qty
+  - completed_qty
+  - factory_org
+  - plan_org
+  - main_org
+  - plan_work_center_id
+  - status
+  - flow_status
+  - expand_status
+  - is_order
+  - pccl_flow
+  - plan_start_time
+  - plan_end_time
+  - actual_start_time
+  - actual_end_time
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_order_plan
+  - id
+  - order_no
+  - product_code
+  - product_name
+  - project_name
+  - wbs_element
+  - new_or_repair_type
+  - work_type
+  - machine_model
+  - product_category
+  - product_type
+  - plan_qty
+  - qty_unit
+  - factory_org
+  - plan_org
+  - main_org
+  - plan_work_center_id
+  - status
+  - flow_status
+  - expand_status
+  - completion_status
+  - is_order
+  - pccl_flow
+  - plan_start_time
+  - plan_end_time
+  - actual_start_time
+  - actual_end_time
+  - data_source
+  - aps_order_id
+  - aps_sync_batch_id
+  - aps_sync_status
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_order_start_check
+  - id
+  - work_order_id
+  - work_order_no
+  - check_item
+  - check_result
+  - check_status
+  - check_remark
+  - checker
+  - check_time
+  - remark
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_outsource_order
+  - id
+  - outsource_order_no
+  - parent_order_no
+  - aps_order_id
+  - material_id
+  - material_code
+  - material_name
+  - plan_qty
+  - supplier_id
+  - supplier_name
+  - process_sequence
+  - process_name
+  - plan_start_time
+  - plan_end_time
+  - aps_status
+  - mes_status
+  - actual_ship_time
+  - actual_receive_time
+  - received_qty
+  - qualified_qty
+  - remark
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_plan_status_log
+  - id
+  - plan_type
+  - plan_id
+  - from_status
+  - to_status
+  - action
+  - operator
+  - operated_time
+  - remark
+  - tenant_id
+
+TABLE: mes_process_info
+  - id
+  - process_no
+  - process_name
+  - process_code
+  - product
+  - g_code
+  - product_category
+  - machine_model
+  - product_type
+  - process_drawing
+  - process_form
+  - process_template_id
+  - process_type
+  - factory
+  - business_org
+  - work_center_id
+  - workshop_area
+  - team_id
+  - need_strip
+  - handle_time
+  - disassemble_time
+  - install_time
+  - remark
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_process_template
+  - id
+  - process_no
+  - process_name
+  - parent_process_no
+  - product_category
+  - machine_model
+  - product_type
+  - process_type
+  - process_form
+  - process_drawing
+  - work_center_id
+  - handle_time
+  - remark
+  - description
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_production_plan
+  - id
+  - order_plan_id
+  - order_no
+  - product_code
+  - product_name
+  - new_or_repair_type
+  - work_type
+  - machine_model
+  - product_category
+  - product_type
+  - wbs_element
+  - work_order_type
+  - plan_org
+  - plan_qty
+  - qty_unit
+  - completed_qty
+  - status
+  - plan_start_time
+  - plan_end_time
+  - actual_start_time
+  - actual_end_time
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_production_team
+  - id
+  - team_code
+  - team_name
+  - org_id
+  - org_code
+  - org_name
+  - enabled
+  - description
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_production_work
+  - id
+  - work_no
+  - work_name
+  - work_order_id
+  - work_order_no
+  - product_material
+  - production_factory
+  - production_org
+  - actual_start_time
+  - actual_end_time
+  - plan_start_time
+  - plan_end_time
+  - actual_process_time
+  - time_unit
+  - is_report_point
+  - is_check_point
+  - is_handover_point
+  - remark
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_recheck_order_plan
+  - id
+  - recheck_id
+  - order_plan_id
+  - related_object
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - tenant_id
+
+TABLE: mes_recheck_request
+  - id
+  - project_code
+  - project_name
+  - material_code
+  - material_name
+  - production_order_no
+  - recheck_requirement
+  - recheck_reason
+  - recheck_proposer
+  - recheck_propose_time
+  - required_delivery_time
+  - is_reasonable
+  - reviewer
+  - review_date
+  - status
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_recheck_serial
+  - id
+  - recheck_id
+  - serial_no
+  - manufacturer
+  - name
+  - status_category
+  - qty
+  - frozen
+  - split_completed
+  - unit
+  - barcode
+  - tenant_id
+
+TABLE: mes_requisition_order
+  - id
+  - parent_node
+  - delivery_request_no
+  - line_no
+  - work_order_id
+  - work_order_no
+  - delivery_order_created
+  - material_id
+  - material_code
+  - material_name
+  - warehouse_delivered
+  - requisition_qty
+  - status
+  - delivery_warehouse
+  - delivery_location
+  - work_id
+  - work_station
+  - material_demand_id
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_resource_calendar
+  - id
+  - aps_calendar_id
+  - calendar_name
+  - resource_id
+  - resource_code
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_resource_calendar_shift
+  - id
+  - calendar_id
+  - day_of_week
+  - shift_start_time
+  - shift_end_time
+  - shift_name
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_shift_handover
+  - id
+  - project_name
+  - product_serial_no
+  - process_content
+  - handover_date
+  - handover_weekday
+  - handover_time
+  - handover_team_id
+  - handover_team_name
+  - handover_shift
+  - takeover_shift
+  - takeover_team_id
+  - takeover_team_name
+  - handover_person
+  - takeover_person
+  - team_leader
+  - plan_qty
+  - actual_qty
+  - gap_analysis
+  - handover_content
+  - status
+  - other_matters
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_shift_handover_attachment
+  - id
+  - handover_id
+  - file_name
+  - file_url
+  - file_type
+  - file_size
+  - uploader
+  - download_count
+  - load_status
+  - created_by
+  - created_time
+  - tenant_id
+
+TABLE: mes_spray_condition
+  - id
+  - condition_no
+  - minister_approver
+  - minister_approve_time
+  - section_approver
+  - section_approve_time
+  - leader_approver
+  - leader_approve_time
+  - powder_feed_rate
+  - spray_distance
+  - spray_gun_model
+  - fai_report
+  - fai_guide
+  - powder_feeder
+  - powder_feeder_speed
+  - oxygen_scfh
+  - kerosene_gph
+  - combustion_pressure
+  - carrier_gas
+  - equipment
+  - powder_type
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_storage_inventory
+  - id
+  - factory
+  - inventory_org
+  - warehouse
+  - storage_location
+  - material_id
+  - material_code
+  - material_name
+  - unrestricted_stock
+  - quality_stock
+  - frozen_stock
+  - unit
+  - team_id
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_transfer_order
+  - id
+  - transfer_no
+  - parent_order_no
+  - aps_transfer_id
+  - material_id
+  - material_code
+  - material_name
+  - plan_qty
+  - from_factory
+  - to_factory
+  - plan_ship_time
+  - plan_arrive_time
+  - aps_status
+  - mes_status
+  - actual_ship_time
+  - actual_arrive_time
+  - received_qty
+  - remark
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_work_center
+  - id
+  - work_center_code
+  - work_center_name
+  - work_center_category
+  - business_unit
+  - work_calendar
+  - resource_order
+  - usage_qty
+  - usage_unit
+  - batch_qty
+  - efficiency
+  - resource_type
+  - furnace_resource_type
+  - resource_capacity
+  - process_no_interrupt
+  - process_no_cross_day
+  - fixed_takt_production
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_work_instruction
+  - id
+  - instruction_code
+  - level
+  - status
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_work_instruction_person
+  - id
+  - instruction_id
+  - person_code
+  - person_name
+  - person_category
+  - gender
+  - birth_date
+  - phone
+  - email
+  - tenant_id
+
+TABLE: mes_work_order
+  - id
+  - work_order_no
+  - work_order_type
+  - production_plan_no
+  - order_plan_no
+  - order_no
+  - product_code
+  - product_name
+  - main_product
+  - machine_model
+  - product_category
+  - product_type
+  - bom_code
+  - project_name
+  - wbs_element
+  - new_or_repair_type
+  - work_type
+  - plan_qty
+  - qty_unit
+  - factory_org
+  - plan_org
+  - main_org
+  - plan_work_center_id
+  - specified_work_center_id
+  - status
+  - plan_start_time
+  - plan_end_time
+  - actual_start_time
+  - actual_end_time
+  - serial_no
+  - special_stock_flag
+  - delivery_location
+  - remark
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_work_order_attachment
+  - id
+  - work_order_id
+  - file_name
+  - file_type
+  - file_size_kb
+  - file_url
+  - file_modified_time
+  - modified_by
+  - modified_time
+  - created_by
+  - created_time
+  - tenant_id
+
+TABLE: mes_work_order_constraint
+  - id
+  - work_order_id
+  - constraint_type
+  - related_work_order_id
+  - related_task_id
+  - remark
+  - tenant_id
+
+TABLE: mes_work_order_input_material
+  - id
+  - work_order_id
+  - material_id
+  - material_code
+  - material_name
+  - required_qty
+  - issued_qty
+  - qty_unit
+  - batch_no
+  - serial_no
+  - tenant_id
+
+TABLE: mes_work_order_output_material
+  - id
+  - work_order_id
+  - material_id
+  - material_code
+  - material_name
+  - output_qty
+  - qty_unit
+  - tenant_id
+
+TABLE: mes_work_order_quality_item
+  - id
+  - work_order_id
+  - quality_item_code
+  - quality_item_name
+  - requirement
+  - status
+  - tenant_id
+
+TABLE: mes_work_order_status_log
+  - id
+  - work_order_id
+  - from_status
+  - to_status
+  - action
+  - operator
+  - operated_time
+  - remark
+  - tenant_id
+
+TABLE: mes_work_order_supply_plan
+  - id
+  - work_order_id
+  - demand_plan_no
+  - supply_plan_no
+  - supply_qty
+  - qty_unit
+  - plan_org
+  - completed_qty
+  - code
+  - tenant_id
+
+TABLE: mes_work_order_task
+  - id
+  - work_order_id
+  - task_no
+  - task_name
+  - plan_work_center_id
+  - plan_qty
+  - qty_unit
+  - status
+  - sequence_no
+  - serial_no
+  - project_name
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_work_order_task_segment
+  - id
+  - work_order_task_id
+  - segment_index
+  - segment_start_time
+  - segment_end_time
+  - segment_duration
+  - shift_name
+  - assigned_team_id
+  - actual_start_time
+  - actual_end_time
+  - status
+  - created_time
+  - updated_time
+  - tenant_id
+
+TABLE: mes_work_start_check
+  - id
+  - work_no
+  - work_order_task_id
+  - work_order_id
+  - work_order_no
+  - check_item
+  - check_result
+  - check_status
+  - check_remark
+  - checker
+  - check_time
+  - remark
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+
+TABLE: mes_work_status_view
+  - id
+  - work_no
+  - sequence_no
+  - process_no
+  - work_name
+  - is_output
+  - process_form
+  - process_drawing
+  - status
+  - description
+  - furnace_no
+  - belong_process
+  - factory
+  - business_org
+  - plan_section
+  - plan_work_center_id
+  - plan_work_center_name
+  - specified_section
+  - specified_work_center_id
+  - specified_work_center_name
+  - plan_team_id
+  - plan_team_name
+  - plan_shift
+  - source_no
+  - time_unit
+  - created_time
+  - plan_start_time
+  - plan_end_time
+  - actual_start_time
+  - actual_end_time
+  - approval_remark
+  - issued
+  - tenant_id
+
+TABLE: sys_menu
+  - id
+  - parent_id
+  - menu_name
+  - path
+  - component
+  - menu_type
+  - permission
+  - icon
+  - sort_order
+  - visible
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+
+TABLE: sys_role
+  - id
+  - role_name
+  - role_code
+  - description
+  - enabled
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+
+TABLE: sys_role_menu
+  - role_id
+  - menu_id
+
+TABLE: sys_tenant
+  - id
+  - tenant_code
+  - tenant_name
+  - status
+  - created_time
+
+TABLE: sys_user
+  - id
+  - username
+  - password
+  - real_name
+  - phone
+  - email
+  - enabled
+  - factory_code
+  - created_by
+  - created_time
+  - updated_by
+  - updated_time
+  - deleted
+  - tenant_id
+  - account_type
+
+TABLE: sys_user_role
+  - user_id
+  - role_id
+

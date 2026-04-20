@@ -2,11 +2,18 @@
   <div class="shift-handover-query">
     <el-card shadow="never" class="search-card">
       <el-form :model="query" inline>
-        <el-form-item label="工单号">
-          <el-input v-model="query.workOrderNo" placeholder="工单号" clearable style="width: 160px" />
+        <el-form-item label="项目名称">
+          <el-input v-model="query.projectName" placeholder="项目名称" clearable style="width: 160px" />
         </el-form-item>
-        <el-form-item label="交接人">
-          <el-input v-model="query.handoverPerson" placeholder="交接人" clearable style="width: 120px" />
+        <el-form-item label="交接日期">
+          <el-date-picker
+            v-model="query.handoverDate"
+            type="date"
+            placeholder="交接日期"
+            value-format="YYYY-MM-DD"
+            clearable
+            style="width: 160px"
+          />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="query.status" placeholder="状态" clearable style="width: 120px">
@@ -33,20 +40,20 @@
       </template>
 
       <el-table v-loading="loading" :data="tableData" border stripe @row-click="handleRowClick">
-        <el-table-column prop="handoverNo" label="交班单号" min-width="140" />
-        <el-table-column prop="workOrderNo" label="工单号" min-width="120" />
-        <el-table-column prop="handoverPerson" label="交接人员" width="100" />
-        <el-table-column prop="receivePerson" label="接班人员" width="100" />
-        <el-table-column prop="handoverTime" label="交班时间" width="170" />
-        <el-table-column prop="receiveTime" label="接班时间" width="170" />
+        <el-table-column prop="projectName" label="项目名称" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="productSerialNo" label="产品序列号" min-width="120" />
+        <el-table-column prop="handoverDate" label="交接日期" width="120" />
+        <el-table-column prop="handoverTeamName" label="交接班组" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="handoverPerson" label="交接人" width="100" />
+        <el-table-column prop="takeoverPerson" label="接班人" width="100" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === '已接收' ? 'success' : 'warning'">
-              {{ row.status || '-' }}
+            <el-tag :type="getDictType('handoverStatus', row.status) as any">
+              {{ getDictLabel('handoverStatus', row.status) || '-' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="content" label="交接内容" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="handoverContent" label="交接内容" min-width="180" show-overflow-tooltip />
         <el-table-column prop="createdTime" label="创建时间" width="170" />
       </el-table>
 
@@ -74,19 +81,19 @@
     >
       <template v-if="detailData">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="交班单号">{{ detailData.handoverNo }}</el-descriptions-item>
-          <el-descriptions-item label="工单号">{{ detailData.workOrderNo }}</el-descriptions-item>
-          <el-descriptions-item label="交接人员">{{ detailData.handoverPerson }}</el-descriptions-item>
-          <el-descriptions-item label="接班人员">{{ detailData.receivePerson }}</el-descriptions-item>
-          <el-descriptions-item label="交班时间">{{ detailData.handoverTime }}</el-descriptions-item>
-          <el-descriptions-item label="接班时间">{{ detailData.receiveTime }}</el-descriptions-item>
+          <el-descriptions-item label="项目名称">{{ detailData.projectName }}</el-descriptions-item>
+          <el-descriptions-item label="产品序列号">{{ detailData.productSerialNo }}</el-descriptions-item>
+          <el-descriptions-item label="交接日期">{{ detailData.handoverDate }}</el-descriptions-item>
+          <el-descriptions-item label="交接班组">{{ detailData.handoverTeamName }}</el-descriptions-item>
+          <el-descriptions-item label="交接人">{{ detailData.handoverPerson }}</el-descriptions-item>
+          <el-descriptions-item label="接班人">{{ detailData.takeoverPerson }}</el-descriptions-item>
+          <el-descriptions-item label="交接时间">{{ detailData.handoverTime }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="detailData.status === '已接收' ? 'success' : 'warning'">
-              {{ detailData.status || '-' }}
+            <el-tag :type="getDictType('handoverStatus', detailData.status) as any">
+              {{ getDictLabel('handoverStatus', detailData.status) || '-' }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="交接内容" :span="2">{{ detailData.content }}</el-descriptions-item>
-          <el-descriptions-item label="备注" :span="2">{{ detailData.remark }}</el-descriptions-item>
+          <el-descriptions-item label="交接内容" :span="2">{{ detailData.handoverContent }}</el-descriptions-item>
         </el-descriptions>
       </template>
     </el-drawer>
@@ -95,6 +102,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { getDictLabel, getDictType } from '@/utils/dict'
 import type { ShiftHandoverVO, ShiftHandoverQuery } from '@/types/quality'
 import { shiftHandoverApi } from '@/api/quality/shiftHandover'
 
@@ -102,8 +110,8 @@ const loading = ref(false)
 const tableData = ref<ShiftHandoverVO[]>([])
 const total = ref(0)
 const query = reactive<ShiftHandoverQuery>({
-  workOrderNo: '',
-  handoverPerson: '',
+  projectName: '',
+  handoverDate: '',
   status: '',
   pageNum: 1,
   pageSize: 20,
@@ -129,8 +137,8 @@ function handleSearch() {
 }
 
 function handleReset() {
-  query.workOrderNo = ''
-  query.handoverPerson = ''
+  query.projectName = ''
+  query.handoverDate = ''
   query.status = ''
   query.pageNum = 1
   fetchList()

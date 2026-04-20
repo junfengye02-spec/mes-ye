@@ -12,8 +12,12 @@
           <span>{{ status.circuitBreakerState || '-' }}</span>
         </div>
         <div class="status-item">
-          <span>待处理队列：</span>
-          <span>{{ status.pendingQueueCount ?? 0 }}</span>
+          <span>待处理上行：</span>
+          <span>{{ status.pendingUpstreamCount ?? 0 }}</span>
+        </div>
+        <div class="status-item">
+          <span>待补偿：</span>
+          <span>{{ status.pendingCompensationCount ?? 0 }}</span>
         </div>
         <div class="status-actions">
           <el-button
@@ -38,9 +42,6 @@
       <el-form :model="query" inline @submit.prevent="handleSearch">
         <el-form-item label="配置键">
           <el-input v-model="query.configKey" placeholder="请输入" clearable style="width: 160px" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="query.description" placeholder="请输入" clearable style="width: 160px" />
         </el-form-item>
         <el-form-item label="启用">
           <el-select v-model="query.enabled" placeholder="请选择" clearable style="width: 140px">
@@ -76,7 +77,7 @@
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="configKey" label="配置键" min-width="160" />
         <el-table-column prop="configValue" label="配置值" min-width="160" />
-        <el-table-column prop="description" label="描述" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="configDesc" label="配置说明" min-width="140" show-overflow-tooltip />
         <el-table-column prop="enabled" label="启用" width="90" align="center">
           <template #default="{ row }">
             <el-switch
@@ -120,8 +121,8 @@
         <el-form-item label="配置值" prop="configValue">
           <el-input v-model="form.configValue" placeholder="请输入配置值" />
         </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="form.description" placeholder="请输入描述" />
+        <el-form-item label="配置说明" prop="configDesc">
+          <el-input v-model="form.configDesc" placeholder="请输入配置说明" />
         </el-form-item>
         <el-form-item label="启用" prop="enabled">
           <el-switch v-model="formEnabled" />
@@ -149,7 +150,6 @@ const list = ref<ApsSyncConfigVO[]>([])
 const total = ref(0)
 const query = reactive<ApsSyncConfigQuery>({
   configKey: '',
-  description: '',
   enabled: undefined,
   pageNum: 1,
   pageSize: 20,
@@ -158,7 +158,8 @@ const query = reactive<ApsSyncConfigQuery>({
 const status = ref<ApsSyncStatusVO>({
   apsAvailable: false,
   circuitBreakerState: '',
-  pendingQueueCount: 0,
+  pendingUpstreamCount: 0,
+  pendingCompensationCount: 0,
 })
 const downstreamLoading = ref(false)
 const upstreamLoading = ref(false)
@@ -171,7 +172,7 @@ const editId = ref<number | null>(null)
 const form = reactive<ApsSyncConfigDTO>({
   configKey: '',
   configValue: '',
-  description: '',
+  configDesc: '',
   enabled: 1,
 })
 
@@ -190,7 +191,7 @@ async function loadStatus() {
     const res = await apsSyncApi.getStatus()
     status.value = res ?? status.value
   } catch {
-    status.value = { apsAvailable: false, circuitBreakerState: '未知', pendingQueueCount: 0 }
+    status.value = { apsAvailable: false, circuitBreakerState: '未知', pendingUpstreamCount: 0, pendingCompensationCount: 0 }
   }
 }
 
@@ -236,7 +237,6 @@ function handleSearch() {
 
 function handleReset() {
   query.configKey = ''
-  query.description = ''
   query.enabled = undefined
   query.pageNum = 1
   loadList()
@@ -248,7 +248,7 @@ function handleAdd() {
   Object.assign(form, {
     configKey: '',
     configValue: '',
-    description: '',
+    configDesc: '',
     enabled: 1,
   })
   dialogVisible.value = true
@@ -260,7 +260,7 @@ function handleEdit(row: ApsSyncConfigVO) {
   Object.assign(form, {
     configKey: row.configKey,
     configValue: row.configValue,
-    description: row.description ?? '',
+    configDesc: row.configDesc ?? '',
     enabled: row.enabled ?? 1,
   })
   dialogVisible.value = true
@@ -268,7 +268,12 @@ function handleEdit(row: ApsSyncConfigVO) {
 
 async function handleEnabledChange(row: ApsSyncConfigVO, val: boolean) {
   try {
-    await apsSyncConfigApi.update(row.id, { ...row, enabled: val ? 1 : 0 })
+    await apsSyncConfigApi.update(row.id, {
+      configKey: row.configKey,
+      configValue: row.configValue,
+      configDesc: row.configDesc,
+      enabled: val ? 1 : 0,
+    })
     ElMessage.success('更新成功')
     loadList()
   } catch {

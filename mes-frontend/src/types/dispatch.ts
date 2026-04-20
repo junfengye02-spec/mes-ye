@@ -1,47 +1,48 @@
 import type { BaseEntity, PageQuery } from './common'
 
 export interface DispatchTaskVO extends BaseEntity {
-  taskNo: string
-  workOrderId: number
-  workOrderNo?: string
-  taskName?: string
-  processName?: string
+  workOrderId?: number
+  workOrderTaskId?: number
+  orderNo?: string
+  processNo?: string
+  workName?: string
+  planWorkCenterId?: number
+  serialNo?: string
+  projectName?: string
   planQty?: number
   qtyUnit?: string
-  status?: string
+  dispatchStatus?: string
   planStartTime?: string
   planEndTime?: string
-  assignedPersonName?: string
-  assignedDeviceName?: string
-  assignedTeamName?: string
+  assignments?: DispatchAssignmentVO[]
 }
 
 export interface DispatchTaskQuery extends PageQuery {
-  taskNo?: string
-  workOrderNo?: string
-  status?: string
+  workOrderId?: number
+  orderNo?: string
+  processNo?: string
+  dispatchStatus?: string
 }
 
 export interface DispatchAssignmentVO extends BaseEntity {
-  taskId: number
-  assignmentType: string
-  resourceId: number
-  resourceName?: string
-  resourceCode?: string
+  dispatchTaskId?: number
+  assignType?: string
+  assigneeId?: number
+  assigneeCode?: string
+  assigneeName?: string
+  assignedQty?: number
+  qtyUnit?: string
   status?: string
+  assignedBy?: string
+  assignedTime?: string
+  revokedBy?: string
+  revokedTime?: string
 }
 
-export interface PersonAssignDTO {
-  personId: number
-  personName?: string
-}
-
-export interface DeviceAssignDTO {
-  deviceId: number
-  deviceName?: string
-}
-
-export interface TeamAssignDTO {
-  teamId: number
-  teamName?: string
+export interface DispatchAssignDTO {
+  assigneeId: number
+  assigneeCode: string
+  assigneeName?: string
+  assignedQty?: number
+  qtyUnit?: string
 }

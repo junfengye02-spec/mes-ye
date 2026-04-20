@@ -1,68 +1,124 @@
 import type { BaseEntity, PageQuery } from './common'
 
 export interface OrderPlanVO extends BaseEntity {
-  orderNo: string
-  customerName?: string
+  orderNo?: string
   productCode?: string
   productName?: string
-  planQty: number
+  projectName?: string
+  wbsElement?: string
+  newOrRepairType?: string
+  workType?: string
+  machineModel?: string
+  productCategory?: string
+  productType?: string
+  planQty?: number
   qtyUnit?: string
-  deliveryDate?: string
+  factoryOrg?: string
+  planOrg?: string
+  mainOrg?: string
+  planWorkCenterId?: number
   status?: string
-  priority?: number
-  remark?: string
-  apsOrderId?: string
+  flowStatus?: string
+  expandStatus?: string
+  completionStatus?: string
+  isOrder?: boolean
+  pcclFlow?: string
+  planStartTime?: string
+  planEndTime?: string
+  actualStartTime?: string
+  actualEndTime?: string
+  dataSource?: string
+  apsOrderId?: number
+  apsSyncBatchId?: string
   apsSyncStatus?: string
 }
 
 export interface OrderPlanDTO {
   orderNo: string
-  customerName?: string
   productCode?: string
   productName?: string
-  planQty: number
+  projectName?: string
+  wbsElement?: string
+  newOrRepairType?: string
+  workType?: string
+  machineModel?: string
+  productCategory?: string
+  productType?: string
+  planQty?: number
   qtyUnit?: string
-  deliveryDate?: string
-  priority?: number
-  remark?: string
+  factoryOrg?: string
+  planOrg?: string
+  mainOrg?: string
+  planWorkCenterId?: number
+  isOrder?: boolean
+  pcclFlow?: string
+  planStartTime?: string
+  planEndTime?: string
+  dataSource?: string
 }
 
 export interface OrderPlanQuery extends PageQuery {
   orderNo?: string
-  customerName?: string
   productCode?: string
+  productName?: string
   status?: string
+  flowStatus?: string
+  expandStatus?: string
+  workType?: string
+  machineModel?: string
+  productCategory?: string
+  dataSource?: string
 }
 
 export interface ProductionPlanVO extends BaseEntity {
-  planNo: string
   orderPlanId?: number
   orderNo?: string
   productCode?: string
   productName?: string
-  planQty: number
+  newOrRepairType?: string
+  workType?: string
+  machineModel?: string
+  productCategory?: string
+  productType?: string
+  wbsElement?: string
+  workOrderType?: string
+  planOrg?: string
+  planQty?: number
   qtyUnit?: string
-  planStartDate?: string
-  planEndDate?: string
+  completedQty?: number
   status?: string
-  remark?: string
+  planStartTime?: string
+  planEndTime?: string
+  actualStartTime?: string
+  actualEndTime?: string
 }
 
 export interface ProductionPlanDTO {
-  planNo: string
-  orderPlanId?: number
+  orderPlanId: number
+  orderNo?: string
   productCode?: string
   productName?: string
-  planQty: number
+  newOrRepairType?: string
+  workType?: string
+  machineModel?: string
+  productCategory?: string
+  productType?: string
+  wbsElement?: string
+  workOrderType?: string
+  planOrg?: string
+  planQty?: number
   qtyUnit?: string
-  planStartDate?: string
-  planEndDate?: string
-  remark?: string
+  planStartTime?: string
+  planEndTime?: string
 }
 
 export interface ProductionPlanQuery extends PageQuery {
-  planNo?: string
   orderNo?: string
   productCode?: string
+  productName?: string
   status?: string
+  workType?: string
+  machineModel?: string
+  productCategory?: string
+  orderPlanId?: number
 }

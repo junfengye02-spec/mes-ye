@@ -8,11 +8,6 @@ scrape_configs:
     static_configs:
       - targets: ['mes-backend-1:9090', 'mes-backend-2:9090']
 
-  - job_name: 'mes-gateway'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets: ['mes-gateway:8080']
-
   - job_name: 'mysql-primary'
     static_configs:
       - targets: ['mysql-exporter:9104']

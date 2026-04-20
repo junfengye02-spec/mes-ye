@@ -23,24 +23,31 @@ const props = defineProps<{
 
 const visible = defineModel<boolean>('visible', { default: false })
 const emit = defineEmits<{
-  save: [rows: any[]]
+  save: [rows: any[], ctx: { done: () => void; fail: () => void }]
 }>()
 
 const editRows = ref<any[]>([])
 const saving = ref(false)
 
 watch(() => props.rows, val => {
-  editRows.value = val.map(r => ({ ...r }))
+  editRows.value = (val ?? []).map(r => ({ ...r }))
 }, { immediate: true })
 
 function handleSave() {
+  if (saving.value) return
   saving.value = true
-  emit('save', editRows.value)
+  emit('save', editRows.value, {
+    done: () => { saving.value = false; visible.value = false },
+    fail: () => { saving.value = false },
+  })
 }
 
 function handleClose() {
   saving.value = false
 }
 
-defineExpose({ done: () => { saving.value = false; visible.value = false } })
+defineExpose({
+  done: () => { saving.value = false; visible.value = false },
+  fail: () => { saving.value = false },
+})
 </script>

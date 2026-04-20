@@ -37,6 +37,10 @@ public abstract class BaseEntity implements Serializable {
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedTime;
 
+    /** 租户ID */
+    @TableField(fill = FieldFill.INSERT)
+    private Long tenantId;
+
     /** 逻辑删除标识（0=正常, 1=已删除） */
     @TableLogic
     private Integer deleted;

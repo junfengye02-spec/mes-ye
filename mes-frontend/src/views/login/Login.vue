@@ -5,7 +5,19 @@
         <h1>MES 制造执行系统</h1>
         <p>Manufacturing Execution System</p>
       </div>
+      <div v-if="tenantBadge" class="tenant-badge">
+        <el-tag type="info" effect="plain">租户：{{ tenantBadge }}</el-tag>
+      </div>
       <el-form ref="formRef" :model="form" :rules="rules" @keyup.enter="handleLogin">
+        <el-form-item v-if="!domainLockedTenant" prop="tenantCode">
+          <el-input
+            v-model="form.tenantCode"
+            placeholder="租户编码（多租户同名账号时必填）"
+            size="large"
+            :prefix-icon="TenantIcon"
+            clearable
+          />
+        </el-form-item>
         <el-form-item prop="username">
           <el-input v-model="form.username" placeholder="用户名" size="large" :prefix-icon="UserIcon" />
         </el-form-item>
@@ -33,28 +45,44 @@
       </el-form>
       <div class="login-footer">
         <span>MES 制造执行系统 v1.0</span>
+        <div class="portal-switch">
+          <router-link to="/app/login">现场端用户登录</router-link>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, shallowRef } from 'vue'
+import { ref, reactive, shallowRef, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { User, Lock } from '@element-plus/icons-vue'
+import { User, Lock, OfficeBuilding } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import { resolveTenantCodeFromHost, setStoredTenantCode } from '@/utils/tenant'
 
 const UserIcon = shallowRef(User)
 const LockIcon = shallowRef(Lock)
+const TenantIcon = shallowRef(OfficeBuilding)
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
-const form = reactive({ username: '', password: '' })
+const form = reactive({ username: '', password: '', tenantCode: '' })
+
+const domainLockedTenant = ref<string | null>(null)
+const tenantBadge = computed(() => domainLockedTenant.value || form.tenantCode || '')
+
+onMounted(() => {
+  const fromDomain = resolveTenantCodeFromHost()
+  if (fromDomain) {
+    domainLockedTenant.value = fromDomain
+    form.tenantCode = fromDomain
+  }
+})
 
 const rules: FormRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -65,15 +93,26 @@ async function handleLogin() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
+  const payload: { username: string; password: string; loginClient: 'ADMIN'; tenantCode?: string } = {
+    username: form.username,
+    password: form.password,
+    loginClient: 'ADMIN',
+  }
+  const tenant = (domainLockedTenant.value || form.tenantCode || '').trim()
+  if (tenant) {
+    payload.tenantCode = tenant
+  }
+
   loading.value = true
   try {
-    await authStore.login(form)
+    await authStore.login(payload)
+    setStoredTenantCode(tenant || null)
     ElMessage.success('登录成功')
     const redirect = (router.currentRoute.value.query.redirect as string) || '/'
     const safeRedirect = redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/'
     router.push(safeRedirect)
   } catch (e: any) {
-    ElMessage.error(e?.message || '登录失败，请检查用户名和密码')
+    ElMessage.error(e?.message || '登录失败，请检查用户名和密码（同名账号跨租户时请填写租户编码）')
   } finally {
     loading.value = false
   }
@@ -99,7 +138,7 @@ async function handleLogin() {
 
 .login-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .login-header h1 {
@@ -114,6 +153,11 @@ async function handleLogin() {
   margin: 0;
 }
 
+.tenant-badge {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
 .login-btn {
   width: 100%;
 }
@@ -123,5 +167,14 @@ async function handleLogin() {
   margin-top: 12px;
   font-size: 12px;
   color: #c0c4cc;
+}
+
+.portal-switch {
+  margin-top: 10px;
+}
+
+.portal-switch a {
+  color: #409eff;
+  font-size: 13px;
 }
 </style>

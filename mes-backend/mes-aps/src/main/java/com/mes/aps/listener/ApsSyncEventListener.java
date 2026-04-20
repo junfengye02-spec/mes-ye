@@ -21,19 +21,28 @@ public class ApsSyncEventListener {
     private final IApsUpstreamSyncService upstreamSyncService;
     private final IApsRescheduleService rescheduleService;
 
+    private static final java.util.Set<String> EXECUTION_FEEDBACK_TYPES = java.util.Set.of(
+            "DISPATCH", "START_CHECK", "CONSTRAINT", "SHIFT_OUTPUT",
+            "MATERIAL_SHORTAGE", "REQUISITION", "SUPPLY_PROGRESS",
+            "STATUS_CHANGE", "PROCESS_CHANGE"
+    );
+
     @Async
     @EventListener
     public void handleApsSyncEvent(ApsSyncEvent event) {
         log.debug("收到 APS 同步事件: type={}, dataNo={}", event.getSyncType(), event.getDataNo());
 
+        // 执行反馈类型由 ApsExecutionFeedbackListener 处理
+        if (EXECUTION_FEEDBACK_TYPES.contains(event.getSyncType())) {
+            return;
+        }
+
         try {
             if ("ABNORMAL".equals(event.getSyncType())) {
-                // 异常事件触发重排
                 rescheduleService.triggerReschedule(
                         event.getDataType(), event.getPayload(),
                         event.getDataId(), event.getDataNo());
             } else {
-                // 其他事件写入同步队列
                 upstreamSyncService.enqueue(
                         event.getSyncType(), event.getDataType(),
                         event.getDataId(), event.getDataNo(),

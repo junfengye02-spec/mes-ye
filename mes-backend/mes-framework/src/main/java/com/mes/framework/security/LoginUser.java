@@ -25,6 +25,10 @@ public class LoginUser implements UserDetails {
     private String realName;
     private boolean enabled;
     private Set<String> permissions;
+    /** 租户 ID，来自库表 */
+    private Long tenantId;
+    /** ADMIN=管理端+现场端；STAFF=仅现场端 */
+    private String accountType;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

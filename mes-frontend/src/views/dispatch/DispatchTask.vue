@@ -59,18 +59,20 @@
             <span>派工任务列表</span>
           </template>
           <el-form :model="query" inline class="search-form" @submit.prevent="handleSearch">
-            <el-form-item label="任务号">
-              <el-input v-model="query.taskNo" placeholder="请输入" clearable style="width: 140px" />
+            <el-form-item label="订单编号">
+              <el-input v-model="query.orderNo" placeholder="请输入" clearable style="width: 140px" />
             </el-form-item>
-            <el-form-item label="工单号">
-              <el-input v-model="query.workOrderNo" placeholder="请输入" clearable style="width: 140px" />
+            <el-form-item label="工序号">
+              <el-input v-model="query.processNo" placeholder="请输入" clearable style="width: 140px" />
             </el-form-item>
             <el-form-item label="状态">
-              <el-select v-model="query.status" placeholder="请选择" clearable style="width: 120px">
-                <el-option label="待派工" value="PENDING" />
-                <el-option label="已派工" value="ASSIGNED" />
-                <el-option label="进行中" value="IN_PROGRESS" />
-                <el-option label="已完成" value="COMPLETED" />
+              <el-select v-model="query.dispatchStatus" placeholder="请选择" clearable style="width: 120px">
+                <el-option
+                  v-for="item in getDictList('dispatchStatus')"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
             <el-form-item>
@@ -85,13 +87,18 @@
 
           <el-table v-loading="loading" :data="taskList" border stripe>
             <el-table-column type="index" label="序号" width="60" align="center" />
-            <el-table-column prop="taskNo" label="任务号" min-width="120" />
-            <el-table-column prop="workOrderNo" label="工单号" min-width="120" />
-            <el-table-column prop="taskName" label="任务名称" min-width="120" />
-            <el-table-column prop="processName" label="工序名称" min-width="100" />
+            <el-table-column prop="orderNo" label="订单编号" min-width="120" />
+            <el-table-column prop="processNo" label="工序号" min-width="100" />
+            <el-table-column prop="workName" label="工作名称" min-width="120" />
+            <el-table-column prop="projectName" label="项目" min-width="100" />
             <el-table-column prop="planQty" label="计划数量" width="100" align="right" />
-            <el-table-column prop="status" label="状态" width="100" />
-            <el-table-column prop="assignedPersonName" label="派工人员" width="100" />
+            <el-table-column prop="dispatchStatus" label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag :type="getDictType('dispatchStatus', row.dispatchStatus)">
+                  {{ getDictLabel('dispatchStatus', row.dispatchStatus) }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="320" fixed="right" align="center">
               <template #default="{ row }">
                 <el-button type="primary" link size="small" @click="handleAssignPerson(row)">
@@ -125,16 +132,24 @@
       </el-col>
     </el-row>
 
-    <el-dialog v-model="assignmentsVisible" title="派工明细" width="600px">
+    <el-dialog v-model="assignmentsVisible" title="派工明细" width="700px">
       <el-table :data="assignments" border stripe>
         <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="assignmentType" label="派工类型" width="100" />
-        <el-table-column prop="resourceName" label="资源名称" min-width="120" />
-        <el-table-column prop="resourceCode" label="资源编码" width="120" />
+        <el-table-column prop="assignType" label="派工类型" width="100" />
+        <el-table-column prop="assigneeName" label="资源名称" min-width="120" />
+        <el-table-column prop="assigneeCode" label="资源编码" width="120" />
+        <el-table-column prop="assignedQty" label="分派数量" width="100" align="right" />
         <el-table-column prop="status" label="状态" width="80" />
+        <el-table-column prop="assignedBy" label="派工人" width="100" />
         <el-table-column label="操作" width="80" align="center">
           <template #default="{ row }">
-            <el-button type="danger" link size="small" @click="handleRevoke(row)">
+            <el-button
+              v-if="row.status === 'ACTIVE'"
+              type="danger"
+              link
+              size="small"
+              @click="handleRevoke(row)"
+            >
               撤销
             </el-button>
           </template>
@@ -142,64 +157,22 @@
       </el-table>
     </el-dialog>
 
-    <el-dialog v-model="assignPersonVisible" title="派人员" width="400px">
+    <el-dialog v-model="assignDialogVisible" :title="assignDialogTitle" width="400px">
       <el-form label-width="80px">
-        <el-form-item label="选择人员">
-          <el-select v-model="assignPersonForm.personId" placeholder="请选择人员" style="width: 100%">
+        <el-form-item label="选择资源">
+          <el-select v-model="assignForm.assigneeId" placeholder="请选择" style="width: 100%" @change="onAssigneeChange">
             <el-option
-              v-for="p in personnelList"
-              :key="p.id"
-              :label="p.name"
-              :value="p.id"
+              v-for="item in currentResourceList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
             />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="assignPersonVisible = false">取消</el-button>
-        <el-button type="primary" :loading="assignLoading" @click="handleAssignPersonSubmit">
-          确定
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="assignDeviceVisible" title="派设备" width="400px">
-      <el-form label-width="80px">
-        <el-form-item label="选择设备">
-          <el-select v-model="assignDeviceForm.deviceId" placeholder="请选择设备" style="width: 100%">
-            <el-option
-              v-for="d in deviceList"
-              :key="d.id"
-              :label="d.name"
-              :value="d.id"
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="assignDeviceVisible = false">取消</el-button>
-        <el-button type="primary" :loading="assignLoading" @click="handleAssignDeviceSubmit">
-          确定
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="assignTeamVisible" title="派班组" width="400px">
-      <el-form label-width="80px">
-        <el-form-item label="选择班组">
-          <el-select v-model="assignTeamForm.teamId" placeholder="请选择班组" style="width: 100%">
-            <el-option
-              v-for="t in teamList"
-              :key="t.id"
-              :label="t.name"
-              :value="t.id"
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="assignTeamVisible = false">取消</el-button>
-        <el-button type="primary" :loading="assignLoading" @click="handleAssignTeamSubmit">
+        <el-button @click="assignDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="assignLoading" @click="handleAssignSubmit">
           确定
         </el-button>
       </template>
@@ -208,19 +181,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
-import type { DispatchTaskVO, DispatchTaskQuery, DispatchAssignmentVO } from '@/types/dispatch'
+import { getDictList, getDictLabel, getDictType } from '@/utils/dict'
+import type { DispatchTaskVO, DispatchTaskQuery, DispatchAssignmentVO, DispatchAssignDTO } from '@/types/dispatch'
 import { dispatchTaskApi } from '@/api/dispatch/dispatchTask'
 
 const loading = ref(false)
 const taskList = ref<DispatchTaskVO[]>([])
 const total = ref(0)
 const query = reactive<DispatchTaskQuery>({
-  taskNo: '',
-  workOrderNo: '',
-  status: '',
+  orderNo: '',
+  processNo: '',
+  dispatchStatus: undefined,
   pageNum: 1,
   pageSize: 20,
 })
@@ -256,14 +230,31 @@ const assignmentsVisible = ref(false)
 const assignments = ref<DispatchAssignmentVO[]>([])
 let currentTaskId: number | null = null
 
-const assignPersonVisible = ref(false)
-const assignDeviceVisible = ref(false)
-const assignTeamVisible = ref(false)
+const assignDialogVisible = ref(false)
+const assignDialogTitle = ref('')
 const assignLoading = ref(false)
-const assignPersonForm = reactive({ personId: undefined as number | undefined })
-const assignDeviceForm = reactive({ deviceId: undefined as number | undefined })
-const assignTeamForm = reactive({ teamId: undefined as number | undefined })
+let assignType: 'person' | 'device' | 'team' = 'person'
 let assignTargetTaskId: number | null = null
+const assignForm = reactive<DispatchAssignDTO>({
+  assigneeId: 0,
+  assigneeCode: '',
+  assigneeName: '',
+})
+
+const currentResourceList = computed(() => {
+  if (assignType === 'person') return personnelList.value
+  if (assignType === 'device') return deviceList.value
+  return teamList.value
+})
+
+function onAssigneeChange(id: number) {
+  const list = currentResourceList.value
+  const item = list.find(r => r.id === id)
+  if (item) {
+    assignForm.assigneeCode = item.code
+    assignForm.assigneeName = item.name
+  }
+}
 
 async function loadList() {
   loading.value = true
@@ -282,85 +273,51 @@ function handleSearch() {
 }
 
 function handleReset() {
-  query.taskNo = ''
-  query.workOrderNo = ''
-  query.status = ''
+  query.orderNo = ''
+  query.processNo = ''
+  query.dispatchStatus = undefined
   query.pageNum = 1
   loadList()
 }
 
-function handleAssignPerson(row: DispatchTaskVO) {
+function openAssignDialog(row: DispatchTaskVO, type: 'person' | 'device' | 'team', title: string) {
   assignTargetTaskId = row.id
-  assignPersonForm.personId = personnelList.value[0]?.id
-  assignPersonVisible.value = true
+  assignType = type
+  assignDialogTitle.value = title
+  assignForm.assigneeId = 0
+  assignForm.assigneeCode = ''
+  assignForm.assigneeName = ''
+  const list = type === 'person' ? personnelList.value : type === 'device' ? deviceList.value : teamList.value
+  const first = list[0]
+  if (first) {
+    assignForm.assigneeId = first.id
+    assignForm.assigneeCode = first.code
+    assignForm.assigneeName = first.name
+  }
+  assignDialogVisible.value = true
 }
 
-function handleAssignDevice(row: DispatchTaskVO) {
-  assignTargetTaskId = row.id
-  assignDeviceForm.deviceId = deviceList.value[0]?.id
-  assignDeviceVisible.value = true
-}
+function handleAssignPerson(row: DispatchTaskVO) { openAssignDialog(row, 'person', '派人员') }
+function handleAssignDevice(row: DispatchTaskVO) { openAssignDialog(row, 'device', '派设备') }
+function handleAssignTeam(row: DispatchTaskVO) { openAssignDialog(row, 'team', '派班组') }
 
-function handleAssignTeam(row: DispatchTaskVO) {
-  assignTargetTaskId = row.id
-  assignTeamForm.teamId = teamList.value[0]?.id
-  assignTeamVisible.value = true
-}
-
-async function handleAssignPersonSubmit() {
-  if (!assignTargetTaskId || !assignPersonForm.personId) {
-    ElMessage.warning('请选择人员')
+async function handleAssignSubmit() {
+  if (!assignTargetTaskId || !assignForm.assigneeId) {
+    ElMessage.warning('请选择资源')
     return
   }
   assignLoading.value = true
   try {
-    const person = personnelList.value.find(p => p.id === assignPersonForm.personId)
-    await dispatchTaskApi.assignPerson(assignTargetTaskId, {
-      personId: assignPersonForm.personId,
-      personName: person?.name,
-    })
+    const dto: DispatchAssignDTO = { ...assignForm }
+    if (assignType === 'person') {
+      await dispatchTaskApi.assignPerson(assignTargetTaskId, dto)
+    } else if (assignType === 'device') {
+      await dispatchTaskApi.assignDevice(assignTargetTaskId, dto)
+    } else {
+      await dispatchTaskApi.assignTeam(assignTargetTaskId, dto)
+    }
     ElMessage.success('派工成功')
-    assignPersonVisible.value = false
-    loadList()
-  } finally {
-    assignLoading.value = false
-  }
-}
-
-async function handleAssignDeviceSubmit() {
-  if (!assignTargetTaskId || !assignDeviceForm.deviceId) {
-    ElMessage.warning('请选择设备')
-    return
-  }
-  assignLoading.value = true
-  try {
-    const device = deviceList.value.find(d => d.id === assignDeviceForm.deviceId)
-    await dispatchTaskApi.assignDevice(assignTargetTaskId, {
-      deviceId: assignDeviceForm.deviceId,
-      deviceName: device?.name,
-    })
-    ElMessage.success('派工成功')
-    assignDeviceVisible.value = false
-    loadList()
-  } finally {
-    assignLoading.value = false
-  }
-}
-
-async function handleAssignTeamSubmit() {
-  if (!assignTargetTaskId || !assignTeamForm.teamId) {
-    ElMessage.warning('请选择班组')
-    return
-  }
-  assignLoading.value = true
-  try {
-    const team = teamList.value.find(t => t.id === assignTeamForm.teamId)
-    await dispatchTaskApi.assignTeam(assignTargetTaskId, {
-      teamId: assignTeamForm.teamId,
-      teamName: team?.name,
-    })
-    ElMessage.success('派工成功')
-    assignTeamVisible.value = false
+    assignDialogVisible.value = false
     loadList()
   } finally {
     assignLoading.value = false

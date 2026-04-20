@@ -1,59 +1,95 @@
 import type { BaseEntity, PageQuery } from './common'
 
 export interface WorkStatusViewVO extends BaseEntity {
-  workOrderNo?: string
-  productCode?: string
-  productName?: string
-  planQty?: number
-  qtyUnit?: string
+  workNo?: string
+  sequenceNo?: number
+  processNo?: string
+  workName?: string
+  isOutput?: boolean
+  processForm?: string
+  processDrawing?: string
   status?: string
+  description?: string
+  furnaceNo?: string
+  belongProcess?: string
+  factory?: string
+  businessOrg?: string
+  planWorkCenterName?: string
+  specifiedWorkCenterName?: string
+  planTeamName?: string
+  planShift?: string
+  sourceNo?: string
   planStartTime?: string
   planEndTime?: string
   actualStartTime?: string
   actualEndTime?: string
-  workCenterName?: string
-  assignedPerson?: string
+  issued?: boolean
 }
 
 export interface WorkStatusQuery extends PageQuery {
   status?: string
-  workOrderNo?: string
-  productCode?: string
+  workNo?: string
+  workName?: string
+  factory?: string
+  businessOrg?: string
 }
 
 export interface ProductionWorkVO extends BaseEntity {
+  workNo?: string
+  workName?: string
+  workOrderId?: number
   workOrderNo?: string
-  taskNo?: string
-  processName?: string
-  productCode?: string
-  productName?: string
-  planQty?: number
-  completedQty?: number
-  status?: string
-  assignedPerson?: string
-  workCenterName?: string
-}
-
-export interface ProductionWorkQuery extends PageQuery {
-  workOrderNo?: string
-  processName?: string
-  status?: string
-}
-
-export interface InspectionWorkVO extends BaseEntity {
-  inspectionNo?: string
-  workOrderNo?: string
-  productCode?: string
-  productName?: string
-  inspectionType?: string
-  inspector?: string
-  inspectionDate?: string
-  result?: string
+  productMaterial?: string
+  productionFactory?: string
+  productionOrg?: string
+  actualStartTime?: string
+  actualEndTime?: string
+  planStartTime?: string
+  planEndTime?: string
+  actualProcessTime?: number
+  timeUnit?: string
+  isReportPoint?: boolean
+  isCheckPoint?: boolean
+  isHandoverPoint?: boolean
   remark?: string
 }
 
-export interface InspectionWorkQuery extends PageQuery {
+export interface ProductionWorkQuery extends PageQuery {
+  workNo?: string
+  workName?: string
   workOrderNo?: string
-  inspectionType?: string
-  result?: string
+  workOrderId?: number
+}
+
+export interface InspectionWorkVO extends BaseEntity {
+  workNo?: string
+  workName?: string
+  planInspectQty?: number
+  inspectedQty?: number
+  qualifiedQty?: number
+  unqualifiedQty?: number
+  judgment?: string
+  isCheckPoint?: boolean
+  dispatchStatus?: string
+  workStatus?: string
+  inspectType?: string
+  inspectCategory?: string
+  qcOrg?: string
+  inspectFactory?: string
+  planTeamLab?: string
+  actualStartTime?: string
+  actualEndTime?: string
+  isReportPoint?: boolean
+  workOrderId?: number
+  workOrderNo?: string
+  orderStatus?: string
+  description?: string
+}
+
+export interface InspectionWorkQuery extends PageQuery {
+  workNo?: string
+  workName?: string
+  workStatus?: string
+  workOrderId?: number
+  inspectCategory?: string
 }

@@ -9,6 +9,8 @@ export interface SysUserVO {
   email?: string
   enabled: boolean
   factoryCode?: string
+  tenantId?: number
+  accountType?: string
   roles?: { id: number; roleName: string; roleCode: string }[]
   createdTime?: string
   updatedTime?: string
@@ -22,6 +24,7 @@ export interface SysUserDTO {
   email?: string
   enabled?: boolean
   factoryCode?: string
+  accountType?: 'ADMIN' | 'STAFF'
   roleIds?: number[]
 }
 

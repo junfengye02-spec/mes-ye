@@ -53,7 +53,7 @@ public class ApsRescheduleServiceImpl implements IApsRescheduleService {
 
         lastTriggerTime.put(category, now);
 
-        // 实时触发重排
+        // 实时触发重排（异步，不等待排程结果）
         try {
             Map<String, Object> payload = Map.of(
                     "triggerType", "ABNORMAL",
@@ -64,11 +64,10 @@ public class ApsRescheduleServiceImpl implements IApsRescheduleService {
                     "timestamp", now
             );
 
-            apsClient.post("/api/schedule/combined", payload, Map.class);
-            log.info("APS 重排触发成功: category={}, reason={}", category, reason);
+            String requestId = apsClient.postAsync("/api/mes/reschedule", payload);
+            log.info("APS 重排请求已提交: requestId={}, category={}", requestId, category);
         } catch (Exception e) {
             log.error("APS 重排触发失败，写入同步队列: category={}, error={}", category, e.getMessage());
-            // 调用失败时写入同步队列，由补偿机制处理
             enqueueReschedule(category, reason, dataId, dataNo);
         }
     }
@@ -84,7 +83,10 @@ public class ApsRescheduleServiceImpl implements IApsRescheduleService {
             String payload = objectMapper.writeValueAsString(Map.of(
                     "triggerType", "ABNORMAL",
                     "eventCategory", category,
-                    "reason", reason != null ? reason : ""
+                    "reason", reason != null ? reason : "",
+                    "dataId", dataId != null ? dataId : 0,
+                    "dataNo", dataNo != null ? dataNo : "",
+                    "timestamp", System.currentTimeMillis()
             ));
             upstreamSyncService.enqueue(
                     SyncType.ABNORMAL.getCode(), "RESCHEDULE", dataId, dataNo, 1, payload);

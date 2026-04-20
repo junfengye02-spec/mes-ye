@@ -68,10 +68,12 @@ function beforeUpload(file: UploadRawFile) {
 }
 
 function handleSuccess(response: any) {
-  if (response.code === 200) {
+  if (response && response.code === 200) {
     emit('success', response.data)
   } else {
-    ElMessage.error(response.message || '上传失败')
+    const msg = response?.message || '上传失败'
+    ElMessage.error(msg)
+    emit('error', new Error(msg))
   }
 }
 

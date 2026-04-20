@@ -30,18 +30,25 @@ const dictMap: Record<string, DictItem[]> = {
     { label: '已关闭', value: 'CLOSED', type: 'success' },
   ],
   syncStatus: [
+    { label: '成功', value: 'SUCCESS', type: 'success' },
+    { label: '失败', value: 'FAIL', type: 'danger' },
+    { label: '部分成功', value: 'PARTIAL', type: 'warning' },
     { label: '待处理', value: 'PENDING', type: 'info' },
     { label: '处理中', value: 'PROCESSING', type: 'warning' },
     { label: '已同步', value: 'SYNCED', type: 'success' },
-    { label: '失败', value: 'FAILED', type: 'danger' },
+    { label: '同步失败', value: 'FAILED', type: 'danger' },
   ],
   syncType: [
-    { label: '工单', value: 'WORKORDER' },
-    { label: '库存', value: 'INVENTORY' },
-    { label: '质量', value: 'QUALITY' },
-    { label: '异常', value: 'ABNORMAL' },
-    { label: '外协', value: 'OUTSOURCE' },
-    { label: '转厂', value: 'TRANSFER' },
+    { label: '排程订单', value: 'ORDER' },
+    { label: '排程任务', value: 'TASK' },
+    { label: '资源', value: 'RESOURCE' },
+    { label: '资源日历', value: 'CALENDAR' },
+    { label: '工单状态', value: 'WORKORDER' },
+    { label: '库存数据', value: 'INVENTORY' },
+    { label: '质量数据', value: 'QUALITY' },
+    { label: '异常重排', value: 'ABNORMAL' },
+    { label: '外协订单', value: 'OUTSOURCE' },
+    { label: '转厂订单', value: 'TRANSFER' },
   ],
   instructionStatus: [
     { label: '草稿', value: 'DRAFT', type: 'info' },
@@ -71,6 +78,11 @@ const dictMap: Record<string, DictItem[]> = {
     { label: '待签收', value: 'PENDING', type: 'warning' },
     { label: '已签收', value: 'SIGNED', type: 'success' },
   ],
+  dispatchStatus: [
+    { label: '待派工', value: 'UNASSIGNED', type: 'info' },
+    { label: '已派工', value: 'ASSIGNED', type: 'success' },
+    { label: '已撤销', value: 'REVOKED', type: 'danger' },
+  ],
   syncDirection: [
     { label: '上行', value: 'UPSTREAM', type: 'primary' },
     { label: '下行', value: 'DOWNSTREAM', type: 'success' },
@@ -98,6 +110,13 @@ const dictMap: Record<string, DictItem[]> = {
   materialReturnStatus: [
     { label: '待退料', value: 'PENDING', type: 'info' },
     { label: '已退料', value: 'RETURNED', type: 'success' },
+  ],
+  recheckStatus: [
+    { label: '已创建', value: 'CREATED', type: 'info' },
+  ],
+  handoverStatus: [
+    { label: '待接收', value: 'PENDING', type: 'warning' },
+    { label: '已接收', value: 'RECEIVED', type: 'success' },
   ],
 }
 

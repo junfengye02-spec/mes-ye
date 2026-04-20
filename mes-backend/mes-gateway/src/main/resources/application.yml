@@ -14,106 +14,122 @@ spring:
         locator:
           enabled: false
       routes:
+        # ==================== 系统管理服务 (mes-system) ====================
         - id: mes-auth
-          uri: lb://mes-backend
+          uri: lb://mes-system
           predicates:
             - Path=/api/auth/**
           filters:
             - StripPrefix=0
 
-        - id: mes-system
-          uri: lb://mes-backend
+        - id: mes-system-users
+          uri: lb://mes-system
           predicates:
             - Path=/api/system/**
           filters:
             - StripPrefix=0
 
+        # 平台级租户管理（仅 tenantId=0 的平台超管访问）
+        - id: mes-platform-tenants
+          uri: lb://mes-system
+          predicates:
+            - Path=/api/platform/**
+          filters:
+            - StripPrefix=0
+
+        # ==================== 基础数据服务 (mes-master-data) ====================
         - id: mes-basic
-          uri: lb://mes-backend
+          uri: lb://mes-master-data
           predicates:
             - Path=/api/basic/**
           filters:
             - StripPrefix=0
 
         - id: mes-team
-          uri: lb://mes-backend
+          uri: lb://mes-master-data
           predicates:
             - Path=/api/team/**
           filters:
             - StripPrefix=0
 
         - id: mes-process
-          uri: lb://mes-backend
+          uri: lb://mes-master-data
           predicates:
             - Path=/api/process/**
           filters:
             - StripPrefix=0
 
+        # ==================== 生产管理服务 (mes-production) ====================
         - id: mes-plan
-          uri: lb://mes-backend
+          uri: lb://mes-production
           predicates:
             - Path=/api/plan/**
           filters:
             - StripPrefix=0
 
         - id: mes-workorder
-          uri: lb://mes-backend
+          uri: lb://mes-production
           predicates:
             - Path=/api/workorder/**
           filters:
             - StripPrefix=0
 
         - id: mes-dispatch
-          uri: lb://mes-backend
+          uri: lb://mes-production
           predicates:
             - Path=/api/dispatch/**
           filters:
             - StripPrefix=0
 
+        # ==================== 质量管理服务 (mes-quality-svc) ====================
         - id: mes-quality
-          uri: lb://mes-backend
+          uri: lb://mes-quality-svc
           predicates:
             - Path=/api/quality/**
           filters:
             - StripPrefix=0
 
         - id: mes-abnormal
-          uri: lb://mes-backend
+          uri: lb://mes-quality-svc
           predicates:
             - Path=/api/abnormal/**
           filters:
             - StripPrefix=0
 
+        # ==================== 物料管理服务 (mes-material-svc) ====================
         - id: mes-material
-          uri: lb://mes-backend
+          uri: lb://mes-material-svc
           predicates:
             - Path=/api/material/**
           filters:
             - StripPrefix=0
 
+        # ==================== 集成服务 (mes-integration) ====================
         - id: mes-aps
-          uri: lb://mes-backend
+          uri: lb://mes-integration
           predicates:
             - Path=/api/aps/**
           filters:
             - StripPrefix=0
 
+        # ==================== 查询服务 (mes-query-svc) ====================
         - id: mes-query
-          uri: lb://mes-backend
+          uri: lb://mes-query-svc
           predicates:
             - Path=/api/query/**
           filters:
             - StripPrefix=0
 
+        # ==================== 共享路由 ====================
         - id: mes-files
-          uri: lb://mes-backend
+          uri: lb://mes-system
           predicates:
             - Path=/api/files/**
           filters:
             - StripPrefix=0
 
         - id: mes-actuator
-          uri: lb://mes-backend
+          uri: lb://mes-system
           predicates:
             - Path=/api/actuator/**
           filters:
@@ -122,14 +138,19 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowed-origins: "*"
-            allowed-methods: "*"
+            allowed-origin-patterns:
+              - "http://localhost:*"
+              - "http://127.0.0.1:*"
+              - "${MES_CORS_ALLOWED_ORIGIN:}"
+            allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
             allowed-headers: "*"
-            allow-credentials: false
+            allow-credentials: true
+            max-age: 3600
 
 mes:
   jwt:
-    secret: MesSystemDefaultSecretKeyThatIsAtLeast256BitsLong!!
+    # 生产必须通过环境变量 MES_JWT_SECRET 注入（>=32 字节强随机）
+    secret: ${MES_JWT_SECRET:dev-only-NOT-FOR-PRODUCTION-pls-override-me-with-random-32bytes+}
 
 management:
   endpoints:
@@ -138,4 +159,7 @@ management:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: always
+      # 避免向匿名客户端暴露依赖链明细；需要时通过 Security 授予管理员查看权限
+      show-details: when-authorized
+      probes:
+        enabled: true

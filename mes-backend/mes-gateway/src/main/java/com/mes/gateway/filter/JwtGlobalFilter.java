@@ -27,7 +27,7 @@ import java.util.List;
 @Component
 public class JwtGlobalFilter implements GlobalFilter, Ordered {
 
-    @Value("${mes.jwt.secret:MesSystemDefaultSecretKeyThatIsAtLeast256BitsLong!!}")
+    @Value("${mes.jwt.secret:}")
     private String jwtSecret;
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();

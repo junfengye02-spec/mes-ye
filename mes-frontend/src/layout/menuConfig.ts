@@ -3,6 +3,8 @@ export interface MenuItem {
   title: string
   icon?: string
   children?: MenuItem[]
+  /** 仅平台超管（tenant_id = 0）可见 */
+  platformOnly?: boolean
 }
 
 export const menuList: MenuItem[] = [
@@ -129,6 +131,15 @@ export const menuList: MenuItem[] = [
       { path: '/system/user', title: '用户管理' },
       { path: '/system/role', title: '角色管理' },
       { path: '/system/menu', title: '菜单管理' },
+    ],
+  },
+  {
+    path: '/platform',
+    title: '运营后台',
+    icon: 'OfficeBuilding',
+    platformOnly: true,
+    children: [
+      { path: '/platform/tenants', title: '租户管理', platformOnly: true },
     ],
   },
 ]

@@ -5,8 +5,11 @@
         <el-form-item label="映射类型">
           <el-input v-model="query.mappingType" placeholder="请输入" clearable style="width: 160px" />
         </el-form-item>
-        <el-form-item label="MES字段">
-          <el-input v-model="query.mesField" placeholder="请输入" clearable style="width: 160px" />
+        <el-form-item label="MES编码">
+          <el-input v-model="query.mesCode" placeholder="请输入" clearable style="width: 160px" />
+        </el-form-item>
+        <el-form-item label="APS编码">
+          <el-input v-model="query.apsCode" placeholder="请输入" clearable style="width: 160px" />
         </el-form-item>
         <el-form-item label="启用">
           <el-select v-model="query.enabled" placeholder="请选择" clearable style="width: 140px">
@@ -41,11 +44,10 @@
       <el-table v-loading="loading" :data="list" border stripe>
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="mappingType" label="映射类型" min-width="120" />
-        <el-table-column prop="mesField" label="MES字段" min-width="120" />
-        <el-table-column prop="apsField" label="APS字段" min-width="120" />
-        <el-table-column prop="mesValue" label="MES值" min-width="100" />
-        <el-table-column prop="apsValue" label="APS值" min-width="100" />
-        <el-table-column prop="description" label="描述" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="mesCode" label="MES编码" min-width="120" />
+        <el-table-column prop="mesName" label="MES名称" min-width="120" />
+        <el-table-column prop="apsCode" label="APS编码" min-width="120" />
+        <el-table-column prop="apsName" label="APS名称" min-width="120" />
         <el-table-column prop="enabled" label="启用" width="90" align="center">
           <template #default="{ row }">
             <el-switch
@@ -86,20 +88,17 @@
         <el-form-item label="映射类型" prop="mappingType">
           <el-input v-model="form.mappingType" placeholder="请输入映射类型" />
         </el-form-item>
-        <el-form-item label="MES字段" prop="mesField">
-          <el-input v-model="form.mesField" placeholder="请输入MES字段" />
+        <el-form-item label="MES编码" prop="mesCode">
+          <el-input v-model="form.mesCode" placeholder="请输入MES编码" />
         </el-form-item>
-        <el-form-item label="APS字段" prop="apsField">
-          <el-input v-model="form.apsField" placeholder="请输入APS字段" />
+        <el-form-item label="MES名称" prop="mesName">
+          <el-input v-model="form.mesName" placeholder="请输入MES名称" />
         </el-form-item>
-        <el-form-item label="MES值" prop="mesValue">
-          <el-input v-model="form.mesValue" placeholder="请输入MES值" />
+        <el-form-item label="APS编码" prop="apsCode">
+          <el-input v-model="form.apsCode" placeholder="请输入APS编码" />
         </el-form-item>
-        <el-form-item label="APS值" prop="apsValue">
-          <el-input v-model="form.apsValue" placeholder="请输入APS值" />
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="form.description" placeholder="请输入描述" />
+        <el-form-item label="APS名称" prop="apsName">
+          <el-input v-model="form.apsName" placeholder="请输入APS名称" />
         </el-form-item>
         <el-form-item label="启用" prop="enabled">
           <el-switch v-model="formEnabled" />
@@ -127,7 +126,8 @@ const list = ref<ApsDataMappingVO[]>([])
 const total = ref(0)
 const query = reactive<ApsDataMappingQuery>({
   mappingType: '',
-  mesField: '',
+  mesCode: '',
+  apsCode: '',
   enabled: undefined,
   pageNum: 1,
   pageSize: 20,
@@ -140,11 +140,10 @@ const submitLoading = ref(false)
 const editId = ref<number | null>(null)
 const form = reactive<ApsDataMappingDTO>({
   mappingType: '',
-  mesField: '',
-  apsField: '',
-  mesValue: '',
-  apsValue: '',
-  description: '',
+  mesCode: '',
+  mesName: '',
+  apsCode: '',
+  apsName: '',
   enabled: 1,
 })
 
@@ -155,7 +154,8 @@ const formEnabled = computed({
 
 const rules: FormRules = {
   mappingType: [{ required: true, message: '请输入映射类型', trigger: 'blur' }],
-  mesField: [{ required: true, message: '请输入MES字段', trigger: 'blur' }],
+  mesCode: [{ required: true, message: '请输入MES编码', trigger: 'blur' }],
+  apsCode: [{ required: true, message: '请输入APS编码', trigger: 'blur' }],
 }
 
 async function loadList() {
@@ -176,7 +176,8 @@ function handleSearch() {
 
 function handleReset() {
   query.mappingType = ''
-  query.mesField = ''
+  query.mesCode = ''
+  query.apsCode = ''
   query.enabled = undefined
   query.pageNum = 1
   loadList()
@@ -187,11 +188,10 @@ function handleAdd() {
   editId.value = null
   Object.assign(form, {
     mappingType: '',
-    mesField: '',
-    apsField: '',
-    mesValue: '',
-    apsValue: '',
-    description: '',
+    mesCode: '',
+    mesName: '',
+    apsCode: '',
+    apsName: '',
     enabled: 1,
   })
   dialogVisible.value = true
@@ -202,11 +202,10 @@ function handleEdit(row: ApsDataMappingVO) {
   editId.value = row.id
   Object.assign(form, {
     mappingType: row.mappingType ?? '',
-    mesField: row.mesField ?? '',
-    apsField: row.apsField ?? '',
-    mesValue: row.mesValue ?? '',
-    apsValue: row.apsValue ?? '',
-    description: row.description ?? '',
+    mesCode: row.mesCode ?? '',
+    mesName: row.mesName ?? '',
+    apsCode: row.apsCode ?? '',
+    apsName: row.apsName ?? '',
     enabled: row.enabled ?? 1,
   })
   dialogVisible.value = true
@@ -214,7 +213,14 @@ function handleEdit(row: ApsDataMappingVO) {
 
 async function handleEnabledChange(row: ApsDataMappingVO, val: boolean) {
   try {
-    await apsDataMappingApi.update(row.id, { ...row, enabled: val ? 1 : 0 })
+    await apsDataMappingApi.update(row.id, {
+      mappingType: row.mappingType,
+      mesCode: row.mesCode,
+      mesName: row.mesName,
+      apsCode: row.apsCode,
+      apsName: row.apsName,
+      enabled: val ? 1 : 0,
+    })
     ElMessage.success('更新成功')
     loadList()
   } catch {
