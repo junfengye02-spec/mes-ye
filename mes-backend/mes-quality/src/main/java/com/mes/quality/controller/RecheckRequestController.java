@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "复检申请", description = "成品复检申请管理接口")
@@ -23,24 +24,28 @@ public class RecheckRequestController {
 
     @Operation(summary = "分页查询复检申请")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('quality:recheck:list')")
     public R<PageResult<RecheckRequestVO>> page(RecheckRequestQuery query) {
         return R.ok(recheckRequestService.page(query));
     }
 
     @Operation(summary = "获取复检申请详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('quality:recheck:detail')")
     public R<RecheckRequestVO> getDetail(@Parameter(description = "ID") @PathVariable Long id) {
         return R.ok(recheckRequestService.getDetail(id));
     }
 
     @Operation(summary = "新增复检申请")
     @PostMapping
+    @PreAuthorize("hasAuthority('quality:recheck:create')")
     public R<Long> create(@Valid @RequestBody RecheckRequestDTO dto) {
         return R.ok("新增成功", recheckRequestService.create(dto));
     }
 
     @Operation(summary = "修改复检申请")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('quality:recheck:update')")
     public R<Void> update(@Parameter(description = "ID") @PathVariable Long id,
                           @Valid @RequestBody RecheckRequestDTO dto) {
         recheckRequestService.update(id, dto);
@@ -49,6 +54,7 @@ public class RecheckRequestController {
 
     @Operation(summary = "删除复检申请")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('quality:recheck:delete')")
     public R<Void> delete(@Parameter(description = "ID") @PathVariable Long id) {
         recheckRequestService.delete(id);
         return R.ok();

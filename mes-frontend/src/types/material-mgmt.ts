@@ -76,61 +76,108 @@ export interface RequisitionOrderQuery extends PageQuery {
   status?: string
 }
 
+// 完工入库明细 VO（对齐后端 FinishedGoodsReceiptItemVO）
+export interface ReceiptItemVO {
+  id?: number
+  receiptId?: number
+  itemCode?: string
+  workOrderId?: number
+  workOrderNo?: string
+  materialCode?: string
+  materialName?: string
+  receiptQty?: number
+  unit?: string
+  storageLocation?: string
+  varianceQty?: number
+  varianceReason?: string
+}
+
+// 完工入库明细 DTO（对齐后端 FinishedGoodsReceiptItemDTO）
+export interface ReceiptItemDTO {
+  itemCode?: string
+  workOrderId?: number
+  workOrderNo?: string
+  materialId?: number
+  materialCode?: string
+  materialName?: string
+  receiptQty?: number
+  unit?: string
+  storageLocation?: string
+  varianceQty?: number
+  varianceReason?: string
+}
+
+// 完工入库主表 VO（对齐后端 FinishedGoodsReceiptVO）
 export interface ReceiptVO extends BaseEntity {
   receiptNo?: string
-  workOrderId?: number
-  workOrderNo?: string
-  productCode?: string
-  productName?: string
   receiptType?: string
-  receiptQty?: number
-  qtyUnit?: string
-  storageLocation?: string
+  warehouse?: string
+  movementType?: string
+  planReceiptTime?: string
+  actualReceiptTime?: string
   status?: string
-  remark?: string
+  items?: ReceiptItemVO[]
 }
 
+// 完工入库主表 DTO（对齐后端 FinishedGoodsReceiptDTO）
 export interface ReceiptDTO {
-  workOrderId?: number
+  receiptNo?: string
   receiptType?: string
-  receiptQty?: number
-  qtyUnit?: string
-  storageLocation?: string
-  remark?: string
+  warehouse?: string
+  movementType?: string
+  planReceiptTime?: string
+  items?: ReceiptItemDTO[]
 }
 
+// 完工入库查询（对齐后端 FinishedGoodsReceiptQuery）
 export interface ReceiptQuery extends PageQuery {
   receiptNo?: string
-  workOrderNo?: string
   receiptType?: string
   status?: string
 }
 
+// 完工入库申请 VO（对齐后端 ReceiptRequestVO）
 export interface ReceiptRequestVO extends BaseEntity {
   requestNo?: string
+  receiptType?: string
   workOrderId?: number
   workOrderNo?: string
-  productCode?: string
-  productName?: string
-  requestQty?: number
-  qtyUnit?: string
-  requestType?: string
+  projectName?: string
+  materialCode?: string
+  materialName?: string
+  serialNo?: string
+  qty?: number
+  qualifiedQty?: number
+  unqualifiedQty?: number
+  pendingReceiptQty?: number
   status?: string
-  remark?: string
 }
 
+// 完工入库申请 DTO（对齐后端 ReceiptRequestDTO）
 export interface ReceiptRequestDTO {
+  requestNo?: string
+  receiptType?: string
   workOrderId?: number
-  requestQty?: number
-  qtyUnit?: string
-  requestType?: string
-  remark?: string
+  workOrderNo?: string
+  projectName?: string
+  wbsElement?: string
+  materialId?: number
+  materialCode?: string
+  materialName?: string
+  serialNo?: string
+  qty?: number
+  qualifiedQty?: number
+  unqualifiedQty?: number
+  unit?: string
+  description?: string
+  planReceiptTime?: string
 }
 
+// 完工入库申请查询（对齐后端 ReceiptRequestQuery）
 export interface ReceiptRequestQuery extends PageQuery {
   requestNo?: string
-  workOrderNo?: string
-  requestType?: string
+  receiptType?: string
+  workOrderId?: number
   status?: string
 }
 

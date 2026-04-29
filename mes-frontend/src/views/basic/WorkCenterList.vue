@@ -27,10 +27,10 @@
     >
       <template #title>工作中心</template>
       <template #toolbar>
-        <el-button type="primary" @click="handleAdd">
+        <el-button v-auth="['basic:workCenter:create']" type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增
         </el-button>
-        <el-button :disabled="!selectedRows.length" @click="handleBatchEdit">
+        <el-button v-auth="['basic:workCenter:update']" :disabled="!selectedRows.length" @click="handleBatchEdit">
           <el-icon><Edit /></el-icon> 批量编辑
         </el-button>
       </template>
@@ -47,10 +47,11 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right">
+      <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click.stop="handleEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click.stop="handleDelete(row)">删除</el-button>
+          <el-button v-auth="['basic:workCenter:detail']" link type="info" @click.stop="handleView(row)">查看</el-button>
+          <el-button v-auth="['basic:workCenter:update']" link type="primary" @click.stop="handleEdit(row)">编辑</el-button>
+          <el-button v-auth="['basic:workCenter:delete']" link type="danger" @click.stop="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </DataTable>
@@ -87,7 +88,12 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">确定</el-button>
+        <el-button
+          v-auth="['basic:workCenter:create', 'basic:workCenter:update']"
+          type="primary"
+          :loading="saving"
+          @click="handleSave"
+        >确定</el-button>
       </template>
     </el-dialog>
 
@@ -235,6 +241,18 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+function handleView(row: WorkCenterVO) {
+  const lines = [
+    `编码：${row.workCenterCode ?? '-'}`,
+    `名称：${row.workCenterName ?? '-'}`,
+    `类型：${row.workCenterType ?? '-'}`,
+    `工厂：${row.factory ?? '-'}`,
+    `产能：${row.capacity ?? '-'} ${row.capacityUnit ?? ''}`,
+    `启用：${row.enabled === 1 ? '是' : '否'}`,
+  ].join('\n')
+  ElMessageBox.alert(lines, '工作中心详情', { confirmButtonText: '关闭' }).catch(() => {})
 }
 
 async function handleDelete(row: WorkCenterVO) {

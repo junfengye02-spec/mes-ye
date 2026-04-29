@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "工单开工检查", description = "生产工单开工检查管理接口")
@@ -23,24 +24,28 @@ public class OrderStartCheckController {
 
     @Operation(summary = "分页查询工单开工检查")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('quality:orderStartCheck:list')")
     public R<PageResult<OrderStartCheckVO>> page(OrderStartCheckQuery query) {
         return R.ok(orderStartCheckService.page(query));
     }
 
     @Operation(summary = "获取工单开工检查详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('quality:orderStartCheck:detail')")
     public R<OrderStartCheckVO> getDetail(@Parameter(description = "ID") @PathVariable Long id) {
         return R.ok(orderStartCheckService.getDetail(id));
     }
 
     @Operation(summary = "新增工单开工检查")
     @PostMapping
+    @PreAuthorize("hasAuthority('quality:orderStartCheck:create')")
     public R<Long> create(@Valid @RequestBody OrderStartCheckDTO dto) {
         return R.ok("新增成功", orderStartCheckService.create(dto));
     }
 
     @Operation(summary = "修改工单开工检查")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('quality:orderStartCheck:update')")
     public R<Void> update(@Parameter(description = "ID") @PathVariable Long id,
                           @Valid @RequestBody OrderStartCheckDTO dto) {
         orderStartCheckService.update(id, dto);

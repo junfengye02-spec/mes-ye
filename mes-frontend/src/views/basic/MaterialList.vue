@@ -25,7 +25,7 @@
     >
       <template #title>物料档案</template>
       <template #toolbar>
-        <el-button type="primary" @click="handleAdd">
+        <el-button v-auth="['basic:material:create']" type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增
         </el-button>
       </template>
@@ -36,10 +36,11 @@
       <el-table-column prop="baseUnit" label="基本单位" width="90" />
       <el-table-column prop="factory" label="工厂" width="100" />
       <el-table-column prop="traceMode" label="追溯模式" width="100" />
-      <el-table-column label="操作" width="150" fixed="right">
+      <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click.stop="handleEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click.stop="handleDelete(row)">删除</el-button>
+          <el-button v-auth="['basic:material:detail']" link type="info" @click.stop="handleView(row)">查看</el-button>
+          <el-button v-auth="['basic:material:update']" link type="primary" @click.stop="handleEdit(row)">编辑</el-button>
+          <el-button v-auth="['basic:material:delete']" link type="danger" @click.stop="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </DataTable>
@@ -88,7 +89,12 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">确定</el-button>
+        <el-button
+          v-auth="['basic:material:create', 'basic:material:update']"
+          type="primary"
+          :loading="saving"
+          @click="handleSave"
+        >确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -221,6 +227,19 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+function handleView(row: MaterialVO) {
+  const lines = [
+    `物料编码：${row.materialCode ?? '-'}`,
+    `物料名称：${row.materialName ?? '-'}`,
+    `物料类型：${row.materialType ?? '-'}`,
+    `一级分类：${row.categoryLevel1 ?? '-'}`,
+    `基本单位：${row.baseUnit ?? '-'}`,
+    `工厂：${row.factory ?? '-'}`,
+    `追溯模式：${row.traceMode ?? '-'}`,
+  ].join('\n')
+  ElMessageBox.alert(lines, '物料详情', { confirmButtonText: '关闭' }).catch(() => {})
 }
 
 async function handleDelete(row: MaterialVO) {

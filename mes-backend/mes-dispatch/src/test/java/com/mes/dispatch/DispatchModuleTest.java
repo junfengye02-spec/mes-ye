@@ -20,6 +20,9 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -33,6 +36,8 @@ import static org.mockito.Mockito.*;
  * 覆盖派工任务生成、人员/设备/班组分配、撤销分配
  */
 @ExtendWith(MockitoExtension.class)
+// MyBatis-Plus ServiceImpl baseMapper 需反射注入；放宽 Strictness 避免 UnnecessaryStubbing 噪音
+@MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class DispatchModuleTest {
 
@@ -44,6 +49,13 @@ class DispatchModuleTest {
 
     @InjectMocks private DispatchTaskServiceImpl dispatchTaskService;
     @InjectMocks private DispatchAssignmentServiceImpl assignmentService;
+
+    @BeforeEach
+    void injectBaseMappers() {
+        // DispatchTaskServiceImpl 继承 MyBatis-Plus ServiceImpl，需反射注入 baseMapper
+        ReflectionTestUtils.setField(dispatchTaskService, "baseMapper", dispatchTaskMapper);
+        // DispatchAssignmentServiceImpl 未继承 ServiceImpl，不需要 baseMapper
+    }
 
     // ==================== 1. 派工任务生成测试 ====================
 

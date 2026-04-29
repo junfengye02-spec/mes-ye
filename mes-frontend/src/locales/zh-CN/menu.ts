@@ -1,0 +1,83 @@
+export default {
+  basic: {
+    _title: '基础数据',
+    material: '物料档案',
+    materialPrice: '物料价格',
+    workCenter: '工作中心',
+  },
+  team: {
+    _title: '班组管理',
+    productionTeam: '生产班组',
+  },
+  process: {
+    _title: '工艺管理',
+    instruction: '指示书管理',
+    template: '工序模板',
+    info: '工序信息',
+    workInstruction: '指导书管理',
+    sprayCondition: '喷涂条件表',
+    machiningProgram: '机械加工程序表',
+    bom: '制造BOM',
+  },
+  plan: {
+    _title: '计划管理',
+    order: '订单计划',
+    production: '生产计划',
+  },
+  workorder: {
+    _title: '生产工单',
+    list: '工单管理',
+  },
+  dispatch: {
+    _title: '生产派工',
+    task: '派工管理',
+  },
+  abnormal: {
+    _title: '异常管理',
+    contact: '异常联络单',
+  },
+  quality: {
+    _title: '成品质量',
+    recheck: '复检申请',
+    workStartCheck: '开工检查实绩(工作)',
+    orderStartCheck: '开工检查实绩(工单)',
+    shiftHandover: '交班记录',
+  },
+  query: {
+    _title: '工作查询',
+    workStatus: '六状态查看',
+    productionWork: '生产工作查询',
+    inspectionWork: '检验工作查询',
+    workStartCheck: '生产工作开工检查实绩',
+    orderStartCheck: '生产工单开工检查实绩',
+    shiftHandover: '交班记录',
+    workOrder: '生产工单',
+    dispatchWork: '派工工作查询',
+  },
+  materialMgmt: {
+    _title: '物料管理',
+    inventory: '存储地点库存',
+    requisition: '生产领料',
+    requisitionOrder: '按物料领料',
+    receiptRequest: '完工入库申请',
+    receipt: '完工入库',
+    return: '生产退料',
+    deliverySign: '发货签收',
+  },
+  aps: {
+    _title: 'APS 集成',
+    syncConfig: '同步配置',
+    syncLog: '同步日志',
+    dataMapping: '数据映射管理',
+  },
+  system: {
+    _title: '系统管理',
+    user: '用户管理',
+    role: '角色管理',
+    menu: '菜单管理',
+  },
+  platform: {
+    _title: '运营后台',
+    tenants: '租户管理',
+  },
+}

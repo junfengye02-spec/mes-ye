@@ -7,6 +7,7 @@ import com.mes.aps.domain.vo.*;
 import com.mes.aps.enums.SyncDirection;
 import com.mes.aps.enums.SyncStatus;
 import com.mes.aps.enums.SyncType;
+import com.mes.aps.service.ApsCallbackIdempotencyService;
 import com.mes.aps.service.IApsExtendedCallbackService;
 import com.mes.aps.service.IApsSyncLogService;
 import com.mes.dispatch.domain.entity.DispatchAssignment;
@@ -33,10 +34,15 @@ public class ApsExtendedCallbackServiceImpl implements IApsExtendedCallbackServi
     private final WorkOrderMapper workOrderMapper;
     private final DispatchTaskMapper dispatchTaskMapper;
     private final DispatchAssignmentMapper dispatchAssignmentMapper;
+    private final ApsCallbackIdempotencyService idempotencyService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void handleMrpResult(ApsMrpCallbackVO mrpData) {
+        if (!idempotencyService.tryAcquire("mrpResult", mrpData.getRequestId())) {
+            log.warn("重复回调忽略: type=mrpResult, requestId={}", mrpData.getRequestId());
+            return;
+        }
         String batchId = mrpData.getRequestId() != null ? mrpData.getRequestId() : UUID.randomUUID().toString();
         ApsSyncLog syncLog = syncLogService.createLog(
                 batchId, SyncDirection.DOWNSTREAM.getCode(), SyncType.MRP.getCode());
@@ -63,6 +69,10 @@ public class ApsExtendedCallbackServiceImpl implements IApsExtendedCallbackServi
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void handleResourceAllocation(ApsResourceAllocationVO allocationData) {
+        if (!idempotencyService.tryAcquire("resourceAllocation", allocationData.getRequestId())) {
+            log.warn("重复回调忽略: type=resourceAllocation, requestId={}", allocationData.getRequestId());
+            return;
+        }
         String batchId = allocationData.getRequestId() != null ? allocationData.getRequestId() : UUID.randomUUID().toString();
         ApsSyncLog syncLog = syncLogService.createLog(
                 batchId, SyncDirection.DOWNSTREAM.getCode(), SyncType.RESOURCE_ALLOCATION.getCode());
@@ -96,6 +106,10 @@ public class ApsExtendedCallbackServiceImpl implements IApsExtendedCallbackServi
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void handleGanttData(ApsGanttDataVO ganttData) {
+        if (!idempotencyService.tryAcquire("ganttData", ganttData.getRequestId())) {
+            log.warn("重复回调忽略: type=ganttData, requestId={}", ganttData.getRequestId());
+            return;
+        }
         String batchId = ganttData.getRequestId() != null ? ganttData.getRequestId() : UUID.randomUUID().toString();
         ApsSyncLog syncLog = syncLogService.createLog(
                 batchId, SyncDirection.DOWNSTREAM.getCode(), SyncType.GANTT.getCode());
@@ -117,6 +131,10 @@ public class ApsExtendedCallbackServiceImpl implements IApsExtendedCallbackServi
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void handleCapacityLoad(ApsCapacityLoadVO capacityData) {
+        if (!idempotencyService.tryAcquire("capacityLoad", capacityData.getRequestId())) {
+            log.warn("重复回调忽略: type=capacityLoad, requestId={}", capacityData.getRequestId());
+            return;
+        }
         String batchId = capacityData.getRequestId() != null ? capacityData.getRequestId() : UUID.randomUUID().toString();
         ApsSyncLog syncLog = syncLogService.createLog(
                 batchId, SyncDirection.DOWNSTREAM.getCode(), SyncType.CAPACITY_LOAD.getCode());
@@ -137,6 +155,10 @@ public class ApsExtendedCallbackServiceImpl implements IApsExtendedCallbackServi
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void handleScheduleChange(ApsScheduleChangeVO changeData) {
+        if (!idempotencyService.tryAcquire("scheduleChange", changeData.getRequestId())) {
+            log.warn("重复回调忽略: type=scheduleChange, requestId={}", changeData.getRequestId());
+            return;
+        }
         String batchId = changeData.getRequestId() != null ? changeData.getRequestId() : UUID.randomUUID().toString();
         ApsSyncLog syncLog = syncLogService.createLog(
                 batchId, SyncDirection.DOWNSTREAM.getCode(), SyncType.SCHEDULE_CHANGE.getCode());

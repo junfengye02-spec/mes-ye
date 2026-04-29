@@ -1,0 +1,92 @@
+# ===============================================================
+# AlertManager 告警路由配置
+# 设计目标：
+#   1. P0（服务下线 / 5xx 飙升 / 中间件挂）→ 值班钉钉 + 短信（可加）
+#   2. P1（资源类 / JVM / 队列堆积）→ 日常钉钉
+#   3. P2（低优）→ 邮件
+# Webhook 通过 prometheus-webhook-dingtalk sidecar 转换钉钉 / 飞书格式
+# 本地环境变量注入：
+#   DINGTALK_ROBOT_P0_URL  值班钉钉机器人 webhook
+#   DINGTALK_ROBOT_P1_URL  日常钉钉机器人 webhook
+#   FEISHU_ROBOT_URL       飞书机器人 webhook（备用）
+#   SMTP_*                 邮件通道
+# ===============================================================
+global:
+  resolve_timeout: 5m
+  # 避免恢复通知风暴：5 分钟内重复告警不再通知
+  smtp_smarthost: ${SMTP_HOST:-smtp.example.com:465}
+  smtp_from: ${SMTP_FROM:-mes-alert@example.com}
+  smtp_auth_username: ${SMTP_USER:-}
+  smtp_auth_password: ${SMTP_PASSWORD:-}
+  smtp_require_tls: false
+
+templates:
+  - /etc/alertmanager/templates/*.tmpl
+
+# 路由树：按 severity 分流
+route:
+  receiver: default-dingtalk-p1
+  group_by: ['alertname', 'job', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity="P0"
+      receiver: dingtalk-p0
+      continue: true
+      group_wait: 10s
+      repeat_interval: 30m
+
+    - matchers:
+        - severity="P1"
+      receiver: default-dingtalk-p1
+      group_wait: 30s
+      repeat_interval: 2h
+
+    - matchers:
+        - severity="P2"
+      receiver: email-daily
+      group_wait: 5m
+      repeat_interval: 24h
+
+# 抑制规则：主机挂了就别再报 JVM/接口错误（避免告警风暴）
+inhibit_rules:
+  - source_matchers:
+      - alertname="MesServiceDown"
+    target_matchers:
+      - severity=~"P1|P2"
+    equal: ['instance']
+
+  - source_matchers:
+      - alertname="MysqlDown"
+    target_matchers:
+      - alertname=~"MysqlReplicationLag|MesHttp5xxSpike"
+    equal: []
+
+# 静默（临时抑制告警）通过 AlertManager UI 配，不在这里硬编码
+
+receivers:
+  # ---- 默认接收器（未匹配任何路由时兜底） ----
+  - name: default-dingtalk-p1
+
+    webhook_configs:
+      - url: "${DINGTALK_ROBOT_P1_URL:-http://dingtalk-sidecar:8060/dingtalk/p1/send}"
+        send_resolved: true
+        max_alerts: 10
+
+  # ---- P0 值班钉钉 + （可选）飞书 ----
+  - name: dingtalk-p0
+    webhook_configs:
+      - url: "${DINGTALK_ROBOT_P0_URL:-http://dingtalk-sidecar:8060/dingtalk/p0/send}"
+        send_resolved: true
+      - url: "${FEISHU_ROBOT_URL:-}"
+        send_resolved: true
+
+  # ---- P2 邮件 ----
+  - name: email-daily
+    email_configs:
+      - to: "${ALERT_EMAIL:-ops@example.com}"
+        send_resolved: true
+        headers:
+          Subject: "[MES-P2] {{ .GroupLabels.alertname }}"

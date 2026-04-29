@@ -5,13 +5,19 @@
         <el-form-item label="申请单号">
           <el-input v-model="query.requestNo" placeholder="请输入" clearable style="width: 160px" />
         </el-form-item>
-        <el-form-item label="工单号">
-          <el-input v-model="query.workOrderNo" placeholder="请输入" clearable style="width: 160px" />
+        <el-form-item label="工单ID">
+          <el-input-number
+            v-model="query.workOrderId"
+            :min="1"
+            :controls="false"
+            placeholder="工单ID"
+            style="width: 140px"
+          />
         </el-form-item>
-        <el-form-item label="申请类型">
-          <el-select v-model="query.requestType" placeholder="请选择" clearable style="width: 140px">
+        <el-form-item label="入库类型">
+          <el-select v-model="query.receiptType" placeholder="请选择" clearable style="width: 140px">
             <el-option
-              v-for="item in getDictList('requestType')"
+              v-for="item in getDictList('receiptType')"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -43,7 +49,7 @@
       <template #header>
         <div class="table-header">
           <span>完工入库申请列表</span>
-          <el-button type="primary" @click="handleAdd">
+          <el-button v-auth="['material:receiptRequest:create']" type="primary" @click="handleAdd">
             <el-icon><Plus /></el-icon> 新增
           </el-button>
         </div>
@@ -52,17 +58,21 @@
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="requestNo" label="申请单号" min-width="140" />
         <el-table-column prop="workOrderNo" label="工单号" min-width="120" />
-        <el-table-column prop="productCode" label="产品编码" min-width="120" />
-        <el-table-column prop="productName" label="产品名称" min-width="140" />
-        <el-table-column prop="requestQty" label="申请数量" width="100" align="right" />
-        <el-table-column prop="qtyUnit" label="单位" width="80" align="center" />
-        <el-table-column prop="requestType" label="申请类型" width="110" align="center">
+        <el-table-column prop="receiptType" label="入库类型" width="110" align="center">
           <template #default="{ row }">
-            <el-tag :type="getDictType('requestType', row.requestType || '') as any">
-              {{ getDictLabel('requestType', row.requestType || '') }}
+            <el-tag :type="getDictType('receiptType', row.receiptType || '') as any">
+              {{ getDictLabel('receiptType', row.receiptType || '') }}
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="projectName" label="项目" min-width="140" />
+        <el-table-column prop="materialCode" label="物料编码" min-width="120" />
+        <el-table-column prop="materialName" label="物料名称" min-width="140" />
+        <el-table-column prop="serialNo" label="序列号" min-width="120" />
+        <el-table-column prop="qty" label="数量" width="100" align="right" />
+        <el-table-column prop="qualifiedQty" label="合格数" width="100" align="right" />
+        <el-table-column prop="unqualifiedQty" label="不合格数" width="100" align="right" />
+        <el-table-column prop="pendingReceiptQty" label="待收料数" width="110" align="right" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="getDictType('receiptRequestStatus', row.status || '') as any">
@@ -73,8 +83,8 @@
         <el-table-column prop="createdTime" label="创建时间" width="170" />
         <el-table-column label="操作" width="160" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-auth="['material:receiptRequest:update']" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-auth="['material:receiptRequest:delete']" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -95,48 +105,118 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="520px"
+      width="760px"
       destroy-on-close
       @close="handleDialogClose"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="工单" prop="workOrderId">
-          <el-select
-            v-model="form.workOrderId"
-            placeholder="请选择工单"
-            filterable
-            remote
-            :remote-method="searchWorkOrders"
-            :loading="workOrderLoading"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="wo in workOrderOptions"
-              :key="wo.id"
-              :label="wo.workOrderNo"
-              :value="wo.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="申请数量" prop="requestQty">
-          <el-input-number v-model="form.requestQty" :min="0.0001" :precision="4" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="单位" prop="qtyUnit">
-          <el-input v-model="form.qtyUnit" placeholder="请输入单位" />
-        </el-form-item>
-        <el-form-item label="申请类型" prop="requestType">
-          <el-select v-model="form.requestType" placeholder="请选择" style="width: 100%">
-            <el-option
-              v-for="item in getDictList('requestType')"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注" />
-        </el-form-item>
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="申请单号" prop="requestNo">
+              <el-input v-model="form.requestNo" placeholder="留空自动生成" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="入库类型" prop="receiptType">
+              <el-select v-model="form.receiptType" placeholder="请选择" style="width: 100%">
+                <el-option
+                  v-for="item in getDictList('receiptType')"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="工单" prop="workOrderId">
+              <el-select
+                v-model="form.workOrderId"
+                placeholder="请选择工单"
+                filterable
+                remote
+                clearable
+                :remote-method="searchWorkOrders"
+                :loading="workOrderLoading"
+                style="width: 100%"
+                @change="onWorkOrderChange"
+              >
+                <el-option
+                  v-for="wo in workOrderOptions"
+                  :key="wo.id"
+                  :label="wo.workOrderNo"
+                  :value="wo.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="工单号" prop="workOrderNo">
+              <el-input v-model="form.workOrderNo" placeholder="自动填充" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="项目" prop="projectName">
+              <el-input v-model="form.projectName" placeholder="请输入项目" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="WBS元素" prop="wbsElement">
+              <el-input v-model="form.wbsElement" placeholder="请输入WBS元素" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="物料编码" prop="materialCode">
+              <el-input v-model="form.materialCode" placeholder="请输入物料编码" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="物料名称" prop="materialName">
+              <el-input v-model="form.materialName" placeholder="请输入物料名称" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="序列号" prop="serialNo">
+              <el-input v-model="form.serialNo" placeholder="请输入序列号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="数量" prop="qty">
+              <el-input-number v-model="form.qty" :min="0.0001" :precision="4" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="合格数量" prop="qualifiedQty">
+              <el-input-number v-model="form.qualifiedQty" :min="0" :precision="4" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="不合格数量" prop="unqualifiedQty">
+              <el-input-number v-model="form.unqualifiedQty" :min="0" :precision="4" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="单位" prop="unit">
+              <el-input v-model="form.unit" placeholder="请输入单位" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="计划入库时间" prop="planReceiptTime">
+              <el-date-picker
+                v-model="form.planReceiptTime"
+                type="datetime"
+                placeholder="选择计划入库时间"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="说明" prop="description">
+              <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入说明" />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -162,8 +242,8 @@ const list = ref<ReceiptRequestVO[]>([])
 const total = ref(0)
 const query = reactive<ReceiptRequestQuery>({
   requestNo: '',
-  workOrderNo: '',
-  requestType: '',
+  workOrderId: undefined,
+  receiptType: '',
   status: '',
   pageNum: 1,
   pageSize: 20,
@@ -174,20 +254,34 @@ const dialogTitle = ref('新增入库申请')
 const formRef = ref<FormInstance>()
 const submitLoading = ref(false)
 const editId = ref<number | null>(null)
+
+// 对齐后端 ReceiptRequestDTO
 const form = reactive<ReceiptRequestDTO>({
+  requestNo: '',
+  receiptType: '',
   workOrderId: undefined,
-  requestQty: undefined,
-  qtyUnit: '',
-  requestType: '',
-  remark: '',
+  workOrderNo: '',
+  projectName: '',
+  wbsElement: '',
+  materialId: undefined,
+  materialCode: '',
+  materialName: '',
+  serialNo: '',
+  qty: undefined,
+  qualifiedQty: undefined,
+  unqualifiedQty: undefined,
+  unit: '',
+  description: '',
+  planReceiptTime: '',
 })
 
 const workOrderOptions = ref<WorkOrderVO[]>([])
 const workOrderLoading = ref(false)
 
 const rules: FormRules = {
+  receiptType: [{ required: true, message: '请选择入库类型', trigger: 'change' }],
   workOrderId: [{ required: true, message: '请选择工单', trigger: 'change' }],
-  requestQty: [{ required: true, message: '请输入申请数量', trigger: 'blur' }],
+  qty: [{ required: true, message: '请输入数量', trigger: 'blur' }],
 }
 
 async function searchWorkOrders(keyword: string) {
@@ -199,6 +293,12 @@ async function searchWorkOrders(keyword: string) {
   } finally {
     workOrderLoading.value = false
   }
+}
+
+// 选择工单时同步回填 workOrderNo
+function onWorkOrderChange(id: number) {
+  const wo = workOrderOptions.value.find((w) => w.id === id)
+  form.workOrderNo = wo?.workOrderNo ?? ''
 }
 
 async function loadList() {
@@ -219,23 +319,38 @@ function handleSearch() {
 
 function handleReset() {
   query.requestNo = ''
-  query.workOrderNo = ''
-  query.requestType = ''
+  query.workOrderId = undefined
+  query.receiptType = ''
   query.status = ''
   query.pageNum = 1
   loadList()
 }
 
+function resetForm() {
+  Object.assign(form, {
+    requestNo: '',
+    receiptType: '',
+    workOrderId: undefined,
+    workOrderNo: '',
+    projectName: '',
+    wbsElement: '',
+    materialId: undefined,
+    materialCode: '',
+    materialName: '',
+    serialNo: '',
+    qty: undefined,
+    qualifiedQty: undefined,
+    unqualifiedQty: undefined,
+    unit: '',
+    description: '',
+    planReceiptTime: '',
+  })
+}
+
 function handleAdd() {
   dialogTitle.value = '新增入库申请'
   editId.value = null
-  Object.assign(form, {
-    workOrderId: undefined,
-    requestQty: undefined,
-    qtyUnit: '',
-    requestType: '',
-    remark: '',
-  })
+  resetForm()
   workOrderOptions.value = []
   dialogVisible.value = true
 }
@@ -244,13 +359,26 @@ function handleEdit(row: ReceiptRequestVO) {
   dialogTitle.value = '编辑入库申请'
   editId.value = row.id
   Object.assign(form, {
+    requestNo: row.requestNo ?? '',
+    receiptType: row.receiptType ?? '',
     workOrderId: row.workOrderId,
-    requestQty: row.requestQty,
-    qtyUnit: row.qtyUnit ?? '',
-    requestType: row.requestType ?? '',
-    remark: row.remark ?? '',
+    workOrderNo: row.workOrderNo ?? '',
+    projectName: row.projectName ?? '',
+    wbsElement: '',
+    materialId: undefined,
+    materialCode: row.materialCode ?? '',
+    materialName: row.materialName ?? '',
+    serialNo: row.serialNo ?? '',
+    qty: row.qty,
+    qualifiedQty: row.qualifiedQty,
+    unqualifiedQty: row.unqualifiedQty,
+    unit: '',
+    description: '',
+    planReceiptTime: '',
   })
-  if (row.workOrderId) workOrderOptions.value = [{ id: row.workOrderId, workOrderNo: row.workOrderNo ?? '' } as WorkOrderVO]
+  if (row.workOrderId) {
+    workOrderOptions.value = [{ id: row.workOrderId, workOrderNo: row.workOrderNo ?? '' } as WorkOrderVO]
+  }
   dialogVisible.value = true
 }
 

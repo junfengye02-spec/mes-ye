@@ -1,0 +1,160 @@
+# ==============================================================================
+# MES 备份相关告警规则
+# ------------------------------------------------------------------------------
+# 前置条件：
+#   1. K8s 环境：已部署 kube-state-metrics（提供 kube_job_*, kube_cronjob_* 指标）
+#   2. 或者自定义 exporter：备份脚本在结束时调用 prometheus-pushgateway，
+#      推送以下指标，供本规则评估：
+#        - mes_backup_last_success_timestamp_seconds{mode="full|binlog|weekly|monthly"}
+#        - mes_backup_last_size_bytes{mode="..."}
+#        - mes_backup_last_duration_seconds{mode="..."}
+#
+#   两套机制二选一即可，本文件包含两组表达式。
+#
+# 告警分级：
+#   P0：立即人工介入（备份失败 + 演练失败）
+#   P1：小时级响应（备份超时 / 容量异常）
+#
+# 路由说明：
+#   AlertManager 按 severity 路由到值班钉钉 / 运维邮件组（见 alertmanager 配置）
+# ==============================================================================
+groups:
+
+  # ---------------- 组 1：基于 kube-state-metrics（K8s 原生） ----------------
+  - name: mes-backup-k8s
+    interval: 1m
+    rules:
+
+      # -------- 告警 1：备份 Job 失败（P0） --------
+      # 触发条件：最近 1 小时内某个 backup CronJob 至少一次 Job 失败
+      - alert: MesBackupJobFailed
+        expr: |
+          sum by (namespace, cronjob) (
+            kube_job_status_failed{namespace="mes", job_name=~".*mes-mysql-backup.*"}
+          ) > 0
+        for: 5m
+        labels:
+          severity: P0
+          category: backup
+        annotations:
+          summary: "MES 备份 Job 失败：{{ $labels.cronjob }}"
+          description: |
+            命名空间 {{ $labels.namespace }} 下的 CronJob {{ $labels.cronjob }}
+            在最近周期内至少失败了 1 次。
+            检查：kubectl -n mes logs -l app=mes-backup --tail=200
+            RTO 要求 ≤ 4h，RPO ≤ 15min；超过 1 小时未恢复将直接影响容灾能力。
+          runbook: "docs/operations/backup-restore.md#故障诊断"
+
+      # -------- 告警 2：备份超时（P1） --------
+      # 触发条件：备份 Pod 运行超过 2 小时仍未结束（活跃中）
+      - alert: MesBackupJobTimeout
+        expr: |
+          (time() -
+            max by (namespace, cronjob) (kube_job_status_start_time{namespace="mes", job_name=~".*mes-mysql-backup.*"})
+          ) > 7200
+          and
+          max by (namespace, cronjob) (kube_job_status_active{namespace="mes", job_name=~".*mes-mysql-backup.*"}) > 0
+        for: 5m
+        labels:
+          severity: P1
+          category: backup
+        annotations:
+          summary: "MES 备份 Job 运行超过 2 小时：{{ $labels.cronjob }}"
+          description: |
+            {{ $labels.cronjob }} 已经运行 {{ printf "%.0f" $value }} 秒，
+            可能是网络、IO 或 MySQL 侧慢。立即检查：
+              kubectl -n mes describe pod -l job-name=<jobName>
+            超 4 小时将直接违反 RTO。
+
+      # -------- 告警 3：备份容量异常（P1） --------
+      # 触发条件：本周期备份体积相比过去 7 天的中位数偏离 ±30%
+      # 依赖：kube_persistentvolumeclaim_status_capacity_bytes / used_bytes
+      - alert: MesBackupSizeAbnormal
+        expr: |
+          (
+            abs(
+              sum by (namespace) (kubelet_volume_stats_used_bytes{persistentvolumeclaim="mes-backup-pvc"})
+              -
+              quantile_over_time(0.5,
+                sum by (namespace) (kubelet_volume_stats_used_bytes{persistentvolumeclaim="mes-backup-pvc"})[7d:1h]
+              )
+            )
+            /
+            quantile_over_time(0.5,
+              sum by (namespace) (kubelet_volume_stats_used_bytes{persistentvolumeclaim="mes-backup-pvc"})[7d:1h]
+            )
+          ) > 0.3
+        for: 30m
+        labels:
+          severity: P1
+          category: backup
+        annotations:
+          summary: "MES 备份容量异常波动 > 30%"
+          description: |
+            备份 PVC 使用量较过去 7 天中位数偏离 {{ humanizePercentage $value }}。
+            可能原因：
+              1. 突发大表写入 → 备份暴涨
+              2. mysqldump 中途失败 → 备份缩水
+              3. 保留策略被误调整
+            建议检查 mes-backup-pvc 的最近 30 天使用趋势。
+
+  # ---------------- 组 2：基于 Pushgateway（通用 Linux/Windows） ----------------
+  # 备份脚本在完成时执行：
+  #   echo "mes_backup_last_success_timestamp_seconds{mode=\"full\"} $(date +%s)" | \
+  #     curl --data-binary @- http://pushgateway:9091/metrics/job/mes-backup/instance/<host>
+  - name: mes-backup-pushgateway
+    interval: 1m
+    rules:
+
+      # -------- 告警 1：全量备份超过 24h 未成功（P0） --------
+      - alert: MesBackupFullStale
+        expr: |
+          (time() - max(mes_backup_last_success_timestamp_seconds{mode="full"})) > 86400
+        for: 10m
+        labels:
+          severity: P0
+          category: backup
+        annotations:
+          summary: "MES 全量备份已超过 24 小时未成功"
+          description: |
+            当前距离上次成功全量已 {{ humanizeDuration $value }}，
+            远超 RPO 预期。立即执行 scripts/backup/mysql-backup.sh --mode=full
+            并排查 CronJob 是否被暂停。
+
+      # -------- 告警 2：binlog 同步延迟超过 30 分钟（P0） --------
+      - alert: MesBackupBinlogStale
+        expr: |
+          (time() - max(mes_backup_last_success_timestamp_seconds{mode="binlog"})) > 1800
+        for: 5m
+        labels:
+          severity: P0
+          category: backup
+        annotations:
+          summary: "MES binlog 同步延迟 > 30 分钟（RPO 风险）"
+          description: |
+            距离上次成功 binlog 同步已 {{ humanizeDuration $value }}。
+            目标 RPO ≤ 15 分钟；持续延迟意味着数据可能永久丢失。
+            立即：
+              1. 检查网络到 MySQL 主库和 MinIO 的连通性
+              2. mysqlbinlog --read-from-remote-server 手工拉一次验证
+              3. 必要时切换到 MySQL 从库作为 binlog 来源
+
+      # -------- 告警 3：备份体积异常（P1） --------
+      # 与上一次成功备份相比体积变化超过 30%
+      - alert: MesBackupSizeDrift
+        expr: |
+          (
+            abs(mes_backup_last_size_bytes{mode="full"}
+                - (mes_backup_last_size_bytes{mode="full"} offset 1d))
+            /
+            (mes_backup_last_size_bytes{mode="full"} offset 1d)
+          ) > 0.3
+        for: 30m
+        labels:
+          severity: P1
+          category: backup
+        annotations:
+          summary: "MES 全量备份体积单日波动 > 30%"
+          description: |
+            今日全量备份 {{ humanize $value }} B，较昨日偏离 {{ humanizePercentage $value }}。
+            可能：业务数据激增 / dump 异常截断 / 表被误删。请核对。

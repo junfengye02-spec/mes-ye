@@ -1,6 +1,6 @@
 <template>
   <div class="requisition-list">
-    <el-card shadow="never" class="search-card">
+    <el-card shadow="never" class="search-card" role="search" aria-label="生产领料查询条件">
       <el-form :model="query" inline @submit.prevent="handleSearch">
         <el-form-item label="领料单号">
           <el-input v-model="query.requisitionNo" placeholder="请输入" clearable style="width: 160px" />
@@ -23,10 +23,10 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon> 查询
+            <el-icon aria-hidden="true"><Search /></el-icon> 查询
           </el-button>
           <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon> 重置
+            <el-icon aria-hidden="true"><Refresh /></el-icon> 重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -34,14 +34,21 @@
 
     <el-card shadow="never">
       <template #header>
-        <div class="table-header">
+        <div class="table-header" role="toolbar" aria-label="生产领料操作工具栏">
           <span>生产领料列表</span>
           <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon> 新增
+            <el-icon aria-hidden="true"><Plus /></el-icon> 新增
           </el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="list" border stripe>
+      <el-table
+        v-loading="loading"
+        :data="list"
+        border
+        stripe
+        role="region"
+        aria-label="生产领料列表"
+      >
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="requisitionNo" label="领料单号" min-width="140" />
         <el-table-column prop="workOrderNo" label="工单号" min-width="120" />
@@ -66,7 +73,7 @@
         </el-table-column>
       </el-table>
       <el-empty v-if="!loading && list.length === 0" description="暂无数据" />
-      <div class="pagination-wrapper">
+      <nav class="pagination-wrapper" aria-label="生产领料分页">
         <el-pagination
           v-model:current-page="query.pageNum"
           v-model:page-size="query.pageSize"
@@ -76,7 +83,7 @@
           @size-change="loadList"
           @current-change="loadList"
         />
-      </div>
+      </nav>
     </el-card>
 
     <el-dialog

@@ -1,5 +1,6 @@
 package com.mes.admin.domain.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -24,4 +25,19 @@ public class LoginDTO {
      * 命中多个租户同名账号时直接报 "请指定租户"。</p>
      */
     private String tenantCode;
+
+    /**
+     * 图形验证码 key（P1-14）。
+     * <p>由 {@code /auth/captcha} 接口返回，答案存于 Redis 5 分钟。
+     * 当 Redis 中 {@code auth:captcha:required:{tenantCode}:{username}=true} 时，
+     * 该字段变为必填；否则可留空。</p>
+     */
+    @Schema(description = "图形验证码 key（/auth/captcha 返回），失败 3 次后必填")
+    private String captchaKey;
+
+    /**
+     * 图形验证码答案（P1-14）
+     */
+    @Schema(description = "图形验证码答案，失败 3 次后必填")
+    private String captchaCode;
 }

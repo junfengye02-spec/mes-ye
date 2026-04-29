@@ -1,0 +1,21 @@
+# prometheus-webhook-dingtalk 配置
+# 将 AlertManager 的 webhook 请求转成钉钉/飞书 markdown 卡片格式
+# 钉钉机器人 webhook 通过 env 注入
+targets:
+  p0:
+    # P0 值班钉钉群机器人
+    url: ${DINGTALK_ROBOT_P0_URL}
+    mention:
+      all: true
+    message:
+      title: "[MES-P0] {{ template \"ding.link.title\" . }}"
+      text: |
+        {{ template \"ding.link.content\" . }}
+
+  p1:
+    # P1 日常钉钉群机器人
+    url: ${DINGTALK_ROBOT_P1_URL}
+    message:
+      title: "[MES-P1] {{ template \"ding.link.title\" . }}"
+      text: |
+        {{ template \"ding.link.content\" . }}

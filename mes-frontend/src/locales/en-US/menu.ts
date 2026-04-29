@@ -1,0 +1,83 @@
+export default {
+  basic: {
+    _title: 'Master Data',
+    material: 'Material Profile',
+    materialPrice: 'Material Price',
+    workCenter: 'Work Center',
+  },
+  team: {
+    _title: 'Team',
+    productionTeam: 'Production Team',
+  },
+  process: {
+    _title: 'Process',
+    instruction: 'Instruction',
+    template: 'Process Template',
+    info: 'Process Info',
+    workInstruction: 'Work Instruction',
+    sprayCondition: 'Spray Conditions',
+    machiningProgram: 'Machining Program',
+    bom: 'Manufacturing BOM',
+  },
+  plan: {
+    _title: 'Plan',
+    order: 'Order Plan',
+    production: 'Production Plan',
+  },
+  workorder: {
+    _title: 'Work Order',
+    list: 'Work Order List',
+  },
+  dispatch: {
+    _title: 'Dispatch',
+    task: 'Dispatch Task',
+  },
+  abnormal: {
+    _title: 'Abnormal',
+    contact: 'Abnormal Contact',
+  },
+  quality: {
+    _title: 'Quality',
+    recheck: 'Recheck Request',
+    workStartCheck: 'Work Start Check',
+    orderStartCheck: 'Order Start Check',
+    shiftHandover: 'Shift Handover',
+  },
+  query: {
+    _title: 'Query',
+    workStatus: 'Work Status View',
+    productionWork: 'Production Work Query',
+    inspectionWork: 'Inspection Work Query',
+    workStartCheck: 'Work Start Check Query',
+    orderStartCheck: 'Order Start Check Query',
+    shiftHandover: 'Shift Handover Query',
+    workOrder: 'Work Order Query',
+    dispatchWork: 'Dispatch Work Query',
+  },
+  materialMgmt: {
+    _title: 'Material Mgmt',
+    inventory: 'Storage Inventory',
+    requisition: 'Material Requisition',
+    requisitionOrder: 'Material Pick List',
+    receiptRequest: 'Receipt Request',
+    receipt: 'Receipt',
+    return: 'Material Return',
+    deliverySign: 'Delivery Sign-off',
+  },
+  aps: {
+    _title: 'APS Integration',
+    syncConfig: 'Sync Config',
+    syncLog: 'Sync Log',
+    dataMapping: 'Data Mapping',
+  },
+  system: {
+    _title: 'System',
+    user: 'Users',
+    role: 'Roles',
+    menu: 'Menus',
+  },
+  platform: {
+    _title: 'Platform',
+    tenants: 'Tenants',
+  },
+}

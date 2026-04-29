@@ -1,5 +1,9 @@
 services:
-  # ==================== MySQL Cluster ====================
+  # ========================================================================
+  # MySQL 主从复制（主数据库 + 只读从库）
+  # 生产环境建议：使用 MHA / Orchestrator / MGR（MySQL Group Replication）
+  # 或托管 RDS（阿里云 RDS / AWS Aurora）以获得更强的故障切换能力。
+  # ========================================================================
   mysql-primary:
     image: mysql:8.0
     container_name: mes-mysql-primary
@@ -48,13 +52,14 @@ services:
       timeout: 5s
       retries: 10
 
-  # ==================== Redis Sentinel ====================
-  # 注意：所有 Redis 节点与哨兵共用同一个 REDIS_PASSWORD；
+  # ========================================================================
+  # Redis Sentinel（主从 + 3 个哨兵）
+  # 所有 Redis 节点与哨兵共用同一个 REDIS_PASSWORD；
   # 由 shell 运行时拼入 conf，避免把明文密码写入挂载文件。
+  # ========================================================================
   redis-master:
     image: redis:7-alpine
     container_name: mes-redis-master
-    # 仅对内部网络暴露；如需本地调试可临时打开 127.0.0.1:6379:6379
     expose:
       - "6379"
     environment:
@@ -186,43 +191,150 @@ services:
     networks:
       - mes-net
 
-  # ==================== RabbitMQ ====================
-  rabbitmq:
-    image: rabbitmq:3.13-management
-    container_name: mes-rabbitmq
+  # ========================================================================
+  # RabbitMQ 3 节点集群（P1-16 HA 改造）
+  # 关键设计：
+  #   1) 所有节点共享同一个 RABBITMQ_ERLANG_COOKIE（节点间身份互信）
+  #   2) rabbitmq-1 为磁盘节点（seed），rabbitmq-2/3 自动 join_cluster
+  #   3) 通过 definitions.json 自动导入镜像队列 policy（ha-mode: all）
+  #   4) 客户端（mes-backend/*-service）使用 addresses 多地址连接，
+  #      单节点故障时 Spring AMQP 自动重连到可用节点
+  # 镜像说明：使用 bitnami/rabbitmq 以便通过环境变量一键组集群。
+  # 若组织规范必须用官方 rabbitmq:3.13-management，则需要自写 entrypoint
+  # 脚本执行 rabbitmqctl stop_app -> join_cluster -> start_app。
+  # ========================================================================
+  rabbitmq-1:
+    image: bitnami/rabbitmq:3.13
+    container_name: mes-rabbitmq-1
+    hostname: rabbitmq-1
     environment:
-      RABBITMQ_DEFAULT_USER: mes
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-mes_rabbitmq_2024}
-      RABBITMQ_DEFAULT_VHOST: mes
+      # 节点身份
+      RABBITMQ_NODE_NAME: rabbit@rabbitmq-1
+      RABBITMQ_NODE_TYPE: stats
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:?RABBITMQ_ERLANG_COOKIE is required, >=32 random chars}
+      # 默认用户/vhost
+      RABBITMQ_USERNAME: mes
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      RABBITMQ_VHOST: mes
+      # 启动时自动加载 policy/queue/exchange 定义
+      RABBITMQ_LOAD_DEFINITIONS: "yes"
+      RABBITMQ_DEFINITIONS_FILE: /opt/bitnami/rabbitmq/etc/rabbitmq/definitions.json
+      # Prometheus exporter 端口
+      RABBITMQ_PLUGINS: rabbitmq_management,rabbitmq_prometheus,rabbitmq_peer_discovery_classic_config
+      TZ: Asia/Shanghai
     ports:
-      - "5672:5672"
-      - "15672:15672"
-      - "15692:15692"
+      - "5672:5672"      # AMQP
+      - "15672:15672"    # 管理台
+      - "15692:15692"    # Prometheus
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq1_data:/bitnami/rabbitmq/mnesia
+      - ./rabbitmq/definitions.json:/opt/bitnami/rabbitmq/etc/rabbitmq/definitions.json:ro
+      # M9-P3-11: Quorum Queue 迁移，挂载 rabbitmq.conf
+      - ./rabbitmq/rabbitmq.conf:/bitnami/rabbitmq/conf/custom.conf:ro
     networks:
       - mes-net
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 15s
       timeout: 10s
-      retries: 5
+      retries: 10
+      start_period: 60s
 
-  # ==================== Nacos ====================
-  nacos:
-    image: nacos/nacos-server:v2.3.2
-    container_name: mes-nacos
+  rabbitmq-2:
+    image: bitnami/rabbitmq:3.13
+    container_name: mes-rabbitmq-2
+    hostname: rabbitmq-2
     environment:
-      MODE: standalone
+      RABBITMQ_NODE_NAME: rabbit@rabbitmq-2
+      RABBITMQ_NODE_TYPE: queue-disc
+      RABBITMQ_CLUSTER_NODE_NAME: rabbit@rabbitmq-1
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:?RABBITMQ_ERLANG_COOKIE is required}
+      RABBITMQ_USERNAME: mes
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      RABBITMQ_VHOST: mes
+      RABBITMQ_PLUGINS: rabbitmq_management,rabbitmq_prometheus,rabbitmq_peer_discovery_classic_config
+      TZ: Asia/Shanghai
+    volumes:
+      - rabbitmq2_data:/bitnami/rabbitmq/mnesia
+      # M9-P3-11: Quorum Queue 迁移，挂载 rabbitmq.conf
+      - ./rabbitmq/rabbitmq.conf:/bitnami/rabbitmq/conf/custom.conf:ro
+    depends_on:
+      rabbitmq-1:
+        condition: service_healthy
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  rabbitmq-3:
+    image: bitnami/rabbitmq:3.13
+    container_name: mes-rabbitmq-3
+    hostname: rabbitmq-3
+    environment:
+      RABBITMQ_NODE_NAME: rabbit@rabbitmq-3
+      RABBITMQ_NODE_TYPE: queue-disc
+      RABBITMQ_CLUSTER_NODE_NAME: rabbit@rabbitmq-1
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:?RABBITMQ_ERLANG_COOKIE is required}
+      RABBITMQ_USERNAME: mes
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      RABBITMQ_VHOST: mes
+      RABBITMQ_PLUGINS: rabbitmq_management,rabbitmq_prometheus,rabbitmq_peer_discovery_classic_config
+      TZ: Asia/Shanghai
+    volumes:
+      - rabbitmq3_data:/bitnami/rabbitmq/mnesia
+      # M9-P3-11: Quorum Queue 迁移，挂载 rabbitmq.conf
+      - ./rabbitmq/rabbitmq.conf:/bitnami/rabbitmq/conf/custom.conf:ro
+    depends_on:
+      rabbitmq-1:
+        condition: service_healthy
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ========================================================================
+  # Nacos 3 节点集群（P1-16 HA 改造）
+  # 关键设计：
+  #   1) MODE=cluster，SPRING_DATASOURCE_PLATFORM=mysql（持久化到 MySQL）
+  #   2) NACOS_SERVERS 列出所有节点，3 个节点互相发现
+  #   3) 启用鉴权（NACOS_AUTH_ENABLE=true），通过 NACOS_AUTH_TOKEN 互相信任
+  #   4) 客户端连接 nacos-1:8848,nacos-2:8848,nacos-3:8848 逗号分隔
+  # 数据源：全部连同一个 mysql-primary 的 nacos_config 库（Nacos 自建表）
+  # ========================================================================
+  nacos-1:
+    image: nacos/nacos-server:v2.3.2
+    container_name: mes-nacos-1
+    hostname: nacos-1
+    restart: unless-stopped
+    environment:
+      MODE: cluster
+      PREFER_HOST_MODE: hostname
+      NACOS_SERVERS: nacos-1:8848 nacos-2:8848 nacos-3:8848
       SPRING_DATASOURCE_PLATFORM: mysql
       MYSQL_SERVICE_HOST: mysql-primary
       MYSQL_SERVICE_PORT: 3306
       MYSQL_SERVICE_USER: root
-      MYSQL_SERVICE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-12345678}
+      MYSQL_SERVICE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
       MYSQL_SERVICE_DB_NAME: nacos_config
-      JVM_XMS: 256m
-      JVM_XMX: 512m
-      NACOS_AUTH_ENABLE: "false"
+      MYSQL_SERVICE_DB_PARAM: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true"
+      JVM_XMS: 512m
+      JVM_XMX: 1g
+      JVM_XMN: 256m
+      # ---- 鉴权：生产必须开启 ----
+      NACOS_AUTH_ENABLE: "true"
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:?NACOS_AUTH_TOKEN is required, base64 of >=32 random bytes}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:-serverIdentity}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:-mes-nacos-security}
+      NACOS_AUTH_CACHE_ENABLE: "true"
+      TZ: Asia/Shanghai
     ports:
       - "8848:8848"
       - "9848:9848"
@@ -232,12 +344,101 @@ services:
     networks:
       - mes-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8848/nacos/actuator/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8848/nacos/actuator/health"]
       interval: 15s
       timeout: 10s
-      retries: 10
+      retries: 20
+      start_period: 90s
 
-  # ==================== Backend (Multi-Instance) ====================
+  nacos-2:
+    image: nacos/nacos-server:v2.3.2
+    container_name: mes-nacos-2
+    hostname: nacos-2
+    restart: unless-stopped
+    environment:
+      MODE: cluster
+      PREFER_HOST_MODE: hostname
+      NACOS_SERVERS: nacos-1:8848 nacos-2:8848 nacos-3:8848
+      SPRING_DATASOURCE_PLATFORM: mysql
+      MYSQL_SERVICE_HOST: mysql-primary
+      MYSQL_SERVICE_PORT: 3306
+      MYSQL_SERVICE_USER: root
+      MYSQL_SERVICE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      MYSQL_SERVICE_DB_NAME: nacos_config
+      MYSQL_SERVICE_DB_PARAM: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true"
+      JVM_XMS: 512m
+      JVM_XMX: 1g
+      JVM_XMN: 256m
+      NACOS_AUTH_ENABLE: "true"
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:?NACOS_AUTH_TOKEN is required}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:-serverIdentity}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:-mes-nacos-security}
+      NACOS_AUTH_CACHE_ENABLE: "true"
+      TZ: Asia/Shanghai
+    ports:
+      - "8849:8848"
+      - "9849:9848"
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+      nacos-1:
+        condition: service_started
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8848/nacos/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+
+  nacos-3:
+    image: nacos/nacos-server:v2.3.2
+    container_name: mes-nacos-3
+    hostname: nacos-3
+    restart: unless-stopped
+    environment:
+      MODE: cluster
+      PREFER_HOST_MODE: hostname
+      NACOS_SERVERS: nacos-1:8848 nacos-2:8848 nacos-3:8848
+      SPRING_DATASOURCE_PLATFORM: mysql
+      MYSQL_SERVICE_HOST: mysql-primary
+      MYSQL_SERVICE_PORT: 3306
+      MYSQL_SERVICE_USER: root
+      MYSQL_SERVICE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      MYSQL_SERVICE_DB_NAME: nacos_config
+      MYSQL_SERVICE_DB_PARAM: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true"
+      JVM_XMS: 512m
+      JVM_XMX: 1g
+      JVM_XMN: 256m
+      NACOS_AUTH_ENABLE: "true"
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:?NACOS_AUTH_TOKEN is required}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:-serverIdentity}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:-mes-nacos-security}
+      NACOS_AUTH_CACHE_ENABLE: "true"
+      TZ: Asia/Shanghai
+    ports:
+      - "8850:8848"
+      - "9850:9848"
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+      nacos-1:
+        condition: service_started
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8848/nacos/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+
+  # ========================================================================
+  # 后端单体实例（保留兼容）
+  # 说明：nacos.server-addr / rabbitmq.addresses 全部升级为多节点地址；
+  #       当 HA 集群以"单体 + 多实例"方式部署时，使用 mes-backend-1/2。
+  # ========================================================================
   mes-backend-1:
     build:
       context: ./mes-backend
@@ -251,11 +452,15 @@ services:
       SPRING_DATA_REDIS_SENTINEL_MASTER: mes-redis-master
       SPRING_DATA_REDIS_SENTINEL_NODES: redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
+      # 多节点 RabbitMQ 地址（Spring AMQP 自动故障转移）
+      SPRING_RABBITMQ_ADDRESSES: rabbitmq-1:5672,rabbitmq-2:5672,rabbitmq-3:5672
       SPRING_RABBITMQ_USERNAME: mes
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
       SPRING_RABBITMQ_VIRTUAL_HOST: mes
+      # 多节点 Nacos 地址（Nacos 客户端内置 failover）
+      NACOS_SERVER_ADDR: nacos-1:8848,nacos-2:8848,nacos-3:8848
+      SPRING_CLOUD_NACOS_DISCOVERY_USERNAME: ${NACOS_USERNAME:-nacos}
+      SPRING_CLOUD_NACOS_DISCOVERY_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
       SERVER_PORT: 9090
       TZ: Asia/Shanghai
@@ -266,7 +471,9 @@ services:
         condition: service_healthy
       redis-master:
         condition: service_healthy
-      rabbitmq:
+      rabbitmq-1:
+        condition: service_healthy
+      nacos-1:
         condition: service_healthy
     networks:
       - mes-net
@@ -284,11 +491,13 @@ services:
       SPRING_DATA_REDIS_SENTINEL_MASTER: mes-redis-master
       SPRING_DATA_REDIS_SENTINEL_NODES: redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_ADDRESSES: rabbitmq-1:5672,rabbitmq-2:5672,rabbitmq-3:5672
       SPRING_RABBITMQ_USERNAME: mes
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
       SPRING_RABBITMQ_VIRTUAL_HOST: mes
+      NACOS_SERVER_ADDR: nacos-1:8848,nacos-2:8848,nacos-3:8848
+      SPRING_CLOUD_NACOS_DISCOVERY_USERNAME: ${NACOS_USERNAME:-nacos}
+      SPRING_CLOUD_NACOS_DISCOVERY_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
       SERVER_PORT: 9090
       TZ: Asia/Shanghai
@@ -299,12 +508,132 @@ services:
         condition: service_healthy
       redis-master:
         condition: service_healthy
-      rabbitmq:
+      rabbitmq-1:
+        condition: service_healthy
+      nacos-1:
         condition: service_healthy
     networks:
       - mes-net
 
-  # ==================== Frontend (Nginx LB) ====================
+  # ========================================================================
+  # mes-gateway 2 实例（P1-16 HA 改造）
+  # 关键设计：
+  #   1) 两个副本名字 mes-gateway-1 / mes-gateway-2，共享一套 Nacos/Redis
+  #   2) 走 Nacos 注册，下游服务发现由 gateway 内置 lb://xxx 负载
+  #   3) 容器内 8080，外面 nginx-gateway-lb 负责对外 80->8080 LB
+  #   4) JWT 无状态，不需要 session affinity（sticky session）
+  # 副本数生产建议 3+；此处模板保留 2 个最小副本示意。
+  # 如切换 k8s 部署，可用 Deployment.replicas: 2+ 的声明等价表达。
+  # ========================================================================
+  mes-gateway-1:
+    build:
+      context: ./mes-backend
+      dockerfile: Dockerfile
+      target: mes-gateway
+    container_name: mes-gateway-1
+    restart: unless-stopped
+    environment:
+      NACOS_SERVER_ADDR: nacos-1:8848,nacos-2:8848,nacos-3:8848
+      SPRING_CLOUD_NACOS_DISCOVERY_USERNAME: ${NACOS_USERNAME:-nacos}
+      SPRING_CLOUD_NACOS_DISCOVERY_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      SPRING_DATA_REDIS_SENTINEL_MASTER: mes-redis-master
+      SPRING_DATA_REDIS_SENTINEL_NODES: redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
+      JAVA_OPTS: "-Xms512m -Xmx1024m"
+      TZ: Asia/Shanghai
+    depends_on:
+      nacos-1:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  mes-gateway-2:
+    build:
+      context: ./mes-backend
+      dockerfile: Dockerfile
+      target: mes-gateway
+    container_name: mes-gateway-2
+    restart: unless-stopped
+    environment:
+      NACOS_SERVER_ADDR: nacos-1:8848,nacos-2:8848,nacos-3:8848
+      SPRING_CLOUD_NACOS_DISCOVERY_USERNAME: ${NACOS_USERNAME:-nacos}
+      SPRING_CLOUD_NACOS_DISCOVERY_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      SPRING_DATA_REDIS_SENTINEL_MASTER: mes-redis-master
+      SPRING_DATA_REDIS_SENTINEL_NODES: redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
+      JAVA_OPTS: "-Xms512m -Xmx1024m"
+      TZ: Asia/Shanghai
+    depends_on:
+      nacos-1:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # ========================================================================
+  # nginx-gateway-lb：mes-gateway 前的 4 层/7 层负载均衡
+  # 作用：
+  #   - 对外暴露 8080 端口，内部以 least_conn 策略分发到 mes-gateway-1/2
+  #   - 做健康检查（被动剔除故障副本）
+  #   - 若使用 k8s，可用 Service（ClusterIP/LoadBalancer）+ Ingress 等价替代
+  #   - 若使用云厂商 SLB/ALB，也可以直接指向 gateway 副本的 Pod/ECS
+  # Traefik 替代方案（示意）：
+  #   services:
+  #     traefik:
+  #       image: traefik:v2.11
+  #       command:
+  #         - "--providers.docker=true"
+  #         - "--entrypoints.web.address=:8080"
+  # ========================================================================
+  nginx-gateway-lb:
+    image: nginx:1.27-alpine
+    container_name: mes-gateway-lb
+    restart: unless-stopped
+    # M9-P3-13: master 降权到 nginx 用户（alpine 镜像 uid=101）
+    # gateway-lb.conf 已经 listen 8080，不涉及特权端口
+    user: "101:101"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx/gateway-lb.conf:/etc/nginx/conf.d/default.conf:ro
+      # 挂载 override conf 将 pid/临时目录迁移到 /tmp，避免非 root 写 /var/run 权限失败
+      - ./nginx/nginx-nonroot.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      mes-gateway-1:
+        condition: service_started
+      mes-gateway-2:
+        condition: service_started
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ========================================================================
+  # 前端（nginx 静态站点）
+  # HA 场景下前端 nginx 仍以 backend-1/2 为后端；
+  # 若升级到「gateway + 微服务」架构，请把 nginx.ha.conf 里 upstream
+  # 的目标改为 nginx-gateway-lb:8080。
+  # ========================================================================
   mes-frontend:
     build:
       context: ./mes-frontend
@@ -312,15 +641,23 @@ services:
       args:
         NGINX_CONF: nginx.ha.conf
     container_name: mes-frontend
+    # M9-P3-13: 主进程 appuser(10001)，容器内 listen 8080；host:80 -> container:8080
     ports:
-      - "80:80"
+      - "80:8080"
     depends_on:
       - mes-backend-1
       - mes-backend-2
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
     networks:
       - mes-net
 
-  # ==================== Monitoring ====================
+  # ========================================================================
+  # 监控
+  # ========================================================================
   prometheus:
     image: prom/prometheus:latest
     container_name: mes-prometheus
@@ -350,7 +687,9 @@ services:
     networks:
       - mes-net
 
-  # ==================== Exporters ====================
+  # ========================================================================
+  # Exporters
+  # ========================================================================
   mysql-exporter:
     image: prom/mysqld-exporter:latest
     container_name: mes-mysql-exporter
@@ -379,7 +718,9 @@ volumes:
   redis_master_data:
   redis_slave1_data:
   redis_slave2_data:
-  rabbitmq_data:
+  rabbitmq1_data:
+  rabbitmq2_data:
+  rabbitmq3_data:
   prometheus_data:
   grafana_data:
   uploads:

@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -28,12 +29,14 @@ public class InstructionController {
 
     @Operation(summary = "分页查询指示书")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('process:instruction:list')")
     public R<PageResult<InstructionVO>> page(InstructionQuery query) {
         return R.ok(instructionService.page(query));
     }
 
     @Operation(summary = "获取指示书详情（含阶段+序列号）")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:instruction:detail')")
     public R<InstructionVO> getDetail(
             @Parameter(description = "指示书ID") @PathVariable Long id) {
         return R.ok(instructionService.getDetail(id));
@@ -41,12 +44,14 @@ public class InstructionController {
 
     @Operation(summary = "新增指示书")
     @PostMapping
+    @PreAuthorize("hasAuthority('process:instruction:create')")
     public R<Long> create(@Valid @RequestBody InstructionDTO dto) {
         return R.ok("新增成功", instructionService.create(dto));
     }
 
     @Operation(summary = "修改指示书")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:instruction:update')")
     public R<Void> update(
             @Parameter(description = "指示书ID") @PathVariable Long id,
             @Valid @RequestBody InstructionDTO dto) {
@@ -56,6 +61,7 @@ public class InstructionController {
 
     @Operation(summary = "删除指示书")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:instruction:delete')")
     public R<Void> delete(
             @Parameter(description = "指示书ID") @PathVariable Long id) {
         instructionService.delete(id);
@@ -64,6 +70,7 @@ public class InstructionController {
 
     @Operation(summary = "版本升级")
     @PostMapping("/{id}/upgrade")
+    @PreAuthorize("hasAuthority('process:instruction:upgrade')")
     public R<Long> upgrade(
             @Parameter(description = "指示书ID") @PathVariable Long id) {
         return R.ok("升级成功", instructionService.upgrade(id));
@@ -71,6 +78,7 @@ public class InstructionController {
 
     @Operation(summary = "查询流程日志")
     @GetMapping("/{id}/flow-logs")
+    @PreAuthorize("hasAuthority('process:instruction:detail')")
     public R<PageResult<InstructionFlowLogVO>> getFlowLogs(
             @Parameter(description = "指示书ID") @PathVariable Long id,
             PageQuery query) {

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,18 +29,21 @@ public class ApsSyncConfigController {
 
     @Operation(summary = "分页查询同步配置")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('aps:syncConfig:list')")
     public R<PageResult<ApsSyncConfigVO>> page(ApsSyncConfigQuery query) {
         return R.ok(apsSyncConfigService.page(query));
     }
 
     @Operation(summary = "获取全部同步配置")
     @GetMapping("/list")
+    @PreAuthorize("hasAuthority('aps:syncConfig:list')")
     public R<List<ApsSyncConfigVO>> listAll() {
         return R.ok(apsSyncConfigService.listAll());
     }
 
     @Operation(summary = "获取配置详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('aps:syncConfig:detail')")
     public R<ApsSyncConfigVO> getDetail(
             @Parameter(description = "配置ID") @PathVariable Long id) {
         return R.ok(apsSyncConfigService.getDetail(id));
@@ -47,12 +51,14 @@ public class ApsSyncConfigController {
 
     @Operation(summary = "新增配置")
     @PostMapping
+    @PreAuthorize("hasAuthority('aps:syncConfig:create')")
     public R<Long> create(@Valid @RequestBody ApsSyncConfigDTO dto) {
         return R.ok("新增成功", apsSyncConfigService.create(dto));
     }
 
     @Operation(summary = "修改配置")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('aps:syncConfig:update')")
     public R<Void> update(
             @Parameter(description = "配置ID") @PathVariable Long id,
             @Valid @RequestBody ApsSyncConfigDTO dto) {
@@ -62,6 +68,7 @@ public class ApsSyncConfigController {
 
     @Operation(summary = "删除配置")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('aps:syncConfig:delete')")
     public R<Void> delete(
             @Parameter(description = "配置ID") @PathVariable Long id) {
         apsSyncConfigService.delete(id);

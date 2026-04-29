@@ -1,0 +1,25 @@
+export default {
+  title: 'Material Mgmt',
+  inventoryTitle: 'Storage Inventory',
+  receiptTitle: 'Receipt',
+  receiptRequestTitle: 'Receipt Request',
+  requisitionTitle: 'Material Requisition',
+  returnTitle: 'Material Return',
+  deliverySignTitle: 'Delivery Sign-off',
+  fields: {
+    materialCode: 'Material Code',
+    materialName: 'Material Name',
+    spec: 'Spec',
+    unit: 'Unit',
+    qty: 'Qty',
+    location: 'Location',
+    batchNo: 'Batch No.',
+    workOrderNo: 'Related Work Order',
+  },
+  actions: {
+    approve: 'Approve',
+    receive: 'Receive',
+    issue: 'Issue',
+    return: 'Return',
+  },
+}

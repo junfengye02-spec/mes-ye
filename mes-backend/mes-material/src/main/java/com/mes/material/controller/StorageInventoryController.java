@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,12 +27,14 @@ public class StorageInventoryController {
 
     @Operation(summary = "分页查询库存")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('material:inventory:list')")
     public R<PageResult<StorageInventoryVO>> page(StorageInventoryQuery query) {
         return R.ok(storageInventoryService.page(query));
     }
 
     @Operation(summary = "获取库存详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('material:inventory:detail')")
     public R<StorageInventoryVO> getDetail(
             @Parameter(description = "库存ID") @PathVariable Long id) {
         return R.ok(storageInventoryService.getDetail(id));
@@ -39,12 +42,14 @@ public class StorageInventoryController {
 
     @Operation(summary = "新增库存")
     @PostMapping
+    @PreAuthorize("hasAuthority('material:inventory:create')")
     public R<Long> create(@Valid @RequestBody StorageInventoryDTO dto) {
         return R.ok("新增成功", storageInventoryService.create(dto));
     }
 
     @Operation(summary = "修改库存")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('material:inventory:update')")
     public R<Void> update(
             @Parameter(description = "库存ID") @PathVariable Long id,
             @Valid @RequestBody StorageInventoryDTO dto) {

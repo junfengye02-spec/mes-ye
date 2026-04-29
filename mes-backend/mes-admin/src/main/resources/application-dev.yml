@@ -67,3 +67,39 @@ resilience4j:
       apsRetry:
         max-attempts: 3
         wait-duration: 5s
+  # P2-26 X-31 降级用：当 Sentinel 不可用时，可以通过开关把限流落回 Resilience4j RateLimiter
+  ratelimiter:
+    instances:
+      authLoginFallback:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 0s
+      fileUploadFallback:
+        limit-for-period: 5
+        limit-refresh-period: 1s
+        timeout-duration: 0s
+
+# ==================== P2-26 Sentinel 限流熔断（dev）====================
+# dev 环境直接使用内存规则（SentinelRuleInitializer 启动时加载），不接 Nacos / Dashboard
+# 关键资源阈值：
+#   auth:login        每 IP 10 QPS
+#   file:upload       每租户 5 QPS
+#   workorder:list    单机 200 QPS
+#   dispatch:task:page 单机 200 QPS
+#   any:export        每租户 1 QPS
+mes:
+  sentinel:
+    enabled: true
+
+spring:
+  cloud:
+    sentinel:
+      # dev 关闭 CommonFilter，避免和 Spring Security / 租户限流 Filter 产生过滤器顺序冲突
+      filter:
+        enabled: false
+      # dev 不对接 Dashboard，规则用代码里 SentinelRuleInitializer 初始化
+      eager: false
+      transport:
+        dashboard: ""
+      log:
+        dir: ./logs/sentinel

@@ -1,0 +1,118 @@
+# ===============================================================
+# Prometheus 主配置（集成告警栈版）
+# 区别于 monitoring/prometheus.yml（单体）和 monitoring/prometheus-microservice.yml（微服务）：
+#   - 本文件整合 3 套部署形态的采集目标（单体 mes-admin + 微服务各模块 + 网关）
+#   - 加载 rules/ 目录下所有 *.yml 告警规则
+#   - 指向 AlertManager 路由
+# 使用：通过 docker-compose.monitoring.yml 挂载
+# ===============================================================
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: mes
+    env: ${MES_ENV:-dev}
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+      # 告警投递失败时 Prometheus 本地会缓存，避免抖动
+      timeout: 10s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # ---- Prometheus 自身 ----
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ---- 宿主机指标（Node Exporter） ----
+  - job_name: node-exporter
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          role: host
+
+  # ---- 容器指标（cAdvisor） ----
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          role: container
+
+  # ---- MES 单体（mes-admin） ----
+  - job_name: mes-admin
+    metrics_path: /api/actuator/prometheus
+    static_configs:
+      - targets: ['mes-backend:9090']
+        labels:
+          component: backend
+          mode: monolith
+    honor_labels: true
+    # 如果 actuator 已加鉴权（P0 漏洞修复后），按需打开 basic_auth
+    # basic_auth:
+    #   username: ${ACTUATOR_USER}
+    #   password: ${ACTUATOR_PASSWORD}
+
+  # ---- MES HA 双实例 ----
+  - job_name: mes-backend-ha
+    metrics_path: /api/actuator/prometheus
+    static_configs:
+      - targets: ['mes-backend-1:9090', 'mes-backend-2:9090']
+        labels:
+          component: backend
+          mode: ha
+
+  # ---- MES 网关 ----
+  - job_name: mes-gateway
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['mes-gateway:8080']
+        labels:
+          component: gateway
+
+  # ---- MES 微服务 ----
+  - job_name: mes-microservices
+    metrics_path: /api/actuator/prometheus
+    static_configs:
+      - targets: ['mes-system-service:9001']
+        labels: { component: microservice, service: system }
+      - targets: ['mes-master-data-service:9002']
+        labels: { component: microservice, service: master-data }
+      - targets: ['mes-production-service:9003']
+        labels: { component: microservice, service: production }
+      - targets: ['mes-quality-service:9004']
+        labels: { component: microservice, service: quality }
+      - targets: ['mes-material-service:9005']
+        labels: { component: microservice, service: material }
+      - targets: ['mes-integration-service:9006']
+        labels: { component: microservice, service: integration }
+      - targets: ['mes-query-service:9007']
+        labels: { component: microservice, service: query }
+
+  # ---- 中间件：MySQL / Redis / RabbitMQ / Nacos / MinIO ----
+  - job_name: mysql
+    static_configs:
+      - targets: ['mysql-exporter:9104']
+
+  - job_name: redis
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  - job_name: rabbitmq
+    static_configs:
+      - targets: ['rabbitmq:15692']
+
+  - job_name: nacos
+    metrics_path: /nacos/actuator/prometheus
+    static_configs:
+      - targets: ['nacos:8848']
+
+  - job_name: minio
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ['minio:9000']

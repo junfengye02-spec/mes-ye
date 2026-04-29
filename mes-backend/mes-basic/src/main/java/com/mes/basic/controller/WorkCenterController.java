@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,12 +27,14 @@ public class WorkCenterController {
 
     @Operation(summary = "分页查询工作中心")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('basic:workCenter:list')")
     public R<PageResult<WorkCenterVO>> page(WorkCenterQuery query) {
         return R.ok(workCenterService.page(query));
     }
 
     @Operation(summary = "获取工作中心详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('basic:workCenter:detail')")
     public R<WorkCenterVO> getDetail(
             @Parameter(description = "工作中心ID") @PathVariable Long id) {
         return R.ok(workCenterService.getDetail(id));
@@ -39,12 +42,14 @@ public class WorkCenterController {
 
     @Operation(summary = "新增工作中心")
     @PostMapping
+    @PreAuthorize("hasAuthority('basic:workCenter:create')")
     public R<Long> create(@Valid @RequestBody WorkCenterDTO dto) {
         return R.ok("新增成功", workCenterService.create(dto));
     }
 
     @Operation(summary = "修改工作中心")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('basic:workCenter:update')")
     public R<Void> update(
             @Parameter(description = "工作中心ID") @PathVariable Long id,
             @Valid @RequestBody WorkCenterDTO dto) {
@@ -54,6 +59,7 @@ public class WorkCenterController {
 
     @Operation(summary = "删除工作中心")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('basic:workCenter:delete')")
     public R<Void> delete(
             @Parameter(description = "工作中心ID") @PathVariable Long id) {
         workCenterService.delete(id);
@@ -62,6 +68,7 @@ public class WorkCenterController {
 
     @Operation(summary = "批量编辑工作中心")
     @PutMapping("/batch")
+    @PreAuthorize("hasAuthority('basic:workCenter:update')")
     public R<Void> batchUpdate(@Valid @RequestBody java.util.List<WorkCenterDTO> dtoList,
                                @Parameter(description = "ID列表") @RequestParam java.util.List<Long> ids) {
         workCenterService.batchUpdate(dtoList, ids);

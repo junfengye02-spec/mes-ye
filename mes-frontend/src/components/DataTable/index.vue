@@ -5,12 +5,17 @@
         <div class="table-title">
           <slot name="title" />
         </div>
-        <div class="table-actions">
+        <div class="table-actions" role="toolbar" aria-label="表格操作工具栏">
           <slot name="toolbar" />
         </div>
       </div>
     </template>
 
+    <!--
+      无障碍说明：
+      1) el-table 内部已渲染合适的 table/row/cell 语义
+      2) 外层用 role="region" + aria-label 作为数据表格地标，便于屏幕阅读器定位
+    -->
     <el-table
       ref="tableRef"
       v-loading="loading"
@@ -18,6 +23,8 @@
       border
       stripe
       highlight-current-row
+      role="region"
+      aria-label="数据列表"
       @selection-change="(val: any[]) => $emit('selection-change', val)"
       @row-click="(row: any) => $emit('row-click', row)"
     >
@@ -29,7 +36,11 @@
       <slot />
     </el-table>
 
-    <div v-if="showPagination" class="pagination-wrapper">
+    <nav
+      v-if="showPagination"
+      class="pagination-wrapper"
+      aria-label="分页导航"
+    >
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="currentPageSize"
@@ -39,7 +50,7 @@
         @size-change="handlePageChange"
         @current-change="handlePageChange"
       />
-    </div>
+    </nav>
   </el-card>
 </template>
 

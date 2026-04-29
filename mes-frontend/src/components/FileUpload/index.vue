@@ -14,8 +14,9 @@
       :show-file-list="showFileList"
     >
       <slot>
-        <el-button type="primary">
-          <el-icon><Upload /></el-icon> 上传文件
+        <!-- 默认上传按钮：图标做装饰（aria-hidden），文字"上传文件"作为可访问名 -->
+        <el-button type="primary" aria-label="上传文件">
+          <el-icon aria-hidden="true"><Upload /></el-icon> 上传文件
         </el-button>
       </slot>
       <template v-if="tip" #tip>

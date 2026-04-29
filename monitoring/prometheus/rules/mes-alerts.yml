@@ -1,0 +1,158 @@
+# ===============================================================
+# MES 核心告警规则（5 条 P0 + 补充项）
+# 说明：
+#   - severity 分级：P0（立即处理）/ P1（小时级）/ P2（天级）
+#   - AlertManager 会按 severity 路由到不同通道（值班钉钉 / 日常钉钉）
+#   - for: 设置"持续时间窗口"，避免瞬时抖动报警
+# ===============================================================
+groups:
+  - name: mes-core-alerts
+    interval: 30s
+    rules:
+
+      # --------- 1. 服务下线（up == 0） ---------
+      - alert: MesServiceDown
+        expr: up{job=~"mes-admin|mes-backend-ha|mes-gateway|mes-microservices"} == 0
+        for: 1m
+        labels:
+          severity: P0
+          category: availability
+        annotations:
+          summary: "MES 服务下线：{{ $labels.job }} / {{ $labels.instance }}"
+          description: |
+            实例 {{ $labels.instance }}（service={{ $labels.service }}，component={{ $labels.component }}）
+            已持续 1 分钟无法被 Prometheus 抓取，可能已经崩溃或网络隔离。
+            立即上服务器排查：docker logs {{ $labels.instance }} / 服务 healthcheck。
+          runbook: "docs/runbooks/service-down.md"
+
+      # --------- 2. CPU 持续高负载 ---------
+      - alert: HostHighCpu
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: P1
+          category: resource
+        annotations:
+          summary: "宿主机 CPU 使用率 > 80%（{{ $labels.instance }}）"
+          description: |
+            实例 {{ $labels.instance }} 的 CPU 使用率已持续 10 分钟高于 80%（当前 {{ printf "%.1f" $value }}%）。
+            建议检查：是否有慢查询、是否有死循环任务、是否需要横向扩容。
+
+      # --------- 3. 内存紧张 ---------
+      - alert: HostHighMemory
+        expr: |
+          (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: P1
+          category: resource
+        annotations:
+          summary: "宿主机内存使用率 > 90%（{{ $labels.instance }}）"
+          description: |
+            实例 {{ $labels.instance }} 可用内存低于 10%（当前使用率 {{ printf "%.1f" $value }}%）。
+            及时处理：结束异常进程 / 扩容 / 检查 JVM 是否内存泄漏。
+
+      # --------- 4. 磁盘空间紧张 ---------
+      - alert: HostHighDisk
+        expr: |
+          (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|aufs"}
+               / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|aufs"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: P1
+          category: resource
+        annotations:
+          summary: "磁盘使用率 > 85%（{{ $labels.instance }} {{ $labels.mountpoint }}）"
+          description: |
+            挂载点 {{ $labels.mountpoint }} 已使用 {{ printf "%.1f" $value }}%，
+            预计在 3 天内耗尽。立即清理日志 / 备份文件 / 扩容磁盘。
+
+      # --------- 5. HTTP 5xx 错误率飙升 ---------
+      - alert: MesHttp5xxSpike
+        expr: |
+          (
+            sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            /
+            sum by (application) (rate(http_server_requests_seconds_count[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: P0
+          category: quality
+        annotations:
+          summary: "MES 接口 5xx 错误率 > 1%（{{ $labels.application }}）"
+          description: |
+            应用 {{ $labels.application }} 最近 5 分钟 5xx 错误率 = {{ humanizePercentage $value }}。
+            必须立即排查：是否依赖（数据库 / Redis / 下游）不可用、是否新上线功能有 bug。
+
+  # ===============================================================
+  # 补充告警（P1 / P2 常规）
+  # ===============================================================
+  - name: mes-jvm
+    interval: 30s
+    rules:
+      - alert: MesJvmHeapHigh
+        expr: |
+          sum by (application, instance) (jvm_memory_used_bytes{area="heap"})
+          /
+          sum by (application, instance) (jvm_memory_max_bytes{area="heap"}) > 0.9
+        for: 10m
+        labels:
+          severity: P1
+          category: jvm
+        annotations:
+          summary: "JVM 堆使用率 > 90%（{{ $labels.application }}）"
+          description: "实例 {{ $labels.instance }} 堆接近上限，可能即将 OOM。"
+
+      - alert: MesJvmGcTooMuch
+        expr: |
+          sum by (application, instance) (rate(jvm_gc_pause_seconds_sum[5m])) > 0.5
+        for: 10m
+        labels:
+          severity: P1
+          category: jvm
+        annotations:
+          summary: "JVM GC 暂停时间占比 > 50%（{{ $labels.application }}）"
+          description: "每 5 秒实际有 2.5s 在 GC，严重影响吞吐。请检查内存参数与对象分配率。"
+
+  - name: mes-middleware
+    interval: 30s
+    rules:
+      - alert: MysqlDown
+        expr: mysql_up == 0
+        for: 1m
+        labels:
+          severity: P0
+          category: middleware
+        annotations:
+          summary: "MySQL 实例不可达（{{ $labels.instance }}）"
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: P0
+          category: middleware
+        annotations:
+          summary: "Redis 实例不可达（{{ $labels.instance }}）"
+
+      - alert: RabbitMqQueueBacklog
+        expr: rabbitmq_queue_messages_ready > 10000
+        for: 5m
+        labels:
+          severity: P1
+          category: middleware
+        annotations:
+          summary: "RabbitMQ 堆积消息数 > 10000（{{ $labels.queue }}）"
+          description: "可能是下游消费异常或 TPS 激增，检查 Consumer 侧是否 OK。"
+
+      - alert: MysqlReplicationLag
+        expr: mysql_slave_lag_seconds > 60
+        for: 5m
+        labels:
+          severity: P1
+          category: middleware
+        annotations:
+          summary: "MySQL 主从延迟 > 60s"
+          description: "读写分离场景下可能读到陈旧数据；若为 HA 场景，failover 后数据可能丢失。"

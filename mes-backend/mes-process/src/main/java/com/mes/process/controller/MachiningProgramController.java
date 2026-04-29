@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,12 +27,14 @@ public class MachiningProgramController {
 
     @Operation(summary = "分页查询机械加工程序")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('process:machiningProgram:list')")
     public R<PageResult<MachiningProgramVO>> page(MachiningProgramQuery query) {
         return R.ok(machiningProgramService.page(query));
     }
 
     @Operation(summary = "获取机械加工程序详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:machiningProgram:detail')")
     public R<MachiningProgramVO> getDetail(
             @Parameter(description = "机械加工程序ID") @PathVariable Long id) {
         return R.ok(machiningProgramService.getDetail(id));
@@ -39,12 +42,14 @@ public class MachiningProgramController {
 
     @Operation(summary = "新增机械加工程序")
     @PostMapping
+    @PreAuthorize("hasAuthority('process:machiningProgram:create')")
     public R<Long> create(@Valid @RequestBody MachiningProgramDTO dto) {
         return R.ok("新增成功", machiningProgramService.create(dto));
     }
 
     @Operation(summary = "修改机械加工程序")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:machiningProgram:update')")
     public R<Void> update(
             @Parameter(description = "机械加工程序ID") @PathVariable Long id,
             @Valid @RequestBody MachiningProgramDTO dto) {
@@ -54,6 +59,7 @@ public class MachiningProgramController {
 
     @Operation(summary = "删除机械加工程序")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:machiningProgram:delete')")
     public R<Void> delete(
             @Parameter(description = "机械加工程序ID") @PathVariable Long id) {
         machiningProgramService.delete(id);

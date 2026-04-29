@@ -1,0 +1,371 @@
+# ==============================================================================
+# MES MySQL 备份 Kubernetes CronJob 配置
+# ------------------------------------------------------------------------------
+# 说明：
+#   - 3 个 CronJob 对应 3 类周期：full / binlog / weekly / monthly
+#     （monthly 以 weekly 同模板替换 schedule + mode 即可）
+#   - 依赖 Secret: mes-backup-secrets（见文件末尾的模板）
+#   - 脚本通过 ConfigMap 挂载进镜像；生产建议自行构建包含脚本的专用镜像
+#   - MySQL 客户端与 mysqldump 版本需匹配服务端（image: mysql:8.0）
+#
+# 部署步骤：
+#   kubectl apply -f secrets.yaml              # 先创建 mes-backup-secrets
+#   kubectl apply -f backup-cronjob.yaml
+#
+# 生产推荐：
+#   1. 用 sealed-secrets 或 external-secrets-operator 管理密钥
+#   2. 在 storageClassName 上挂 PVC 作为 /backup（或直接走 MinIO 免本地盘）
+#   3. podAntiAffinity 避免备份 Pod 跟 MySQL 主库同节点
+# ==============================================================================
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mes-backup-scripts
+  namespace: mes
+data:
+  # 以下脚本需要在部署前从 scripts/backup/ 目录用如下命令生成：
+  #   kubectl create configmap mes-backup-scripts \
+  #     --from-file=scripts/backup/mysql-backup.sh \
+  #     --from-file=scripts/backup/mysql-restore.sh \
+  #     --from-file=scripts/backup/verify-backup.sh \
+  #     --dry-run=client -o yaml > k8s/backup-scripts-configmap.yaml
+  # 本示例里留空占位，避免 yaml 与脚本脱节导致双份维护
+  placeholder: "use kubectl create configmap to render real content"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mes-backup-pvc
+  namespace: mes
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Gi
+  # 生产按实际 storageClass 填写：ali-cloud-disk-ssd / local-path / ceph-rbd 等
+  storageClassName: standard
+
+---
+# -------- 每日 03:00 全量备份 --------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mes-mysql-backup-daily
+  namespace: mes
+  labels:
+    app: mes-backup
+    type: daily
+spec:
+  # 时区：kube-controller-manager >=1.25 支持 timeZone 字段
+  timeZone: "Asia/Shanghai"
+  schedule: "0 3 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 10
+  concurrencyPolicy: Forbid
+  # 避免节点重启后误触补偿：超期 1 小时就放弃本次
+  startingDeadlineSeconds: 3600
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 10800   # 3h 上限，配合 RTO<=4h
+      template:
+        metadata:
+          labels:
+            app: mes-backup
+            type: daily
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: mysql-backup
+              image: mysql:8.0
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/bash", "/scripts/mysql-backup.sh", "--mode=full"]
+              envFrom:
+                - secretRef:
+                    name: mes-backup-secrets
+              env:
+                - name: BACKUP_ROOT
+                  value: /backup
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backup-data
+                  mountPath: /backup
+              resources:
+                requests:
+                  cpu: "200m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "2"
+                  memory: "4Gi"
+          volumes:
+            - name: scripts
+              configMap:
+                name: mes-backup-scripts
+                defaultMode: 0755
+            - name: backup-data
+              persistentVolumeClaim:
+                claimName: mes-backup-pvc
+
+---
+# -------- 每 15 分钟 binlog 增量 --------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mes-mysql-backup-binlog
+  namespace: mes
+  labels:
+    app: mes-backup
+    type: binlog
+spec:
+  timeZone: "Asia/Shanghai"
+  schedule: "*/15 * * * *"
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 20
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600    # binlog 必须 10 分钟内搞定，留时间给下一轮
+      template:
+        metadata:
+          labels:
+            app: mes-backup
+            type: binlog
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: mysql-binlog
+              image: mysql:8.0
+              command: ["/bin/bash", "/scripts/mysql-backup.sh", "--mode=binlog"]
+              envFrom:
+                - secretRef:
+                    name: mes-backup-secrets
+              env:
+                - name: BACKUP_ROOT
+                  value: /backup
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backup-data
+                  mountPath: /backup
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "1"
+                  memory: "1Gi"
+          volumes:
+            - name: scripts
+              configMap:
+                name: mes-backup-scripts
+                defaultMode: 0755
+            - name: backup-data
+              persistentVolumeClaim:
+                claimName: mes-backup-pvc
+
+---
+# -------- 每周日 04:00 全量（长期保留） --------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mes-mysql-backup-weekly
+  namespace: mes
+  labels:
+    app: mes-backup
+    type: weekly
+spec:
+  timeZone: "Asia/Shanghai"
+  schedule: "0 4 * * 0"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 10
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 14400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: mysql-backup-weekly
+              image: mysql:8.0
+              command: ["/bin/bash", "/scripts/mysql-backup.sh", "--mode=weekly"]
+              envFrom:
+                - secretRef:
+                    name: mes-backup-secrets
+              env:
+                - name: BACKUP_ROOT
+                  value: /backup
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backup-data
+                  mountPath: /backup
+              resources:
+                requests:
+                  cpu: "200m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "2"
+                  memory: "4Gi"
+          volumes:
+            - name: scripts
+              configMap:
+                name: mes-backup-scripts
+                defaultMode: 0755
+            - name: backup-data
+              persistentVolumeClaim:
+                claimName: mes-backup-pvc
+
+---
+# -------- 每月 1 日 05:00 全量（永久保留） --------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mes-mysql-backup-monthly
+  namespace: mes
+  labels:
+    app: mes-backup
+    type: monthly
+spec:
+  timeZone: "Asia/Shanghai"
+  schedule: "0 5 1 * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 10
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 14400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: mysql-backup-monthly
+              image: mysql:8.0
+              command: ["/bin/bash", "/scripts/mysql-backup.sh", "--mode=monthly"]
+              envFrom:
+                - secretRef:
+                    name: mes-backup-secrets
+              env:
+                - name: BACKUP_ROOT
+                  value: /backup
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backup-data
+                  mountPath: /backup
+              resources:
+                requests:
+                  cpu: "200m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "2"
+                  memory: "4Gi"
+          volumes:
+            - name: scripts
+              configMap:
+                name: mes-backup-scripts
+                defaultMode: 0755
+            - name: backup-data
+              persistentVolumeClaim:
+                claimName: mes-backup-pvc
+
+---
+# -------- 每日 06:00 备份演练（随机抽一份恢复到临时库） --------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mes-mysql-backup-verify
+  namespace: mes
+  labels:
+    app: mes-backup
+    type: verify
+spec:
+  timeZone: "Asia/Shanghai"
+  schedule: "0 6 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 10
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 5400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: mysql-verify
+              image: mysql:8.0
+              command: ["/bin/bash", "/scripts/verify-backup.sh"]
+              envFrom:
+                - secretRef:
+                    name: mes-backup-secrets
+              env:
+                - name: BACKUP_ROOT
+                  value: /backup
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backup-data
+                  mountPath: /backup
+                - name: docker-sock
+                  mountPath: /var/run/docker.sock
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "1Gi"
+                limits:
+                  cpu: "2"
+                  memory: "4Gi"
+          volumes:
+            - name: scripts
+              configMap:
+                name: mes-backup-scripts
+                defaultMode: 0755
+            - name: backup-data
+              persistentVolumeClaim:
+                claimName: mes-backup-pvc
+            - name: docker-sock
+              hostPath:
+                path: /var/run/docker.sock
+                type: Socket
+
+---
+# -------- Secret 模板（实际部署请用 Sealed Secret / External Secret） --------
+# kubectl create secret generic mes-backup-secrets \
+#   --from-literal=MYSQL_HOST=mysql-primary \
+#   --from-literal=MYSQL_PORT=3306 \
+#   --from-literal=MYSQL_USER=backup \
+#   --from-literal=MYSQL_PASS='***' \
+#   --from-literal=MYSQL_DB=mes \
+#   --from-literal=BACKUP_GPG_PASSPHRASE='***' \
+#   --from-literal=MINIO_ENDPOINT=https://minio.internal:9000 \
+#   --from-literal=MINIO_AK='***' \
+#   --from-literal=MINIO_SK='***' \
+#   --from-literal=MINIO_BUCKET=mes-backups \
+#   --from-literal=BACKUP_NOTIFY_WEBHOOK='https://oapi.dingtalk.com/robot/send?access_token=xxx'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mes-backup-secrets
+  namespace: mes
+type: Opaque
+stringData:
+  MYSQL_HOST: "mysql-primary"
+  MYSQL_PORT: "3306"
+  MYSQL_USER: "backup"
+  MYSQL_PASS: "REPLACE_ME"
+  MYSQL_DB: "mes"
+  BACKUP_GPG_PASSPHRASE: "REPLACE_ME"
+  MINIO_ENDPOINT: "https://minio.internal:9000"
+  MINIO_AK: "REPLACE_ME"
+  MINIO_SK: "REPLACE_ME"
+  MINIO_BUCKET: "mes-backups"
+  BACKUP_NOTIFY_WEBHOOK: ""

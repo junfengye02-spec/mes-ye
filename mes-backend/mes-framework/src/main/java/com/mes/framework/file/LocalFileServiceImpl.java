@@ -5,10 +5,12 @@ import com.mes.framework.tenant.TenantContextHolder;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,9 +26,14 @@ import java.util.regex.Pattern;
 
 /**
  * 本地文件存储实现
+ * <p>
+ * 默认实现。仅当 {@code mes.file.storage-type=local}（缺省等价于 local）时生效。
+ * 开发/单机部署建议使用；HA / 多副本部署请切换到 {@link MinioFileServiceImpl}。
+ * </p>
  */
 @Slf4j
 @Service
+@ConditionalOnProperty(prefix = "mes.file", name = "storage-type", havingValue = "local", matchIfMissing = true)
 public class LocalFileServiceImpl implements FileService {
 
     /**
@@ -133,6 +140,35 @@ public class LocalFileServiceImpl implements FileService {
             log.error("文件上传失败", e);
             throw new BusinessException("文件上传失败: " + e.getMessage());
         }
+    }
+
+    @Override
+    public InputStream download(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            throw new BusinessException("下载文件路径不能为空");
+        }
+        String prefix = accessPrefix.endsWith("/") ? accessPrefix : accessPrefix + "/";
+        String relative = fileUrl.startsWith(prefix) ? fileUrl.substring(prefix.length()) : fileUrl;
+        if (relative.contains("..") || relative.contains("\\")) {
+            throw new BusinessException("非法的文件路径: " + fileUrl);
+        }
+        if (!isTenantPathAuthorized(relative)) {
+            throw new BusinessException("无权访问该文件（跨租户）");
+        }
+        Path filePath = uploadRoot.resolve(relative).normalize();
+        ensureWithinRoot(filePath);
+        try {
+            return Files.newInputStream(filePath);
+        } catch (IOException e) {
+            log.warn("文件读取失败: {}", fileUrl, e);
+            throw new BusinessException("文件读取失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public String getUrl(String fileUrl, int expireInSeconds) {
+        // 本地存储不涉及签名 URL，直接返回原始访问路径
+        return fileUrl;
     }
 
     @Override

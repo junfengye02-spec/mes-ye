@@ -13,6 +13,7 @@ import com.mes.admin.mapper.SysRoleMenuMapper;
 import com.mes.admin.service.ISysRoleService;
 import com.mes.common.core.PageResult;
 import com.mes.common.exception.BusinessException;
+import com.mes.framework.tenant.TenantContextHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -99,11 +100,28 @@ public class SysRoleServiceImpl implements ISysRoleService {
     @Transactional(rollbackFor = Exception.class)
     public void assignMenus(Long roleId, List<Long> menuIds) {
         roleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, roleId));
-        if (menuIds != null) {
-            for (Long menuId : menuIds) {
-                roleMenuMapper.insert(new SysRoleMenu(roleId, menuId));
-            }
+        if (menuIds == null || menuIds.isEmpty()) {
+            return;
         }
+        // P3 硬化：sys_role_menu 的 tenant_id 必须与所挂 role 一致，避免把
+        // 租户 A 的角色挂上租户 B 的菜单。优先用 role 自身的 tenantId，兜底
+        // 到当前请求上下文（TenantContextHolder），两者都缺才失败。
+        Long tenantId = resolveRoleTenantId(roleId);
+        for (Long menuId : menuIds) {
+            roleMenuMapper.insert(new SysRoleMenu(tenantId, roleId, menuId));
+        }
+    }
+
+    private Long resolveRoleTenantId(Long roleId) {
+        SysRole role = roleMapper.selectById(roleId);
+        if (role != null && role.getTenantId() != null) {
+            return role.getTenantId();
+        }
+        Long ctx = TenantContextHolder.getTenantId();
+        if (ctx != null) {
+            return ctx;
+        }
+        throw new BusinessException("角色未绑定租户上下文，无法分配菜单");
     }
 
     @Override

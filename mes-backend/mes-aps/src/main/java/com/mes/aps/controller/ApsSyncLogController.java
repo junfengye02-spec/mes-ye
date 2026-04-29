@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -24,12 +25,14 @@ public class ApsSyncLogController {
 
     @Operation(summary = "分页查询同步日志")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('aps:syncLog:list')")
     public R<PageResult<ApsSyncLogVO>> page(ApsSyncLogQuery query) {
         return R.ok(apsSyncLogService.page(query));
     }
 
     @Operation(summary = "获取日志详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('aps:syncLog:detail')")
     public R<ApsSyncLogVO> getDetail(
             @Parameter(description = "日志ID") @PathVariable Long id) {
         return R.ok(apsSyncLogService.getDetail(id));

@@ -54,18 +54,22 @@ function onCmd(cmd: string) {
 <style scoped>
 .user-portal-layout {
   min-height: 100vh;
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .sidebar {
-  background: #1d2b3a;
+  background: var(--mes-portal-sidebar-bg);
   color: #fff;
+  transition: background-color 0.2s ease;
 }
 
 .logo {
   padding: 16px;
   font-weight: 600;
   text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--mes-portal-sidebar-border);
 }
 
 .sidebar :deep(.el-menu) {
@@ -74,19 +78,22 @@ function onCmd(cmd: string) {
 }
 
 .sidebar :deep(.el-menu-item) {
-  color: #c0c4cc;
+  color: var(--mes-portal-sidebar-text);
 }
 
 .sidebar :deep(.el-menu-item.is-active) {
-  background: #409eff33;
-  color: #fff;
+  background: var(--mes-portal-sidebar-active-bg);
+  color: var(--mes-portal-sidebar-active-text);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--mes-portal-header-border);
+  background: var(--mes-header-bg);
+  color: var(--mes-header-text);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .title {
@@ -98,9 +105,12 @@ function onCmd(cmd: string) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  color: var(--mes-header-text);
 }
 
 .main {
-  background: #f5f7fa;
+  background: var(--mes-portal-main-bg);
+  color: var(--el-text-color-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 </style>

@@ -11,11 +11,14 @@ import com.mes.admin.mapper.SysRoleMapper;
 import com.mes.admin.mapper.SysTenantMapper;
 import com.mes.admin.mapper.SysUserMapper;
 import com.mes.admin.mapper.SysMenuMapper;
+import com.mes.admin.service.CaptchaService;
+import com.mes.admin.service.LoginLockoutService;
 import com.mes.admin.service.impl.AuthServiceImpl;
 import com.mes.admin.service.impl.SysUserServiceImpl;
 import com.mes.admin.service.impl.SysRoleServiceImpl;
 import com.mes.admin.service.impl.SysMenuServiceImpl;
 import com.mes.common.exception.BusinessException;
+import com.mes.framework.security.JwtBlacklistService;
 import com.mes.framework.security.JwtTokenProvider;
 import com.mes.framework.security.LoginUser;
 import com.mes.framework.tenant.TenantContextHolder;
@@ -23,6 +26,8 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,6 +46,9 @@ import static org.mockito.Mockito.*;
  * 覆盖认证（登录/登出/刷新）、用户管理、角色管理、菜单管理
  */
 @ExtendWith(MockitoExtension.class)
+// P2 升级后 AuthServiceImpl 新增登录锁定 / 验证码 / JWT 黑名单等依赖，
+// 放宽严格度以避免未使用 stub 污染断言；关键断言仍通过 verify 精确覆盖。
+@MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class SystemModuleTest {
 
@@ -53,6 +61,10 @@ class SystemModuleTest {
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private SetOperations<String, String> setOperations;
     @Mock private SysMenuMapper menuMapper;
+    // P2 新增协作依赖
+    @Mock private LoginLockoutService lockoutService;
+    @Mock private CaptchaService captchaService;
+    @Mock private JwtBlacklistService jwtBlacklistService;
 
     @InjectMocks private AuthServiceImpl authService;
 
@@ -169,6 +181,10 @@ class SystemModuleTest {
         when(tokenProvider.getTenantId(oldRefreshToken)).thenReturn(1L);
         when(tokenProvider.getAccountType(oldRefreshToken)).thenReturn("ADMIN");
         when(tokenProvider.getTenantCode(oldRefreshToken)).thenReturn("default");
+        when(tokenProvider.getJti(oldRefreshToken)).thenReturn("jti-x");
+        // refresh token 剩余 1 小时
+        when(tokenProvider.getExpiration(oldRefreshToken))
+                .thenReturn(new java.util.Date(System.currentTimeMillis() + 3600_000L));
         when(tokenProvider.createAccessToken(anyLong(), anyString(), anyLong(), any(), anyString()))
                 .thenReturn("new-access-token");
         when(tokenProvider.createRefreshToken(anyLong(), anyString(), anyLong(), any(), anyString()))
@@ -214,7 +230,8 @@ class SystemModuleTest {
         TenantContextHolder.setTenantId(1L);
         when(redisTemplate.delete("tenant:1:auth:permissions:1")).thenReturn(true);
 
-        authService.logout(1L);
+        // logout 签名升级为 (userId, accessToken)，本用例仅验证权限缓存清理，accessToken 传 null 即可
+        authService.logout(1L, null);
 
         verify(redisTemplate).delete("tenant:1:auth:permissions:1");
     }
@@ -226,7 +243,8 @@ class SystemModuleTest {
         TenantContextHolder.setTenantId(1L);
         when(redisTemplate.delete(anyString())).thenThrow(new RuntimeException("Redis 连接失败"));
 
-        assertDoesNotThrow(() -> authService.logout(1L),
+        // logout 签名升级为 (userId, accessToken)
+        assertDoesNotThrow(() -> authService.logout(1L, null),
                 "Redis 不可用时登出不应抛异常");
     }
 

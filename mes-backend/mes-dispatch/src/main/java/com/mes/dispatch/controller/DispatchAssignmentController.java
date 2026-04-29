@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +27,7 @@ public class DispatchAssignmentController {
 
     @Operation(summary = "人员分派")
     @PostMapping("/person/{taskId}")
+    @PreAuthorize("hasAuthority('dispatch:assignment:assignPerson')")
     public R<Void> assignPerson(
             @Parameter(description = "派工任务ID") @PathVariable Long taskId,
             @Valid @RequestBody DispatchAssignDTO dto) {
@@ -35,6 +37,7 @@ public class DispatchAssignmentController {
 
     @Operation(summary = "设备分派")
     @PostMapping("/device/{taskId}")
+    @PreAuthorize("hasAuthority('dispatch:assignment:assignDevice')")
     public R<Void> assignDevice(
             @Parameter(description = "派工任务ID") @PathVariable Long taskId,
             @Valid @RequestBody DispatchAssignDTO dto) {
@@ -44,6 +47,7 @@ public class DispatchAssignmentController {
 
     @Operation(summary = "班组分派")
     @PostMapping("/team/{taskId}")
+    @PreAuthorize("hasAuthority('dispatch:assignment:assignTeam')")
     public R<Void> assignTeam(
             @Parameter(description = "派工任务ID") @PathVariable Long taskId,
             @Valid @RequestBody DispatchAssignDTO dto) {
@@ -53,6 +57,7 @@ public class DispatchAssignmentController {
 
     @Operation(summary = "撤销分派")
     @PostMapping("/revoke/{assignmentId}")
+    @PreAuthorize("hasAuthority('dispatch:assignment:revoke')")
     public R<Void> revoke(
             @Parameter(description = "分配记录ID") @PathVariable Long assignmentId,
             @Parameter(description = "撤销原因") @RequestParam String reason) {
@@ -62,6 +67,7 @@ public class DispatchAssignmentController {
 
     @Operation(summary = "查询任务分配记录")
     @GetMapping("/list/{taskId}")
+    @PreAuthorize("hasAuthority('dispatch:assignment:list')")
     public R<List<DispatchAssignmentVO>> listByTaskId(
             @Parameter(description = "派工任务ID") @PathVariable Long taskId) {
         return R.ok(assignmentService.listByTaskId(taskId));

@@ -1,4 +1,5 @@
 <template>
+  <!-- Element Plus el-dialog 已内置 role="dialog" 及 aria-labelledby 关联 title，这里不再手工加 -->
   <el-dialog v-model="visible" title="数据导入" width="520px" @close="handleClose">
     <el-upload
       ref="uploadRef"
@@ -8,19 +9,31 @@
       accept=".xlsx,.xls,.csv"
       :on-change="handleFileChange"
     >
-      <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+      <el-icon class="el-icon--upload" aria-hidden="true"><UploadFilled /></el-icon>
       <div class="el-upload__text">将文件拖到此处，或 <em>点击上传</em></div>
       <template #tip>
         <div class="el-upload__tip">
           支持 xlsx / xls / csv 格式文件
-          <el-button v-if="templateUrl" type="primary" link @click="downloadTemplate">
+          <el-button
+            v-if="templateUrl"
+            type="primary"
+            link
+            aria-label="下载导入模板"
+            @click="downloadTemplate"
+          >
             下载导入模板
           </el-button>
         </div>
       </template>
     </el-upload>
 
-    <div v-if="errors.length" class="import-errors">
+    <!-- 导入错误区域用 role="alert" + aria-live，让错误立即被屏幕阅读器朗读 -->
+    <div
+      v-if="errors.length"
+      class="import-errors"
+      role="alert"
+      aria-live="assertive"
+    >
       <el-alert title="导入错误" type="error" :closable="false" show-icon>
         <ul>
           <li v-for="(err, i) in errors" :key="i">{{ err }}</li>

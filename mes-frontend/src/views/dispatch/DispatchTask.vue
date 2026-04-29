@@ -56,9 +56,16 @@
       <el-col :span="14">
         <el-card shadow="never">
           <template #header>
-            <span>派工任务列表</span>
+            <span>{{ t('dispatch.listTitle') }}</span>
           </template>
-          <el-form :model="query" inline class="search-form" @submit.prevent="handleSearch">
+          <el-form
+            :model="query"
+            inline
+            class="search-form"
+            role="search"
+            aria-label="派工任务查询条件"
+            @submit.prevent="handleSearch"
+          >
             <el-form-item label="订单编号">
               <el-input v-model="query.orderNo" placeholder="请输入" clearable style="width: 140px" />
             </el-form-item>
@@ -77,15 +84,22 @@
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleSearch">
-                <el-icon><Search /></el-icon> 查询
+                <el-icon aria-hidden="true"><Search /></el-icon> 查询
               </el-button>
               <el-button @click="handleReset">
-                <el-icon><Refresh /></el-icon> 重置
+                <el-icon aria-hidden="true"><Refresh /></el-icon> 重置
               </el-button>
             </el-form-item>
           </el-form>
 
-          <el-table v-loading="loading" :data="taskList" border stripe>
+          <el-table
+            v-loading="loading"
+            :data="taskList"
+            border
+            stripe
+            role="region"
+            aria-label="派工任务列表"
+          >
             <el-table-column type="index" label="序号" width="60" align="center" />
             <el-table-column prop="orderNo" label="订单编号" min-width="120" />
             <el-table-column prop="processNo" label="工序号" min-width="100" />
@@ -117,7 +131,7 @@
             </el-table-column>
           </el-table>
 
-          <div class="pagination-wrapper">
+          <nav class="pagination-wrapper" aria-label="派工任务分页">
             <el-pagination
               v-model:current-page="query.pageNum"
               v-model:page-size="query.pageSize"
@@ -127,7 +141,7 @@
               @size-change="loadList"
               @current-change="loadList"
             />
-          </div>
+          </nav>
         </el-card>
       </el-col>
     </el-row>
@@ -184,10 +198,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 import { getDictList, getDictLabel, getDictType } from '@/utils/dict'
 import type { DispatchTaskVO, DispatchTaskQuery, DispatchAssignmentVO, DispatchAssignDTO } from '@/types/dispatch'
 import { dispatchTaskApi } from '@/api/dispatch/dispatchTask'
 
+const { t } = useI18n()
 const loading = ref(false)
 const taskList = ref<DispatchTaskVO[]>([])
 const total = ref(0)

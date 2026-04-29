@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "生产工作查询", description = "生产工作查询接口")
@@ -21,12 +22,14 @@ public class ProductionWorkController {
 
     @Operation(summary = "分页查询生产工作")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('query:productionWork:list')")
     public R<PageResult<ProductionWorkVO>> page(ProductionWorkQuery query) {
         return R.ok(productionWorkService.page(query));
     }
 
     @Operation(summary = "获取生产工作详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('query:productionWork:detail')")
     public R<ProductionWorkVO> getDetail(@Parameter(description = "ID") @PathVariable Long id) {
         return R.ok(productionWorkService.getDetail(id));
     }

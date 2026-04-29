@@ -1,0 +1,120 @@
+/* ============================================================
+ * 无障碍（a11y）全局样式
+ * 用途：
+ * 1. 统一可见焦点轮廓（键盘导航时焦点必须清晰可见）
+ * 2. 提供 .sr-only / .sr-only-focusable（仅屏幕阅读器可读，获得焦点时恢复显示）
+ * 3. 跳过链接（skip link）样式
+ * 对应任务：P2-25 无障碍（aria-label / role / 键盘导航）
+ * ============================================================ */
+
+/* 键盘导航可见焦点（覆盖全站元素，除非明确禁用） */
+:focus-visible {
+  outline: 2px solid var(--el-color-primary, #409eff);
+  outline-offset: 2px;
+  border-radius: 2px;
+  transition: outline-offset 0.12s ease;
+}
+
+/* Element Plus 某些内部控件（如按钮、菜单）已有自身的聚焦态，
+ * 但为保证一致性，额外加粗轮廓，避免被内部样式覆盖时丢失。 */
+.el-button:focus-visible,
+.el-input__inner:focus-visible,
+.el-textarea__inner:focus-visible,
+.el-select .el-input__inner:focus-visible,
+.el-menu-item:focus-visible,
+.el-sub-menu__title:focus-visible,
+.el-dropdown:focus-visible,
+.el-pagination .btn-prev:focus-visible,
+.el-pagination .btn-next:focus-visible,
+.el-pager li:focus-visible {
+  outline: 2px solid var(--el-color-primary, #409eff);
+  outline-offset: 2px;
+}
+
+/* 鼠标点击时隐藏轮廓（仅对非键盘焦点），避免视觉噪音
+ * 通过 :focus:not(:focus-visible) 精确区分 */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 仅屏幕阅读器可读：视觉上完全不可见，但保留语义给辅助技术 */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* 平时隐藏、获得焦点时显示（用于跳过链接） */
+.sr-only-focusable:focus,
+.sr-only-focusable:focus-visible,
+.sr-only-focusable:active {
+  position: fixed !important;
+  top: 12px !important;
+  left: 12px !important;
+  z-index: 9999 !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 8px 16px !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
+  background: var(--el-color-primary, #409eff);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 14px;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 跳过链接容器（放页面最上方）
+ * 使用：<a href="#main" class="skip-link">跳到主内容</a> */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  width: auto;
+  height: auto;
+  padding: 8px 16px;
+  background: var(--el-color-primary, #409eff);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 14px;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* main 容器加 tabindex="-1" 时点击跳过链接会滚到这里，确保不显示难看的默认焦点样式 */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* 尊重用户"减少动画"偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

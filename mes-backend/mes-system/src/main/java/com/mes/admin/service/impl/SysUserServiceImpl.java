@@ -14,9 +14,11 @@ import com.mes.admin.mapper.SysUserRoleMapper;
 import com.mes.admin.service.ISysUserService;
 import com.mes.common.core.PageResult;
 import com.mes.common.exception.BusinessException;
+import com.mes.common.utils.PasswordGenerator;
 import com.mes.framework.security.StaffPortalRestrictionFilter;
 import com.mes.framework.tenant.TenantContextHolder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,7 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SysUserServiceImpl implements ISysUserService {
@@ -111,8 +114,10 @@ public class SysUserServiceImpl implements ISysUserService {
 
         SysUser user = new SysUser();
         user.setUsername(dto.getUsername());
-        user.setPassword(passwordEncoder.encode(
-                StringUtils.hasText(dto.getPassword()) ? dto.getPassword() : "123456"));
+        // P0-07 安全整改：禁止使用硬编码弱密码 "123456"。
+        // 管理员未指定初始密码时，由服务端生成随机强密码，并通过 result 返回给调用方（管理员需一次性告知用户）。
+        String initPwd = StringUtils.hasText(dto.getPassword()) ? dto.getPassword() : PasswordGenerator.generate();
+        user.setPassword(passwordEncoder.encode(initPwd));
         user.setRealName(dto.getRealName());
         user.setPhone(dto.getPhone());
         user.setEmail(dto.getEmail());
@@ -168,11 +173,98 @@ public class SysUserServiceImpl implements ISysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void resetPassword(Long id, String newPassword) {
+        resetPasswordAndReturn(id, newPassword);
+    }
+
+    /**
+     * 重置密码并返回实际生效的密码明文。
+     *
+     * <p>P0-07 安全整改：</p>
+     * <ul>
+     *   <li>newPassword 非空：使用管理员指定的密码（需满足长度 ≥ 8 的校验，调用方保证）</li>
+     *   <li>newPassword 空/空白：服务端生成随机强密码（12 位，含大小写数字特殊符号）</li>
+     * </ul>
+     *
+     * @param id          用户 ID
+     * @param newPassword 新密码明文，可为空；空时生成随机密码
+     * @return 实际生效的密码明文，一次性返回给管理员当面告知用户
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public String resetPasswordAndReturn(Long id, String newPassword) {
         SysUser user = userMapper.selectById(id);
         if (user == null) throw new BusinessException("用户不存在");
         assertSameTenant(user);
-        user.setPassword(passwordEncoder.encode(newPassword));
+        String effectivePwd = StringUtils.hasText(newPassword) ? newPassword : PasswordGenerator.generate();
+        user.setPassword(passwordEncoder.encode(effectivePwd));
         userMapper.updateById(user);
+        log.info("[P0-07] 重置密码成功 userId={} 密码由管理员指定={}", id, StringUtils.hasText(newPassword));
+        return effectivePwd;
+    }
+
+    /**
+     * 当前登录用户自助修改密码（P0-06）。
+     *
+     * <p>见 {@link ISysUserService#changeMyPassword(Long, String, String)} 的完整契约。
+     * 这里只做服务端二次校验与写库，权限由 Controller 的 {@code @PreAuthorize("isAuthenticated()")} 保证。</p>
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void changeMyPassword(Long currentUserId, String oldPassword, String newPassword) {
+        if (currentUserId == null) {
+            throw new BusinessException("未识别到当前登录用户");
+        }
+        if (!StringUtils.hasText(oldPassword) || !StringUtils.hasText(newPassword)) {
+            throw new BusinessException("旧密码和新密码均不能为空");
+        }
+        if (newPassword.length() < 8 || newPassword.length() > 64) {
+            throw new BusinessException("新密码长度必须在 8-64 位之间");
+        }
+        if (oldPassword.equals(newPassword)) {
+            throw new BusinessException("新密码不能与旧密码相同");
+        }
+        if (!isPasswordStrongEnough(newPassword)) {
+            throw new BusinessException("新密码必须包含大写字母/小写字母/数字/特殊字符中至少 3 类");
+        }
+
+        SysUser user = userMapper.selectById(currentUserId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        // 这里不强制 assertSameTenant：因为 currentUserId 来自 SecurityContext，
+        // 天然就是当前登录用户自己；不过 sys_user 本来就在租户拦截忽略名单，安全性靠 "只能改自己" 保障。
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            log.warn("[P0-06] 自助改密时旧密码错误 userId={}", currentUserId);
+            throw new BusinessException("旧密码错误");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        // 成功改密后清除弱口令强制改密标记
+        user.setMustChangePassword(0);
+        userMapper.updateById(user);
+        log.info("[P0-06] 自助改密成功 userId={} username={} 已复位 mustChangePassword=0",
+                currentUserId, user.getUsername());
+    }
+
+    /**
+     * 密码强度规则：大写/小写/数字/特殊字符中至少出现 3 类。
+     *
+     * <p>与 {@code PasswordGenerator} 生成的随机强密码策略保持一致。</p>
+     *
+     * @param pwd 新密码明文
+     * @return true=满足强度要求
+     */
+    private boolean isPasswordStrongEnough(String pwd) {
+        boolean hasUpper = false, hasLower = false, hasDigit = false, hasSpecial = false;
+        for (int i = 0; i < pwd.length(); i++) {
+            char c = pwd.charAt(i);
+            if (c >= 'A' && c <= 'Z') hasUpper = true;
+            else if (c >= 'a' && c <= 'z') hasLower = true;
+            else if (c >= '0' && c <= '9') hasDigit = true;
+            else hasSpecial = true;
+        }
+        int categories = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0)
+                + (hasDigit ? 1 : 0) + (hasSpecial ? 1 : 0);
+        return categories >= 3;
     }
 
     private void assertSameTenant(SysUser user) {

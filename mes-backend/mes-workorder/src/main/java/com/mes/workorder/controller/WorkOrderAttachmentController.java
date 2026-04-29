@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class WorkOrderAttachmentController {
 
     @Operation(summary = "查询工单附件列表")
     @GetMapping("/list")
+    @PreAuthorize("hasAuthority('workorder:attachment:list')")
     public R<List<WorkOrderAttachmentVO>> list(
             @Parameter(description = "工单ID") @RequestParam Long workOrderId) {
         return R.ok(attachmentService.listByWorkOrderId(workOrderId));
@@ -30,6 +32,7 @@ public class WorkOrderAttachmentController {
 
     @Operation(summary = "新增附件")
     @PostMapping
+    @PreAuthorize("hasAuthority('workorder:attachment:create')")
     public R<Long> create(
             @Parameter(description = "工单ID") @RequestParam Long workOrderId,
             @Valid @RequestBody WorkOrderAttachmentDTO dto) {
@@ -38,6 +41,7 @@ public class WorkOrderAttachmentController {
 
     @Operation(summary = "删除附件")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('workorder:attachment:delete')")
     public R<Void> delete(
             @Parameter(description = "附件ID") @PathVariable Long id) {
         attachmentService.deleteAttachment(id);

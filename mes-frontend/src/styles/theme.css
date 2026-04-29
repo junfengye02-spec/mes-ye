@@ -1,0 +1,148 @@
+/*
+ * MES 前端全局主题样式
+ *
+ * 作用：
+ * 1. 定义业务自定义 CSS 变量（侧边栏、顶栏、登录页渐变等）
+ * 2. 在 html.dark 下覆盖 Element Plus 业务配色，避免与 Element Plus 原生深色冲突
+ *
+ * 使用方式：
+ * - 所有业务组件统一使用 var(--mes-xxx) 或 var(--el-xxx)
+ * - 禁止再在业务组件里写死 #fff / #000 / #1d1e1f 等背景 / 文本色
+ *
+ * 约定命名：
+ *   --mes-primary                  主色
+ *   --mes-bg-page                  页面背景
+ *   --mes-bg-container             卡片 / 容器背景
+ *   --mes-sidebar-bg               侧边栏背景
+ *   --mes-sidebar-text             侧边栏普通文字
+ *   --mes-sidebar-active-text      侧边栏选中文字
+ *   --mes-sidebar-hover-bg         侧边栏 hover 背景
+ *   --mes-sidebar-border           侧边栏分割线
+ *   --mes-header-bg                顶栏背景
+ *   --mes-header-text              顶栏文字
+ *   --mes-header-border            顶栏底部描边
+ *   --mes-login-bg                 管理端登录页背景（渐变）
+ *   --mes-login-app-bg             移动端登录页背景（渐变）
+ *   --mes-login-card-bg            登录卡片背景
+ *   --mes-login-card-shadow        登录卡片阴影
+ */
+
+/* ============================================================
+ * Light 模式（默认）
+ * ============================================================ */
+:root {
+  --mes-primary: #409eff;
+
+  --mes-bg-page: #f0f2f5;
+  --mes-bg-container: #ffffff;
+
+  --mes-sidebar-bg: #1d1e1f;
+  --mes-sidebar-text: #bfcbd9;
+  --mes-sidebar-active-text: #409eff;
+  --mes-sidebar-hover-bg: #2d2e2f;
+  --mes-sidebar-border: #2d2e2f;
+
+  --mes-header-bg: #ffffff;
+  --mes-header-text: #606266;
+  --mes-header-border: #e4e7ed;
+
+  --mes-login-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --mes-login-app-bg: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  --mes-login-card-bg: #ffffff;
+  --mes-login-card-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  --mes-login-title: #303133;
+  --mes-login-subtitle: #909399;
+  --mes-login-footer: #c0c4cc;
+  --mes-login-lang-bg: rgba(255, 255, 255, 0.15);
+  --mes-login-lang-bg-hover: rgba(255, 255, 255, 0.25);
+  --mes-login-lang-text: #ffffff;
+
+  /* 移动端现场层：在 Light 模式下保持原有深蓝背景 */
+  --mes-portal-sidebar-bg: #1d2b3a;
+  --mes-portal-sidebar-text: #c0c4cc;
+  --mes-portal-sidebar-active-bg: #409eff33;
+  --mes-portal-sidebar-active-text: #ffffff;
+  --mes-portal-sidebar-border: rgba(255, 255, 255, 0.08);
+  --mes-portal-header-border: #ebeef5;
+  --mes-portal-main-bg: #f5f7fa;
+}
+
+/* ============================================================
+ * Dark 模式
+ *
+ * 1. 覆盖 Element Plus 常用色调（bg-color / bg-color-page / text-color 等）
+ * 2. 覆盖业务 CSS 变量，使登录页、侧边栏、顶栏在深色下自然过渡
+ * ============================================================ */
+html.dark {
+  /* Element Plus 基础背景 / 文本（覆盖深色默认，微调以匹配 MES 视觉） */
+  --el-bg-color: #141414;
+  --el-bg-color-page: #0a0a0a;
+  --el-bg-color-overlay: #1d1e1f;
+  --el-text-color-primary: #e5eaf3;
+  --el-text-color-regular: #cfd3dc;
+  --el-text-color-secondary: #a3a6ad;
+  --el-text-color-placeholder: #8d9095;
+  --el-border-color: #363637;
+  --el-border-color-light: #2b2b2c;
+  --el-border-color-lighter: #262627;
+  --el-fill-color: #303030;
+  --el-fill-color-light: #262727;
+  --el-fill-color-blank: transparent;
+  --el-mask-color: rgba(0, 0, 0, 0.8);
+
+  /* 业务层 */
+  --mes-primary: #409eff;
+
+  --mes-bg-page: #0a0a0a;
+  --mes-bg-container: #141414;
+
+  --mes-sidebar-bg: #0f0f10;
+  --mes-sidebar-text: #a8b1bd;
+  --mes-sidebar-active-text: #409eff;
+  --mes-sidebar-hover-bg: #1d1e1f;
+  --mes-sidebar-border: #1d1e1f;
+
+  --mes-header-bg: #141414;
+  --mes-header-text: #cfd3dc;
+  --mes-header-border: #2b2b2c;
+
+  /* 登录页：使用低饱和度深色渐变替代原来亮紫 / 亮绿 */
+  --mes-login-bg: linear-gradient(135deg, #1e2746 0%, #2c1f3d 100%);
+  --mes-login-app-bg: linear-gradient(135deg, #0d3b38 0%, #14422d 100%);
+  --mes-login-card-bg: #1d1e1f;
+  --mes-login-card-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --mes-login-title: #e5eaf3;
+  --mes-login-subtitle: #a3a6ad;
+  --mes-login-footer: #606266;
+  --mes-login-lang-bg: rgba(255, 255, 255, 0.08);
+  --mes-login-lang-bg-hover: rgba(255, 255, 255, 0.16);
+  --mes-login-lang-text: #e5eaf3;
+
+  /* 移动端现场层：在 Dark 模式下统一下沉背景 */
+  --mes-portal-sidebar-bg: #0f0f10;
+  --mes-portal-sidebar-text: #a8b1bd;
+  --mes-portal-sidebar-active-bg: #409eff40;
+  --mes-portal-sidebar-active-text: #e5eaf3;
+  --mes-portal-sidebar-border: rgba(255, 255, 255, 0.06);
+  --mes-portal-header-border: #2b2b2c;
+  --mes-portal-main-bg: #0a0a0a;
+}
+
+/* ============================================================
+ * 全局兜底：让页面背景、文本跟随主题变量
+ * 避免出现 body 永远白底黑字的情况
+ * ============================================================ */
+html,
+body,
+#app {
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* 深色模式下 el-card / el-dialog 等阴影太浅，微调 */
+html.dark .el-card,
+html.dark .el-message-box,
+html.dark .el-dialog {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}

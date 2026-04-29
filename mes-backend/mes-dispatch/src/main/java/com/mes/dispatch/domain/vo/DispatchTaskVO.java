@@ -28,6 +28,28 @@ public class DispatchTaskVO {
     private String dispatchStatus;
     private LocalDateTime planStartTime;
     private LocalDateTime planEndTime;
+
+    @Schema(description = "实际开工时间")
+    private LocalDateTime actualStartTime;
+
+    @Schema(description = "实际完工时间")
+    private LocalDateTime actualEndTime;
+
+    @Schema(description = "实际完成数量")
+    private BigDecimal actualQty;
+
+    @Schema(description = "质量结果：PASS/FAIL/NA")
+    private String qualityResult;
+
+    @Schema(description = "撤销原因")
+    private String cancelReason;
+
+    @Schema(description = "创建人")
+    private String createdBy;
+
+    @Schema(description = "更新人")
+    private String updatedBy;
+
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;
 

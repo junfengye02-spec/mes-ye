@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,12 +24,14 @@ public class SysMenuController {
 
     @Operation(summary = "完整菜单树（管理用）")
     @GetMapping("/tree")
+    @PreAuthorize("hasAuthority('system:menu:list')")
     public R<List<SysMenuVO>> getTree() {
         return R.ok(menuService.getTree());
     }
 
     @Operation(summary = "当前用户菜单树（导航用）")
     @GetMapping("/user-tree")
+    @PreAuthorize("isAuthenticated()")
     public R<List<SysMenuVO>> getUserTree() {
         Long userId = SecurityUtils.getCurrentUserId();
         return R.ok(menuService.getUserTree(userId));
@@ -36,18 +39,21 @@ public class SysMenuController {
 
     @Operation(summary = "获取菜单详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('system:menu:detail')")
     public R<SysMenuVO> getDetail(@PathVariable Long id) {
         return R.ok(menuService.getDetail(id));
     }
 
     @Operation(summary = "新增菜单")
     @PostMapping
+    @PreAuthorize("hasAuthority('system:menu:create')")
     public R<Long> create(@Valid @RequestBody SysMenuDTO dto) {
         return R.ok("新增成功", menuService.create(dto));
     }
 
     @Operation(summary = "修改菜单")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('system:menu:update')")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody SysMenuDTO dto) {
         menuService.update(id, dto);
         return R.ok();
@@ -55,6 +61,7 @@ public class SysMenuController {
 
     @Operation(summary = "删除菜单")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('system:menu:delete')")
     public R<Void> delete(@PathVariable Long id) {
         menuService.delete(id);
         return R.ok();

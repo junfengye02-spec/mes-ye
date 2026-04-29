@@ -1,6 +1,6 @@
 <template>
   <div class="work-order-list">
-    <el-card shadow="never" class="search-card">
+    <el-card shadow="never" class="search-card" role="search" :aria-label="t('common.a11y.searchForm')">
       <el-form :model="query" inline @submit.prevent="handleSearch">
         <el-form-item label="工单号">
           <el-input v-model="query.workOrderNo" placeholder="请输入" clearable style="width: 160px" />
@@ -34,10 +34,10 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon> 查询
+            <el-icon aria-hidden="true"><Search /></el-icon> {{ t('buttons.search') }}
           </el-button>
           <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon> 重置
+            <el-icon aria-hidden="true"><Refresh /></el-icon> {{ t('buttons.reset') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -45,14 +45,21 @@
 
     <el-card shadow="never">
       <template #header>
-        <div class="table-header">
-          <span>工单列表</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon> 新增
+        <div class="table-header" role="toolbar" :aria-label="t('workorder.listTitle')">
+          <span>{{ t('workorder.listTitle') }}</span>
+          <el-button v-auth="['workorder:workorder:create']" type="primary" @click="handleAdd">
+            <el-icon aria-hidden="true"><Plus /></el-icon> {{ t('buttons.add') }}
           </el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="list" border stripe>
+      <el-table
+        v-loading="loading"
+        :data="list"
+        border
+        stripe
+        role="region"
+        :aria-label="t('workorder.listTitle')"
+      >
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="workOrderNo" label="工单号" min-width="120" />
         <el-table-column prop="workOrderType" label="工单类型" width="100" />
@@ -71,12 +78,13 @@
         <el-table-column prop="planEndTime" label="计划结束时间" width="170" />
         <el-table-column label="操作" width="380" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleViewDetail(row)">
+            <el-button v-auth="['workorder:workorder:detail']" type="primary" link size="small" @click="handleViewDetail(row)">
               查看详情
             </el-button>
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-auth="['workorder:workorder:update']" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button
               v-if="row.status === 'CREATED'"
+              v-auth="['workorder:workorder:release']"
               type="primary"
               link
               size="small"
@@ -86,6 +94,7 @@
             </el-button>
             <el-button
               v-if="row.status === 'RELEASED'"
+              v-auth="['workorder:workorder:start']"
               type="success"
               link
               size="small"
@@ -95,6 +104,7 @@
             </el-button>
             <el-button
               v-if="row.status === 'IN_PROGRESS'"
+              v-auth="['workorder:workorder:complete']"
               type="success"
               link
               size="small"
@@ -104,6 +114,7 @@
             </el-button>
             <el-button
               v-if="row.status === 'IN_PROGRESS'"
+              v-auth="['workorder:workorder:forceComplete']"
               type="warning"
               link
               size="small"
@@ -114,7 +125,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="pagination-wrapper">
+      <nav class="pagination-wrapper" :aria-label="t('common.a11y.pagination')">
         <el-pagination
           v-model:current-page="query.pageNum"
           v-model:page-size="query.pageSize"
@@ -124,17 +135,18 @@
           @size-change="loadList"
           @current-change="loadList"
         />
-      </div>
+      </nav>
     </el-card>
 
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="700px"
+      width="900px"
       destroy-on-close
       @close="handleDialogClose"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <el-divider content-position="left">基本信息</el-divider>
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="工单号" prop="workOrderNo">
@@ -147,6 +159,40 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="生产计划号" prop="productionPlanNo">
+              <el-input v-model="form.productionPlanNo" placeholder="请输入生产计划号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="订单计划号" prop="orderPlanNo">
+              <el-input v-model="form.orderPlanNo" placeholder="请输入订单计划号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="订单编号" prop="orderNo">
+              <el-input v-model="form.orderNo" placeholder="请输入订单编号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="新制/维修类型" prop="newOrRepairType">
+              <el-input v-model="form.newOrRepairType" placeholder="新制 / 维修" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="业务类型" prop="workType">
+              <el-input v-model="form.workType" placeholder="主机 / 维修 / 检查" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="BOM编码" prop="bomCode">
+              <el-input v-model="form.bomCode" placeholder="请输入BOM编码" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-divider content-position="left">产品信息</el-divider>
+        <el-row :gutter="16">
+          <el-col :span="12">
             <el-form-item label="产品编码" prop="productCode">
               <el-input v-model="form.productCode" placeholder="请输入产品编码" />
             </el-form-item>
@@ -157,8 +203,23 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="BOM编码" prop="bomCode">
-              <el-input v-model="form.bomCode" placeholder="请输入BOM编码" />
+            <el-form-item label="主产品" prop="mainProduct">
+              <el-input v-model="form.mainProduct" placeholder="请输入主产品" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="机型" prop="machineModel">
+              <el-input v-model="form.machineModel" placeholder="请输入机型" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="产品类别" prop="productCategory">
+              <el-input v-model="form.productCategory" placeholder="请输入产品类别" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="产品类型" prop="productType">
+              <el-input v-model="form.productType" placeholder="请输入产品类型" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -171,6 +232,39 @@
               <el-input v-model="form.qtyUnit" placeholder="请输入单位" />
             </el-form-item>
           </el-col>
+        </el-row>
+
+        <el-divider content-position="left">项目信息</el-divider>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="项目" prop="projectName">
+              <el-input v-model="form.projectName" placeholder="请输入项目" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="WBS元素" prop="wbsElement">
+              <el-input v-model="form.wbsElement" placeholder="请输入WBS元素" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="序列号" prop="serialNo">
+              <el-input v-model="form.serialNo" placeholder="请输入序列号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="特殊库存标识" prop="specialStockFlag">
+              <el-input v-model="form.specialStockFlag" placeholder="请输入特殊库存标识" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="交货地点" prop="deliveryLocation">
+              <el-input v-model="form.deliveryLocation" placeholder="请输入交货地点" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-divider content-position="left">组织与工作中心</el-divider>
+        <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="工厂组织" prop="factoryOrg">
               <el-input v-model="form.factoryOrg" placeholder="请输入工厂组织" />
@@ -182,10 +276,24 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="计划工作中心" prop="planWorkCenterId">
+            <el-form-item label="主制组织" prop="mainOrg">
+              <el-input v-model="form.mainOrg" placeholder="请输入主制组织" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="计划工作中心ID" prop="planWorkCenterId">
               <el-input-number v-model="form.planWorkCenterId" :min="0" style="width: 100%" />
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="指定工作中心ID" prop="specifiedWorkCenterId">
+              <el-input-number v-model="form.specifiedWorkCenterId" :min="0" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-divider content-position="left">计划时间</el-divider>
+        <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="计划开始时间" prop="planStartTime">
               <el-date-picker
@@ -214,6 +322,16 @@
             </el-form-item>
           </el-col>
         </el-row>
+
+        <!-- 子表数据（本版先不开放前端录入，提交时传空数组，由后端维持与 DTO 结构一致） -->
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-top: 8px"
+          title="子表（工作清单 / 输入物料 / 输出物料 / 检验项目 / 约束关系 / 供应计划）提示"
+          description="本页面新增/编辑仅维护工单主表；子表数据请在工单详情页或对应模块维护。类型定义已完整对齐后端 DTO，提交时默认以空数组传递。"
+        />
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -248,10 +366,12 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 import { getDictLabel, getDictType, getDictList } from '@/utils/dict'
 import type { WorkOrderVO, WorkOrderDTO, WorkOrderQuery } from '@/types/workorder'
 import { workOrderApi } from '@/api/workorder/workOrder'
 
+const { t } = useI18n()
 const router = useRouter()
 const loading = ref(false)
 const list = ref<WorkOrderVO[]>([])
@@ -272,20 +392,43 @@ const dialogTitle = ref('新增工单')
 const formRef = ref<FormInstance>()
 const submitLoading = ref(false)
 const editId = ref<number | null>(null)
+// 与后端 WorkOrderDTO 完整对齐（34 字段 + 6 子表）
 const form = reactive<WorkOrderDTO>({
   workOrderNo: '',
   workOrderType: '',
+  productionPlanNo: '',
+  orderPlanNo: '',
+  orderNo: '',
   productCode: '',
   productName: '',
+  mainProduct: '',
+  machineModel: '',
+  productCategory: '',
+  productType: '',
   bomCode: '',
+  projectName: '',
+  wbsElement: '',
+  newOrRepairType: '',
+  workType: '',
   planQty: 1,
   qtyUnit: '',
   factoryOrg: '',
   planOrg: '',
+  mainOrg: '',
   planWorkCenterId: undefined,
+  specifiedWorkCenterId: undefined,
+  serialNo: '',
+  specialStockFlag: '',
+  deliveryLocation: '',
+  remark: '',
   planStartTime: '',
   planEndTime: '',
-  remark: '',
+  tasks: [],
+  inputMaterials: [],
+  outputMaterials: [],
+  qualityItems: [],
+  constraints: [],
+  supplyPlans: [],
 })
 
 const rules: FormRules = {
@@ -336,44 +479,93 @@ function handleViewDetail(row: WorkOrderVO) {
   router.push(`/workorder/detail/${row.id}`)
 }
 
-function handleAdd() {
-  dialogTitle.value = '新增工单'
-  editId.value = null
+function resetForm() {
   Object.assign(form, {
     workOrderNo: '',
     workOrderType: '',
+    productionPlanNo: '',
+    orderPlanNo: '',
+    orderNo: '',
     productCode: '',
     productName: '',
+    mainProduct: '',
+    machineModel: '',
+    productCategory: '',
+    productType: '',
     bomCode: '',
+    projectName: '',
+    wbsElement: '',
+    newOrRepairType: '',
+    workType: '',
     planQty: 1,
     qtyUnit: '',
     factoryOrg: '',
     planOrg: '',
+    mainOrg: '',
     planWorkCenterId: undefined,
+    specifiedWorkCenterId: undefined,
+    serialNo: '',
+    specialStockFlag: '',
+    deliveryLocation: '',
+    remark: '',
     planStartTime: '',
     planEndTime: '',
-    remark: '',
+    tasks: [],
+    inputMaterials: [],
+    outputMaterials: [],
+    qualityItems: [],
+    constraints: [],
+    supplyPlans: [],
   })
+}
+
+function handleAdd() {
+  dialogTitle.value = '新增工单'
+  editId.value = null
+  resetForm()
   dialogVisible.value = true
 }
 
 function handleEdit(row: WorkOrderVO) {
   dialogTitle.value = '编辑工单'
   editId.value = row.id
+  resetForm()
   Object.assign(form, {
     workOrderNo: row.workOrderNo,
-    workOrderType: row.workOrderType,
-    productCode: row.productCode,
-    productName: row.productName,
-    bomCode: row.bomCode,
+    workOrderType: row.workOrderType ?? '',
+    productionPlanNo: row.productionPlanNo ?? '',
+    orderPlanNo: row.orderPlanNo ?? '',
+    orderNo: row.orderNo ?? '',
+    productCode: row.productCode ?? '',
+    productName: row.productName ?? '',
+    mainProduct: row.mainProduct ?? '',
+    machineModel: row.machineModel ?? '',
+    productCategory: row.productCategory ?? '',
+    productType: row.productType ?? '',
+    bomCode: row.bomCode ?? '',
+    projectName: row.projectName ?? '',
+    wbsElement: row.wbsElement ?? '',
+    newOrRepairType: row.newOrRepairType ?? '',
+    workType: row.workType ?? '',
     planQty: row.planQty ?? 1,
-    qtyUnit: row.qtyUnit,
-    factoryOrg: row.factoryOrg,
-    planOrg: row.planOrg,
+    qtyUnit: row.qtyUnit ?? '',
+    factoryOrg: row.factoryOrg ?? '',
+    planOrg: row.planOrg ?? '',
+    mainOrg: row.mainOrg ?? '',
     planWorkCenterId: row.planWorkCenterId,
-    planStartTime: row.planStartTime,
-    planEndTime: row.planEndTime,
-    remark: row.remark,
+    specifiedWorkCenterId: row.specifiedWorkCenterId,
+    serialNo: row.serialNo ?? '',
+    specialStockFlag: row.specialStockFlag ?? '',
+    deliveryLocation: row.deliveryLocation ?? '',
+    remark: row.remark ?? '',
+    planStartTime: row.planStartTime ?? '',
+    planEndTime: row.planEndTime ?? '',
+    tasks: [],
+    inputMaterials: [],
+    outputMaterials: [],
+    qualityItems: [],
+    constraints: [],
+    supplyPlans: [],
   })
   dialogVisible.value = true
 }

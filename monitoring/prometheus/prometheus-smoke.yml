@@ -1,0 +1,52 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: mes
+    env: smoke-mcp10v2
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          role: container
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          role: host
+
+  - job_name: mes-admin
+    metrics_path: /api/actuator/prometheus
+    static_configs:
+      - targets: ['mes-backend:9090']
+        labels:
+          component: backend
+          mode: monolith
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  - job_name: grafana
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['grafana:3000']
+
+  - job_name: mysql
+    static_configs:
+      - targets: ['mes-mysql:3306']
+        labels:
+          role: mysql
+
+  - job_name: redis
+    static_configs:
+      - targets: ['mes-redis:6379']
+        labels:
+          role: redis

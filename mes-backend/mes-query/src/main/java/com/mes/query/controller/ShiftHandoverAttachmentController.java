@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class ShiftHandoverAttachmentController {
 
     @Operation(summary = "查询交班附件列表")
     @GetMapping("/list/{handoverId}")
+    @PreAuthorize("hasAuthority('query:shiftHandoverAttachment:list')")
     public R<List<ShiftHandoverAttachmentVO>> listByHandoverId(
             @Parameter(description = "交班记录ID") @PathVariable Long handoverId) {
         return R.ok(attachmentService.listByHandoverId(handoverId));
@@ -30,12 +32,14 @@ public class ShiftHandoverAttachmentController {
 
     @Operation(summary = "新增交班附件")
     @PostMapping
+    @PreAuthorize("hasAuthority('query:shiftHandoverAttachment:create')")
     public R<Long> create(@Valid @RequestBody ShiftHandoverAttachmentDTO dto) {
         return R.ok("新增成功", attachmentService.create(dto));
     }
 
     @Operation(summary = "删除交班附件")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('query:shiftHandoverAttachment:delete')")
     public R<Void> delete(@Parameter(description = "附件ID") @PathVariable Long id) {
         attachmentService.delete(id);
         return R.ok();

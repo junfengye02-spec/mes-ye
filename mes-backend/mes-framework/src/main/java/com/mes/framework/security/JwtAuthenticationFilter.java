@@ -52,6 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
     private final StringRedisTemplate redisTemplate;
+    private final JwtBlacklistService jwtBlacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -66,10 +67,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     filterChain.doFilter(request, response);
                     return;
                 }
+
+                // 黑名单校验（P1-22）：
+                // 1) 当前 access token 被主动登出加入黑名单
+                // 2) refresh 被重放时，用户所有会话被强制吊销
+                String jti = tokenProvider.getJti(token);
+                if (jti != null && jwtBlacklistService.isBlacklisted(jti)) {
+                    log.info("[JWT] token 已被加入黑名单，忽略认证: jti={}", jti);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 Long userId = tokenProvider.getUserId(token);
                 String username = tokenProvider.getUsername(token);
                 Long tenantId = tokenProvider.getTenantId(token);
                 String accountType = tokenProvider.getAccountType(token);
+
+                long issuedAt = tokenProvider.getIssuedAt(token).getTime();
+                if (jwtBlacklistService.isRevokedForUser(tenantId, userId, issuedAt)) {
+                    log.info("[JWT] token 早于用户级吊销时间，忽略认证: tenantId={}, userId={}, iat={}",
+                            tenantId, userId, issuedAt);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 TenantContextHolder.setTenantId(tenantId);
                 MDC.put(MDC_TENANT_ID, String.valueOf(tenantId));

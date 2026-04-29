@@ -1,0 +1,26 @@
+services:
+  redis:
+    ports: !reset []
+
+  mes-backend:
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      MES_APS_API_KEY: ${MES_APS_API_KEY}
+      MES_APS_HMAC_KEY: ${MES_APS_HMAC_KEY}
+
+  mes-frontend:
+    profiles:
+      - disabled
+
+  minio:
+    profiles:
+      - disabled
+
+  prometheus:
+    volumes: !override
+      - ./monitoring/prometheus/prometheus-smoke.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus

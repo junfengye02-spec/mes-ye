@@ -1,0 +1,172 @@
+{
+  "title": "MES Sentinel Rate Limit & Circuit Breaker",
+  "uid": "mes-sentinel",
+  "tags": ["mes", "sentinel", "rate-limit"],
+  "timezone": "Asia/Shanghai",
+  "editable": true,
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "query": "label_values(up, job)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Sentinel 资源 - 通过请求数 / 秒（Pass QPS）",
+      "description": "基于 /actuator/prometheus 暴露的 http_server_requests_seconds_count 统计。Sentinel Dashboard 不可用时用 Actuator 替代。",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/auth/login|/file/upload|/workorder/work-order/page|/dispatch/task/page\",job=~\"$service\",status!~\"4..|5..\"}[1m])) by (uri)",
+          "legendFormat": "{{uri}} - pass"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Sentinel 资源 - 被拦截请求数 / 秒（HTTP 429 Blocked）",
+      "description": "429 数量 = Sentinel 限流触发次数（业务层 R.fail(429) + 框架 HTTP 429）",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{status=\"429\",job=~\"$service\"}[1m])) by (uri)",
+          "legendFormat": "{{uri}} - blocked"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 50
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "登录接口 QPS vs 阈值（10 QPS / IP）",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=\"/auth/login\",job=~\"$service\"}[1m]))",
+          "legendFormat": "auth/login total QPS"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 8},
+              {"color": "red", "value": 10}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "核心接口 P95 响应时间",
+      "description": "使用 http_server_requests_seconds_bucket 计算 P95，用于观察限流后剩余流量的延迟",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=~\"/auth/login|/workorder/work-order/page|/dispatch/task/page\",job=~\"$service\"}[1m])) by (le, uri))",
+          "legendFormat": "{{uri}} p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 0.3},
+              {"color": "red", "value": 0.5}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "限流触发率（Block Rate %）",
+      "description": "blocked / (pass + blocked) 的比率，>5% 说明触发限流的流量占比过高，需要扩容或调阈值",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{status=\"429\",job=~\"$service\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=~\"$service\"}[5m])) * 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 5},
+              {"color": "red", "value": 15}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Resilience4j CircuitBreaker 状态（APS）",
+      "description": "熔断器状态：0=CLOSED, 1=OPEN, 2=HALF_OPEN",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+      "targets": [
+        {
+          "expr": "resilience4j_circuitbreaker_state{name=\"apsCircuitBreaker\",job=~\"$service\"}",
+          "legendFormat": "{{state}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"options": {"0": {"text": "CLOSED", "color": "green"}}, "type": "value"},
+            {"options": {"1": {"text": "OPEN", "color": "red"}}, "type": "value"},
+            {"options": {"2": {"text": "HALF_OPEN", "color": "yellow"}}, "type": "value"}
+          ]
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Tenant 租户级限流触发 TOP5",
+      "description": "按租户 ID 聚合 429 计数（需 TenantContextHolder 填充到 MDC/label）",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+      "targets": [
+        {
+          "expr": "topk(5, sum(increase(http_server_requests_seconds_count{status=\"429\",job=~\"$service\"}[10m])) by (uri))",
+          "legendFormat": "{{uri}}"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "time": {"from": "now-30m", "to": "now"}
+}

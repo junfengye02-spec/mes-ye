@@ -9,8 +9,11 @@ import com.mes.admin.domain.vo.UserInfoVO;
 import com.mes.admin.mapper.SysRoleMapper;
 import com.mes.admin.mapper.SysTenantMapper;
 import com.mes.admin.mapper.SysUserMapper;
+import com.mes.admin.service.CaptchaService;
+import com.mes.admin.service.LoginLockoutService;
 import com.mes.admin.service.impl.AuthServiceImpl;
 import com.mes.common.exception.BusinessException;
+import com.mes.framework.security.JwtBlacklistService;
 import com.mes.framework.security.JwtTokenProvider;
 import com.mes.framework.security.LoginUser;
 import com.mes.framework.security.StaffPortalRestrictionFilter;
@@ -26,6 +29,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -45,6 +50,10 @@ import static org.mockito.Mockito.*;
  * {@link AuthServiceImpl} 单元测试：登录、刷新、登出、用户信息、权限缓存
  */
 @ExtendWith(MockitoExtension.class)
+// P2 后 AuthServiceImpl 新增了若干协作依赖（lockoutService / captchaService / jwtBlacklistService），
+// 为避免在各用例分散补 stub 引发 UnnecessaryStubbing 噪音，整体放宽为 LENIENT；
+// 各用例依旧通过 verify 精确断言关键行为。
+@MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AuthServiceTest {
 
@@ -72,6 +81,13 @@ class AuthServiceTest {
     private SetOperations<String, String> setOperations;
     @Mock
     private Authentication authentication;
+    // P2 升级后 AuthServiceImpl 新增依赖：登录锁定 / 验证码 / JWT 黑名单
+    @Mock
+    private LoginLockoutService lockoutService;
+    @Mock
+    private CaptchaService captchaService;
+    @Mock
+    private JwtBlacklistService jwtBlacklistService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -154,6 +170,9 @@ class AuthServiceTest {
         when(tokenProvider.getTenantId(old)).thenReturn(2L);
         when(tokenProvider.getAccountType(old)).thenReturn("ADMIN");
         when(tokenProvider.getTenantCode(old)).thenReturn("east");
+        when(tokenProvider.getJti(old)).thenReturn("jti-old");
+        // refresh token 过期时间：当前时间 + 1 小时
+        when(tokenProvider.getExpiration(old)).thenReturn(new java.util.Date(System.currentTimeMillis() + 3600_000L));
         when(tokenProvider.createAccessToken(eq(10L), eq("u10"), eq(2L), anyString(), eq("ADMIN"))).thenReturn("new-access");
         when(tokenProvider.createRefreshToken(eq(10L), eq("u10"), eq(2L), anyString(), eq("ADMIN"))).thenReturn("new-refresh");
         stubPermissionCacheRedis();
@@ -195,7 +214,8 @@ class AuthServiceTest {
         TenantContextHolder.setTenantId(1L);
         when(redisTemplate.delete(PERM_KEY_PREFIX + 5L)).thenReturn(true);
 
-        authService.logout(5L);
+        // logout 签名升级为 (userId, accessToken)；测试场景不关心 token，传 null 即可走到权限清理分支
+        authService.logout(5L, null);
 
         verify(redisTemplate).delete(PERM_KEY_PREFIX + 5L);
     }
@@ -205,7 +225,8 @@ class AuthServiceTest {
     @DisplayName("3.2 登出时若 TenantContext 为空则跳过缓存清理，不抛异常")
     void logout_whenTenantMissing_shouldSkipWithoutThrowing() {
         // 不设置 TenantContextHolder，模拟未经 Filter 的场景
-        authService.logout(5L);
+        // logout 签名升级为 (userId, accessToken)；此用例验证 tenant 缺失分支
+        authService.logout(5L, null);
         verify(redisTemplate, never()).delete(anyString());
     }
 

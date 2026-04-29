@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,18 +27,21 @@ public class DeliverySignController {
 
     @Operation(summary = "分页查询发货签收")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('material:deliverySign:list')")
     public R<PageResult<DeliverySignVO>> page(DeliverySignQuery query) {
         return R.ok(deliverySignService.page(query));
     }
 
     @Operation(summary = "新增发货签收")
     @PostMapping
+    @PreAuthorize("hasAuthority('material:deliverySign:create')")
     public R<Long> create(@Valid @RequestBody DeliverySignDTO dto) {
         return R.ok("新增成功", deliverySignService.create(dto));
     }
 
     @Operation(summary = "确认发货签收")
     @PostMapping("/{id}/confirm")
+    @PreAuthorize("hasAuthority('material:deliverySign:confirm')")
     public R<Void> confirm(
             @Parameter(description = "发货签收ID") @PathVariable Long id) {
         deliverySignService.confirm(id);

@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -31,12 +32,14 @@ public class ProductionPlanController {
 
     @Operation(summary = "分页查询生产计划")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('plan:production:list')")
     public R<PageResult<ProductionPlanVO>> page(ProductionPlanQuery query) {
         return R.ok(productionPlanService.page(query));
     }
 
     @Operation(summary = "获取生产计划详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('plan:production:detail')")
     public R<ProductionPlanVO> getDetail(
             @Parameter(description = "生产计划ID") @PathVariable Long id) {
         return R.ok(productionPlanService.getDetail(id));
@@ -44,12 +47,14 @@ public class ProductionPlanController {
 
     @Operation(summary = "新增生产计划")
     @PostMapping
+    @PreAuthorize("hasAuthority('plan:production:create')")
     public R<Long> create(@Valid @RequestBody ProductionPlanDTO dto) {
         return R.ok("新增成功", productionPlanService.create(dto));
     }
 
     @Operation(summary = "修改生产计划")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('plan:production:update')")
     public R<Void> update(
             @Parameter(description = "生产计划ID") @PathVariable Long id,
             @Valid @RequestBody ProductionPlanDTO dto) {
@@ -59,6 +64,7 @@ public class ProductionPlanController {
 
     @Operation(summary = "删除生产计划")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('plan:production:delete')")
     public R<Void> delete(
             @Parameter(description = "生产计划ID") @PathVariable Long id) {
         productionPlanService.delete(id);
@@ -67,6 +73,7 @@ public class ProductionPlanController {
 
     @Operation(summary = "下达生产计划")
     @PostMapping("/{id}/release")
+    @PreAuthorize("hasAuthority('plan:production:release')")
     public R<Void> release(
             @Parameter(description = "生产计划ID") @PathVariable Long id) {
         productionPlanService.release(id);
@@ -75,6 +82,7 @@ public class ProductionPlanController {
 
     @Operation(summary = "查询生产计划状态日志")
     @GetMapping("/{id}/status-logs")
+    @PreAuthorize("hasAuthority('plan:production:log')")
     public R<PageResult<PlanStatusLogVO>> getStatusLogs(
             @Parameter(description = "生产计划ID") @PathVariable Long id,
             PageQuery query) {

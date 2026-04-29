@@ -11,6 +11,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * JWT 令牌工具：生成、解析、验证
@@ -147,5 +148,26 @@ public class JwtTokenProvider {
     public String getAccountType(String token) {
         String a = parseToken(token).get("accountType", String.class);
         return a != null ? a : "ADMIN";
+    }
+
+    /**
+     * 获取 token 的 jti（唯一 ID），用于黑名单 / refresh 轮换（P1-22）
+     */
+    public String getJti(String token) {
+        return parseToken(token).getId();
+    }
+
+    /**
+     * 获取 token 的过期时间
+     */
+    public Date getExpiration(String token) {
+        return parseToken(token).getExpiration();
+    }
+
+    /**
+     * 获取 token 的签发时间
+     */
+    public Date getIssuedAt(String token) {
+        return parseToken(token).getIssuedAt();
     }
 }

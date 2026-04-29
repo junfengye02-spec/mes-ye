@@ -34,3 +34,12 @@ Thumbs.db
 
 # Agent transcripts
 **/agent-transcripts/
+
+# Local smoke/test scratch files
+/_*.json
+/_check_*.sh
+/_mcp*_*.sh
+/_run_e2e*.ps1
+/_run_remaining_sql.sh
+/mes-backend/_mcp*.sql
+/mes-backend/_mcp*.sh

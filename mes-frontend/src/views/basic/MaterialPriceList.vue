@@ -25,7 +25,7 @@
     >
       <template #title>物料价格</template>
       <template #toolbar>
-        <el-button type="primary" @click="handleAdd">
+        <el-button v-auth="['basic:materialPrice:create']" type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增
         </el-button>
       </template>
@@ -37,10 +37,11 @@
       <el-table-column prop="effectiveDate" label="生效日期" width="110" />
       <el-table-column prop="expirationDate" label="失效日期" width="110" />
       <el-table-column prop="supplier" label="供应商" min-width="120" />
-      <el-table-column label="操作" width="150" fixed="right">
+      <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click.stop="handleEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click.stop="handleDelete(row)">删除</el-button>
+          <el-button v-auth="['basic:materialPrice:detail']" link type="info" @click.stop="handleView(row)">查看</el-button>
+          <el-button v-auth="['basic:materialPrice:update']" link type="primary" @click.stop="handleEdit(row)">编辑</el-button>
+          <el-button v-auth="['basic:materialPrice:delete']" link type="danger" @click.stop="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </DataTable>
@@ -93,7 +94,12 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">确定</el-button>
+        <el-button
+          v-auth="['basic:materialPrice:create', 'basic:materialPrice:update']"
+          type="primary"
+          :loading="saving"
+          @click="handleSave"
+        >确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -233,6 +239,19 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+function handleView(row: MaterialPriceVO) {
+  const lines = [
+    `物料编码：${row.materialCode ?? '-'}`,
+    `物料名称：${row.materialName ?? '-'}`,
+    `价格类型：${row.priceType ?? '-'}`,
+    `价格：${row.price ?? '-'} ${row.currency ?? ''}`,
+    `生效日期：${row.effectiveDate ?? '-'}`,
+    `失效日期：${row.expirationDate ?? '-'}`,
+    `供应商：${row.supplier ?? '-'}`,
+  ].join('\n')
+  ElMessageBox.alert(lines, '物料价格详情', { confirmButtonText: '关闭' }).catch(() => {})
 }
 
 async function handleDelete(row: MaterialPriceVO) {

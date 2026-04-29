@@ -1,0 +1,208 @@
+# ---------------------------------------------------------------
+# MES 主 CI 流水线
+# 触发：push 到 main/develop，或任何 PR
+# 目标：
+#   1. 后端构建 + 单测 + 产物归档
+#   2. 前端构建 + 产物归档
+#   3. 仅 main 分支：构建 Docker 镜像并推送到 registry
+#   4. 仅 main 分支：生成 Release Draft（可选）
+# 所需 Secrets（仓库 Settings → Secrets and variables → Actions）：
+#   REGISTRY         - 镜像仓库地址，如 ghcr.io 或 registry.example.com
+#   REGISTRY_USER    - 推送账号
+#   REGISTRY_TOKEN   - 推送密码 / PAT
+# ---------------------------------------------------------------
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAMESPACE: mes
+  IMAGE_BACKEND: mes-backend
+  IMAGE_FRONTEND: mes-frontend
+
+jobs:
+  # ===== Job 1: 后端构建 & 单测 =====
+  backend-build:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Maven Verify (编译 + 单测 + 跳过集成测试)
+        working-directory: mes-backend
+        run: mvn -B -ntp clean verify -DskipITs
+
+      - name: Upload JaCoCo Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: |
+            mes-backend/**/target/site/jacoco/**
+            mes-backend/**/target/surefire-reports/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Backend Jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jars
+          path: mes-backend/**/target/*.jar
+          retention-days: 3
+
+  # ===== Job 2: 前端构建 =====
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mes-frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: mes-frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        working-directory: mes-frontend
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: mes-frontend
+        run: npm run build
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: mes-frontend/dist
+          retention-days: 3
+
+  # ===== Job 3: 仅 main/tag 构建镜像并推送 =====
+  docker-build-push:
+    name: Docker Build & Push
+    needs: [backend-build, frontend-build]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY || 'ghcr.io' }}
+          username: ${{ secrets.REGISTRY_USER || github.actor }}
+          password: ${{ secrets.REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: meta
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="$(date +%Y%m%d)-${GITHUB_SHA::8}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "registry=${REGISTRY:-ghcr.io}" >> "$GITHUB_OUTPUT"
+        env:
+          REGISTRY: ${{ secrets.REGISTRY }}
+
+      - name: Build & Push Backend (mes-admin)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mes-backend
+          file: ./mes-backend/Dockerfile
+          target: mes-admin
+          push: true
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_BACKEND }}:${{ steps.meta.outputs.version }}
+            ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_BACKEND }}:latest
+
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mes-frontend
+          file: ./mes-frontend/Dockerfile
+          push: true
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.version }}
+            ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_FRONTEND }}:latest
+
+      - name: Scan Backend Image (Trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_BACKEND }}:${{ steps.meta.outputs.version }}
+          format: table
+          exit-code: '0'
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+        continue-on-error: true
+
+  # ===== Job 4: 仅 tag 生成 Release Draft =====
+  release-draft:
+    name: Release Draft
+    needs: [docker-build-push]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          body: |
+            ## MES ${{ github.ref_name }}
+
+            ### 镜像
+            - Backend: `${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_BACKEND }}:${{ github.ref_name }}`
+            - Frontend: `${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_FRONTEND }}:${{ github.ref_name }}`
+
+            ### 部署
+            参见 [README.md](./README.md) 与 [docs/deployment/](./docs/deployment/) 目录。

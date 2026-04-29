@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,12 +29,14 @@ public class ProcessInfoController {
 
     @Operation(summary = "分页查询工序信息")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('process:processInfo:list')")
     public R<PageResult<ProcessInfoVO>> page(ProcessInfoQuery query) {
         return R.ok(processInfoService.page(query));
     }
 
     @Operation(summary = "获取工序信息详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:processInfo:detail')")
     public R<ProcessInfoVO> getDetail(
             @Parameter(description = "工序信息ID") @PathVariable Long id) {
         return R.ok(processInfoService.getDetail(id));
@@ -41,12 +44,14 @@ public class ProcessInfoController {
 
     @Operation(summary = "新增工序信息")
     @PostMapping
+    @PreAuthorize("hasAuthority('process:processInfo:create')")
     public R<Long> create(@Valid @RequestBody ProcessInfoDTO dto) {
         return R.ok("新增成功", processInfoService.create(dto));
     }
 
     @Operation(summary = "修改工序信息")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:processInfo:update')")
     public R<Void> update(
             @Parameter(description = "工序信息ID") @PathVariable Long id,
             @Valid @RequestBody ProcessInfoDTO dto) {
@@ -56,6 +61,7 @@ public class ProcessInfoController {
 
     @Operation(summary = "删除工序信息")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:processInfo:delete')")
     public R<Void> delete(
             @Parameter(description = "工序信息ID") @PathVariable Long id) {
         processInfoService.delete(id);
@@ -64,6 +70,7 @@ public class ProcessInfoController {
 
     @Operation(summary = "批量编辑工序信息")
     @PutMapping("/batch")
+    @PreAuthorize("hasAuthority('process:processInfo:update')")
     public R<Void> batchUpdate(
             @Parameter(description = "ID列表") @RequestParam List<Long> ids,
             @Valid @RequestBody List<ProcessInfoDTO> dtoList) {

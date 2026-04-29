@@ -10,12 +10,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 租户初始化（Provisioning）流水：
@@ -77,13 +85,13 @@ public class TenantProvisionerImpl implements ITenantProvisioner {
         }
         logStep(tenantId, "VALIDATE_CODE", "SUCCESS", null, System.currentTimeMillis() - t0);
 
-        // Step: CLONE_MENUS —— 由于 sys_menu 在 ignoreTable 名单中，这里直接按原值复制 tenant_id=0 的行
+        // Step: CLONE_MENUS —— 由于 sys_menu 在 ignoreTable 名单中，跨租户 INSERT 被允许；
+        // 注意：模板中既有目录/叶子菜单，又有 V2.05 引入的大量按钮级菜单（menu_type='B'），
+        //      这些菜单通过 parent_id 形成树结构。直接 INSERT...SELECT 会把模板的原始 id
+        //      作为新租户的 parent_id，导致新租户菜单树指向错误 —— 这里采用"按 parent 拓扑
+        //      顺序逐条插入 + 旧新 id 映射回填"的方式，保证 parent_id 指向新租户自己的菜单。
         long t1 = System.currentTimeMillis();
-        int menusCloned = jdbcTemplate.update(
-                "INSERT INTO sys_menu (tenant_id, parent_id, menu_name, path, component, menu_type, permission, icon, sort_order, visible, is_template, created_by, created_time) "
-                + "SELECT ?, parent_id, menu_name, path, component, menu_type, permission, icon, sort_order, visible, 0, 'system', NOW() "
-                + "FROM sys_menu WHERE tenant_id = 0 AND deleted = 0",
-                tenantId);
+        int menusCloned = cloneTemplateMenus(tenantId);
         logStep(tenantId, "CLONE_MENUS", "SUCCESS", "cloned=" + menusCloned, System.currentTimeMillis() - t1);
 
         // Step: CLONE_ROLES
@@ -162,5 +170,169 @@ public class TenantProvisionerImpl implements ITenantProvisioner {
         } catch (Exception e) {
             log.warn("[Provision] 记录审计失败: tenantId={}, step={}, err={}", tenantId, step, e.getMessage());
         }
+    }
+
+    /**
+     * 按"父先于子"的拓扑顺序把模板菜单（tenant_id=0 且 is_template=1 或 deleted=0）
+     * 克隆到目标租户，并重建 parent_id 指向新租户自己的菜单。
+     *
+     * <p>核心流程：</p>
+     * <ol>
+     *   <li>查询全部模板菜单（按 parent_id 升序 + sort_order 升序，保证父先于子被处理）；</li>
+     *   <li>维护 {@code oldIdToNewId} 映射，逐条 INSERT 并通过 {@link KeyHolder} 抓取自增主键；</li>
+     *   <li>INSERT 时：新菜单 parent_id = map.get(模板 parent_id) ?: 0，保证指向新租户自己的父菜单；</li>
+     *   <li>V2.05 新增的按钮级菜单 (menu_type='B') 通过同一流程克隆，permission 字段被原样继承，
+     *       供前端 v-auth 指令 / 后端 @PreAuthorize 使用。</li>
+     * </ol>
+     *
+     * @param tenantId 目标租户 id
+     * @return 被克隆的菜单行数
+     */
+    private int cloneTemplateMenus(Long tenantId) {
+        // 取全部模板菜单，按 parent_id 升序保证父先于子被处理
+        List<Map<String, Object>> templateRows = jdbcTemplate.queryForList(
+                "SELECT id, parent_id, menu_name, path, component, menu_type, permission, icon, sort_order, visible "
+                        + "FROM sys_menu WHERE tenant_id = 0 AND deleted = 0 "
+                        + "ORDER BY parent_id ASC, sort_order ASC, id ASC");
+        if (templateRows.isEmpty()) {
+            return 0;
+        }
+
+        // 旧菜单 id -> 新菜单 id 的映射；用 LinkedHashMap 便于观察
+        Map<Long, Long> oldIdToNewId = new LinkedHashMap<>(templateRows.size() * 2);
+        // 兜底：pending 行（父菜单尚未在本次克隆批次里完成）缓存，避免排序异常时丢数据
+        Map<Long, Map<String, Object>> pendingRows = new HashMap<>();
+
+        String insertSql = "INSERT INTO sys_menu "
+                + "(tenant_id, parent_id, menu_name, path, component, menu_type, permission, icon, sort_order, visible, is_template, created_by, created_time) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'system', NOW())";
+
+        int cloned = 0;
+        for (Map<String, Object> row : templateRows) {
+            Long oldId = toLong(row.get("id"));
+            Long oldParentId = toLong(row.get("parent_id"));
+            Long newParentId = resolveNewParentId(oldParentId, oldIdToNewId);
+
+            Long newId = insertMenuRow(insertSql, tenantId, newParentId, row);
+            oldIdToNewId.put(oldId, newId);
+            cloned++;
+
+            // 如果有"等待当前父"的子行，理论上按排序逻辑不会触发；仍做兜底扫描
+            retryPending(insertSql, tenantId, pendingRows, oldIdToNewId);
+        }
+        return cloned;
+    }
+
+    /**
+     * 把模板 parent_id 翻译为新租户 parent_id：
+     * <ul>
+     *   <li>模板顶级 (parent_id = 0 或 null) → 新租户也保持 0</li>
+     *   <li>模板已克隆 → 映射到新 id</li>
+     *   <li>未找到（说明父尚未处理）→ 兜底 0，实际极端情况下会被 retryPending 修正</li>
+     * </ul>
+     *
+     * @param oldParentId 模板里的 parent_id
+     * @param oldIdToNewId 当前已建立的映射
+     * @return 新租户 parent_id
+     */
+    private Long resolveNewParentId(Long oldParentId, Map<Long, Long> oldIdToNewId) {
+        if (oldParentId == null || oldParentId == 0L) {
+            return 0L;
+        }
+        Long mapped = oldIdToNewId.get(oldParentId);
+        return mapped != null ? mapped : 0L;
+    }
+
+    /**
+     * 对 pendingRows 做一次扫描：若其 oldParentId 已经出现在 oldIdToNewId 中，则补插入并登记映射。
+     *
+     * @param insertSql 新菜单 INSERT SQL
+     * @param tenantId 目标租户
+     * @param pendingRows 待处理行
+     * @param oldIdToNewId 旧新 id 映射
+     */
+    private void retryPending(String insertSql, Long tenantId,
+                              Map<Long, Map<String, Object>> pendingRows,
+                              Map<Long, Long> oldIdToNewId) {
+        if (pendingRows.isEmpty()) {
+            return;
+        }
+        pendingRows.entrySet().removeIf(entry -> {
+            Map<String, Object> row = entry.getValue();
+            Long oldParentId = toLong(row.get("parent_id"));
+            if (oldParentId != null && oldIdToNewId.containsKey(oldParentId)) {
+                Long newParentId = oldIdToNewId.get(oldParentId);
+                Long newId = insertMenuRow(insertSql, tenantId, newParentId, row);
+                oldIdToNewId.put(entry.getKey(), newId);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    /**
+     * 插入单行菜单并返回自增主键。
+     *
+     * @param insertSql 新菜单 INSERT SQL
+     * @param tenantId 目标租户
+     * @param newParentId 新租户内的父菜单 id（0 表示顶级）
+     * @param row 模板行
+     * @return 新菜单自增 id
+     */
+    private Long insertMenuRow(String insertSql, Long tenantId, Long newParentId, Map<String, Object> row) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(conn -> {
+            PreparedStatement ps = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
+            ps.setLong(1, tenantId);
+            ps.setLong(2, newParentId == null ? 0L : newParentId);
+            ps.setString(3, (String) row.get("menu_name"));
+            ps.setString(4, (String) row.get("path"));
+            ps.setString(5, (String) row.get("component"));
+            ps.setString(6, (String) row.get("menu_type"));
+            ps.setString(7, (String) row.get("permission"));
+            ps.setString(8, (String) row.get("icon"));
+            Integer sortOrder = toInt(row.get("sort_order"));
+            ps.setInt(9, sortOrder == null ? 0 : sortOrder);
+            Integer visible = toInt(row.get("visible"));
+            ps.setInt(10, visible == null ? 1 : visible);
+            return ps;
+        }, keyHolder);
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new IllegalStateException("插入模板菜单后未能获取自增主键, tenantId=" + tenantId);
+        }
+        return key.longValue();
+    }
+
+    /**
+     * 安全转换为 Long，兼容 JDBC 驱动可能返回的 Integer/BigInteger。
+     *
+     * @param val 原始值
+     * @return Long；null 直接返回 null
+     */
+    private static Long toLong(Object val) {
+        if (val == null) {
+            return null;
+        }
+        if (val instanceof Number) {
+            return ((Number) val).longValue();
+        }
+        return Long.valueOf(val.toString());
+    }
+
+    /**
+     * 安全转换为 Integer。
+     *
+     * @param val 原始值
+     * @return Integer；null 直接返回 null
+     */
+    private static Integer toInt(Object val) {
+        if (val == null) {
+            return null;
+        }
+        if (val instanceof Number) {
+            return ((Number) val).intValue();
+        }
+        return Integer.valueOf(val.toString());
     }
 }

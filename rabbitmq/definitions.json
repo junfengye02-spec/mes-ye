@@ -1,0 +1,36 @@
+{
+  "rabbit_version": "3.13.0",
+  "users": [],
+  "vhosts": [],
+  "permissions": [],
+  "parameters": [],
+  "global_parameters": [],
+  "policies": [
+    {
+      "vhost": "mes",
+      "name": "ha-classic-only",
+      "pattern": ".*",
+      "apply-to": "classic_queues",
+      "priority": 0,
+      "definition": {
+        "ha-mode": "all",
+        "ha-sync-mode": "automatic",
+        "ha-sync-batch-size": 256
+      }
+    },
+    {
+      "vhost": "mes",
+      "name": "quorum-defaults",
+      "pattern": "^mes\\.",
+      "apply-to": "quorum_queues",
+      "priority": 1,
+      "definition": {
+        "delivery-limit": 20,
+        "max-in-memory-length": 10000
+      }
+    }
+  ],
+  "queues": [],
+  "exchanges": [],
+  "bindings": []
+}

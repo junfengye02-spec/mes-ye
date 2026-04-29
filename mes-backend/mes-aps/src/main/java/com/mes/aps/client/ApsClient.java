@@ -3,6 +3,7 @@ package com.mes.aps.client;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mes.aps.domain.entity.ApsSyncConfig;
 import com.mes.aps.mapper.ApsSyncConfigMapper;
+import com.mes.framework.tenant.TenantContextHolder;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.retry.Retry;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
@@ -213,10 +215,21 @@ public class ApsClient {
         return getConfigValue("aps.api.key", "mes-default-api-key");
     }
 
+    /**
+     * P1-34：所有 MES &rarr; APS 请求都携带外部请求追踪头，便于 APS 侧日志与幂等关联。
+     * <pre>X-External-Request-Id: MES-{tenantId}-{UUID}</pre>
+     * 其中 tenantId 缺失（平台级或定时任务）时退化为 0。
+     */
     private HttpHeaders buildHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-API-Key", getApiKey());
+
+        Long tenantId = TenantContextHolder.getTenantId();
+        String externalRequestId = "MES-" + (tenantId != null ? tenantId : 0L)
+                + "-" + UUID.randomUUID();
+        headers.set("X-External-Request-Id", externalRequestId);
+        log.debug("APS 外呼请求头 X-External-Request-Id={}", externalRequestId);
         return headers;
     }
 

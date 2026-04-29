@@ -13,6 +13,16 @@ spring:
   application:
     name: mes-backend
 
+  # P2-28：禁用 Spring Boot 的默认 ES 自动配置；
+  # ES 客户端 Bean 由 com.mes.framework.es.ElasticsearchConfig 在 mes.es.enabled=true 时显式装配。
+  # 默认关闭 ES 时避免意外连接 localhost:9200 引发连接错误日志。
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration
+
   # Jackson 全局配置
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
@@ -55,19 +65,57 @@ knife4j:
 # 文件存储配置
 mes:
   file:
-    upload-path: ./uploads
-    access-prefix: /files
+    # local（默认，写本地磁盘）或 minio（写对象存储，生产推荐）
+    storage-type: ${MES_FILE_STORAGE_TYPE:local}
+    upload-path: ${MES_FILE_UPLOAD_PATH:./uploads}
+    access-prefix: ${MES_FILE_ACCESS_PREFIX:/files}
+    # 对象存储配置（当 storage-type=minio 时生效）
+    minio:
+      endpoint: ${MES_FILE_MINIO_ENDPOINT:}
+      access-key: ${MES_FILE_MINIO_ACCESS_KEY:}
+      secret-key: ${MES_FILE_MINIO_SECRET_KEY:}
+      bucket: ${MES_FILE_MINIO_BUCKET:mes}
+      region: ${MES_FILE_MINIO_REGION:}
+      presigned-expiry-seconds: ${MES_FILE_MINIO_PRESIGNED_EXPIRY:3600}
+      auto-create-bucket: ${MES_FILE_MINIO_AUTO_CREATE_BUCKET:true}
   jwt:
     # 生产必须通过环境变量 MES_JWT_SECRET 注入强随机密钥（>=32 字节）
     # 本地开发若未显式配置，将使用下方 dev-only 默认值并在启动日志中打印告警
     secret: ${MES_JWT_SECRET:dev-only-NOT-FOR-PRODUCTION-pls-override-me-with-random-32bytes+}
     access-expiration: 7200000
     refresh-expiration: 604800000
+  # APS 回调签名配置（P0-12）：
+  #   api-key    与 HTTP 头 X-API-Key 比对，标识对端 APS 实例
+  #   hmac-key   HMAC-SHA256 共享密钥，生产环境强制 ≥ 32 字节，本地开发可留空（自动降级放行并打印 WARN）
+  #   timestamp-skew-seconds  允许的时间偏差（秒），超出则 401
+  #   enabled    是否启用签名校验（生产必须为 true）
+  aps:
+    # P1-35：mes-default-api-key 只作为 dev 开箱即用默认，ProdEnvValidator 会在 prod 强制拒绝
+    api-key: ${MES_APS_API_KEY:mes-default-api-key-dev-only}
+    # P1-36：hmac-key 为空时仅 dev 降级放行，prod profile 必须注入 MES_APS_HMAC_KEY
+    hmac-key: ${MES_APS_HMAC_KEY:}
+    timestamp-skew-seconds: 300
+    enabled: true
+  # P2-28：Elasticsearch 查询加速，默认关闭；业务侧确认 ES 集群可用后再开启。
+  # 详见 docs/deployment/elasticsearch-setup.md
+  es:
+    enabled: ${MES_ES_ENABLED:false}
+    uris:
+      - ${MES_ES_URI:http://localhost:9200}
+    username: ${MES_ES_USERNAME:}
+    password: ${MES_ES_PASSWORD:}
+    connect-timeout: 5s
+    socket-timeout: 10s
+    max-conn-total: 50
+    max-conn-per-route: 10
+    # 多环境隔离用：dev-/test-/prod-，生产可留空
+    index-prefix: ${MES_ES_INDEX_PREFIX:}
 
 # APS 集成配置（运行时从 mes_aps_sync_config 表读取，此处为启动默认值）
 aps:
-  base-url: http://localhost:8081
-  api-key: mes-default-api-key
+  base-url: ${APS_BASE_URL:http://localhost:8081}
+  # P1-35：MES 调 APS 时发出的 API Key，生产必须通过环境变量注入
+  api-key: ${APS_OUTBOUND_API_KEY:mes-default-api-key-dev-only}
   sync:
     enabled: true
     interval-minutes: 5

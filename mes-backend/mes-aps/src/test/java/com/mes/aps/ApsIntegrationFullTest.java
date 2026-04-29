@@ -54,6 +54,8 @@ import static org.mockito.Mockito.*;
  * <p>覆盖主数据同步、执行反馈、APS下发回调全部场景</p>
  */
 @ExtendWith(MockitoExtension.class)
+// 幂等服务默认返回 false，需在各用例显式放通；整体放宽 Strictness 避免 UnnecessaryStubbing
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ApsIntegrationFullTest {
 
@@ -82,6 +84,8 @@ class ApsIntegrationFullTest {
     @Mock private MaterialRequisitionMapper requisitionMapper;
     @Mock private ApsSyncQueueMapper syncQueueMapper;
     @Mock private OrderPlanMapper orderPlanMapper;
+    // P2 升级后 ApsExtendedCallbackServiceImpl 新增了幂等服务依赖
+    @Mock private com.mes.aps.service.ApsCallbackIdempotencyService idempotencyService;
 
     // ===== 被测服务 =====
     private ApsMasterDataSyncServiceImpl masterDataSyncService;
@@ -106,7 +110,11 @@ class ApsIntegrationFullTest {
 
         callbackService = new ApsExtendedCallbackServiceImpl(
                 syncLogService, objectMapper,
-                workOrderMapper, dispatchTaskMapper, dispatchAssignmentMapper);
+                workOrderMapper, dispatchTaskMapper, dispatchAssignmentMapper,
+                idempotencyService);
+
+        // 默认放通幂等校验：测试聚焦业务分支，由各用例按需再 override
+        when(idempotencyService.tryAcquire(anyString(), anyString())).thenReturn(true);
     }
 
     // ==================== 1. 主数据同步测试 ====================

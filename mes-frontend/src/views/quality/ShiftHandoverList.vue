@@ -1,6 +1,6 @@
 <template>
   <div class="shift-handover-list">
-    <el-card shadow="never" class="search-card">
+    <el-card shadow="never" class="search-card" role="search" aria-label="班次交接查询条件">
       <el-form :model="query" inline>
         <el-form-item label="项目名称">
           <el-input v-model="query.projectName" placeholder="项目名称" clearable style="width: 160px" />
@@ -27,10 +27,10 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon> 查询
+            <el-icon aria-hidden="true"><Search /></el-icon> 查询
           </el-button>
           <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon> 重置
+            <el-icon aria-hidden="true"><Refresh /></el-icon> 重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -38,15 +38,22 @@
 
     <el-card shadow="never">
       <template #header>
-        <div class="table-header">
+        <div class="table-header" role="toolbar" aria-label="班次交接操作工具栏">
           <span class="table-title">班次交接列表</span>
           <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon> 新增
+            <el-icon aria-hidden="true"><Plus /></el-icon> 新增
           </el-button>
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="tableData" border stripe>
+      <el-table
+        v-loading="loading"
+        :data="tableData"
+        border
+        stripe
+        role="region"
+        aria-label="班次交接列表"
+      >
         <el-table-column prop="projectName" label="项目名称" min-width="140" show-overflow-tooltip />
         <el-table-column prop="productSerialNo" label="产品序列号" min-width="120" />
         <el-table-column prop="handoverDate" label="交接日期" width="120" />

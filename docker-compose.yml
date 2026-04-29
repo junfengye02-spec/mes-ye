@@ -49,6 +49,31 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
 
+  # MinIO 对象存储（开发/演示用的单节点版；生产请使用 MinIO 集群或云 OSS）
+  # 通过设置 mes.file.storage-type=minio 让应用切到 MinIO 实现
+  minio:
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    container_name: mes-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required (>=8 chars)}
+      TZ: Asia/Shanghai
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
   mes-backend:
     build:
       context: ./mes-backend
@@ -64,6 +89,12 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
+      # 文件存储：local（默认，写本地 volume）或 minio（写对象存储，生产推荐）
+      MES_FILE_STORAGE_TYPE: ${MES_FILE_STORAGE_TYPE:-local}
+      MES_FILE_MINIO_ENDPOINT: ${MES_FILE_MINIO_ENDPOINT:-http://minio:9000}
+      MES_FILE_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-}
+      MES_FILE_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-}
+      MES_FILE_MINIO_BUCKET: ${MES_FILE_MINIO_BUCKET:-mes}
       TZ: Asia/Shanghai
     ports:
       - "9090:9090"
@@ -88,13 +119,14 @@ services:
       context: ./mes-frontend
       dockerfile: Dockerfile
     container_name: mes-frontend
+    # M9-P3-13: 主进程非 root，容器内 listen 8080；host 继续暴露 80 对客户端无感
     ports:
-      - "80:80"
+      - "80:8080"
     depends_on:
       mes-backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 20s
       timeout: 5s
       retries: 5
@@ -105,6 +137,7 @@ volumes:
   mysql_data:
   redis_data:
   uploads:
+  minio_data:
 
 networks:
   mes-net:

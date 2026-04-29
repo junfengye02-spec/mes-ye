@@ -12,10 +12,12 @@ import com.mes.dispatch.mapper.DispatchAssignmentMapper;
 import com.mes.dispatch.mapper.DispatchTaskMapper;
 import com.mes.dispatch.service.impl.DispatchAssignmentServiceImpl;
 import com.mes.dispatch.service.impl.DispatchTaskServiceImpl;
+import com.mes.framework.tenant.TenantContextHolder;
 import com.mes.workorder.domain.entity.WorkOrder;
 import com.mes.workorder.domain.entity.WorkOrderTask;
 import com.mes.workorder.mapper.WorkOrderMapper;
 import com.mes.workorder.mapper.WorkOrderTaskMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,6 +67,15 @@ class DispatchServiceTest {
     @BeforeEach
     void injectBaseMapper() {
         ReflectionTestUtils.setField(dispatchTaskService, "baseMapper", dispatchTaskMapper);
+        // P0 修复 R3（mcp30）：DispatchTaskServiceImpl 现在显式调用
+        // TenantContextHolder.requireTenantId()，单测需要预置 TenantContext，
+        // 否则 generateFromWorkOrder 等走入 insert 的用例会抛 IllegalStateException。
+        TenantContextHolder.setTenantId(1L);
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContextHolder.clear();
     }
 
     // —— DispatchTaskServiceImpl ——

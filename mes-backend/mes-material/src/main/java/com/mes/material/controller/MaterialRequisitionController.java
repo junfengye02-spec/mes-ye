@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,12 +27,14 @@ public class MaterialRequisitionController {
 
     @Operation(summary = "分页查询生产领料")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('material:requisition:list')")
     public R<PageResult<MaterialRequisitionVO>> page(MaterialRequisitionQuery query) {
         return R.ok(materialRequisitionService.page(query));
     }
 
     @Operation(summary = "获取生产领料详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('material:requisition:detail')")
     public R<MaterialRequisitionVO> getDetail(
             @Parameter(description = "生产领料ID") @PathVariable Long id) {
         return R.ok(materialRequisitionService.getDetail(id));
@@ -39,12 +42,14 @@ public class MaterialRequisitionController {
 
     @Operation(summary = "新增生产领料")
     @PostMapping
+    @PreAuthorize("hasAuthority('material:requisition:create')")
     public R<Long> create(@Valid @RequestBody MaterialRequisitionDTO dto) {
         return R.ok("新增成功", materialRequisitionService.create(dto));
     }
 
     @Operation(summary = "修改生产领料")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('material:requisition:update')")
     public R<Void> update(
             @Parameter(description = "生产领料ID") @PathVariable Long id,
             @Valid @RequestBody MaterialRequisitionDTO dto) {
@@ -54,6 +59,7 @@ public class MaterialRequisitionController {
 
     @Operation(summary = "删除生产领料")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('material:requisition:delete')")
     public R<Void> delete(
             @Parameter(description = "生产领料ID") @PathVariable Long id) {
         materialRequisitionService.delete(id);

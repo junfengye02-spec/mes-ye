@@ -1,54 +1,81 @@
 <template>
   <div class="login-container app-login">
-    <div class="login-card">
+    <main id="applogin-main" class="login-card" tabindex="-1" aria-labelledby="applogin-title">
       <div class="login-header">
-        <h1>MES 现场端</h1>
-        <p>操作员 / 班组长登录</p>
+        <h1 id="applogin-title">MES 现场端</h1>
+        <p id="applogin-desc">操作员 / 班组长登录</p>
       </div>
       <div v-if="tenantBadge" class="tenant-badge">
         <el-tag type="success" effect="plain">租户：{{ tenantBadge }}</el-tag>
       </div>
-      <el-form ref="formRef" :model="form" :rules="rules" @keyup.enter="handleLogin">
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        aria-labelledby="applogin-title"
+        aria-describedby="applogin-desc"
+        @keyup.enter="handleLogin"
+      >
         <el-form-item v-if="!domainLockedTenant" prop="tenantCode">
           <el-input
             v-model="form.tenantCode"
             placeholder="租户编码（多租户同名账号时必填）"
+            aria-label="租户编码"
             size="large"
             :prefix-icon="TenantIcon"
             clearable
           />
         </el-form-item>
         <el-form-item prop="username">
-          <el-input v-model="form.username" placeholder="用户名" size="large" :prefix-icon="UserIcon" />
+          <el-input
+            ref="usernameRef"
+            v-model="form.username"
+            placeholder="用户名"
+            aria-label="用户名"
+            autocomplete="username"
+            size="large"
+            :prefix-icon="UserIcon"
+          />
         </el-form-item>
         <el-form-item prop="password">
           <el-input
             v-model="form.password"
             type="password"
             placeholder="密码"
+            aria-label="密码"
+            autocomplete="current-password"
             size="large"
             :prefix-icon="LockIcon"
             show-password
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" size="large" :loading="loading" class="login-btn" @click="handleLogin">
+          <el-button
+            type="primary"
+            size="large"
+            :loading="loading"
+            class="login-btn"
+            :aria-label="loading ? '登录中' : '登录'"
+            @click="handleLogin"
+          >
             {{ loading ? '登录中...' : '登 录' }}
           </el-button>
         </el-form-item>
       </el-form>
+      <!-- 登录状态动态提示：aria-live 让屏幕阅读器自动朗读登录成功/失败 -->
+      <div class="login-live" role="status" aria-live="polite">{{ liveMessage }}</div>
       <div class="login-footer">
         <router-link to="/login">返回管理端登录</router-link>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, shallowRef, computed, onMounted } from 'vue'
+import { ref, reactive, shallowRef, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormInstance, FormRules, InputInstance } from 'element-plus'
 import { User, Lock, OfficeBuilding } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { resolveTenantCodeFromHost, setStoredTenantCode } from '@/utils/tenant'
@@ -61,7 +88,9 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
+const usernameRef = ref<InputInstance>()
 const loading = ref(false)
+const liveMessage = ref('')
 const form = reactive({ username: '', password: '', tenantCode: '' })
 
 const domainLockedTenant = ref<string | null>(null)
@@ -73,6 +102,10 @@ onMounted(() => {
     domainLockedTenant.value = fromDomain
     form.tenantCode = fromDomain
   }
+  // 无障碍：自动聚焦第一个输入框，键盘用户省 Tab
+  nextTick(() => {
+    usernameRef.value?.focus?.()
+  })
 })
 
 const rules: FormRules = {
@@ -93,10 +126,12 @@ async function handleLogin() {
   if (tenant) payload.tenantCode = tenant
 
   loading.value = true
+  liveMessage.value = '登录中'
   try {
     await authStore.login(payload)
     setStoredTenantCode(tenant || null)
     ElMessage.success('登录成功')
+    liveMessage.value = '登录成功'
     const redirect = (router.currentRoute.value.query.redirect as string) || '/app/workorder/list'
     const safeRedirect =
       redirect.startsWith('/app') && !redirect.startsWith('//') ? redirect : '/app/workorder/list'
@@ -104,6 +139,7 @@ async function handleLogin() {
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : '登录失败，请检查用户名和密码'
     ElMessage.error(msg)
+    liveMessage.value = msg
   } finally {
     loading.value = false
   }
@@ -125,6 +161,9 @@ async function handleLogin() {
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+.login-card:focus {
+  outline: none;
 }
 
 .login-header {
@@ -151,6 +190,19 @@ async function handleLogin() {
 
 .login-btn {
   width: 100%;
+}
+
+/* 可访问的隐藏状态提示（仅屏幕阅读器朗读） */
+.login-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .login-footer {

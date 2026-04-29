@@ -4,10 +4,16 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      M9-P3-08 nonce-based CSP：__CSP_NONCE__ 占位会在 nginx sub_filter
+      阶段被替换成当前请求的 $request_id。main.ts 启动时从此 meta 读取
+      nonce 挂到 window.__CSP_NONCE__，供第三方库 / 动态 createElement 使用。
+    -->
+    <meta name="csp-nonce" content="__CSP_NONCE__" />
     <title>MES 制造执行系统</title>
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" nonce="__CSP_NONCE__" src="/src/main.ts"></script>
   </body>
 </html>

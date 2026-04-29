@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,12 +27,14 @@ public class ProductionTeamController {
 
     @Operation(summary = "分页查询班组")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('team:production:list')")
     public R<PageResult<ProductionTeamVO>> page(ProductionTeamQuery query) {
         return R.ok(productionTeamService.page(query));
     }
 
     @Operation(summary = "获取班组详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('team:production:detail')")
     public R<ProductionTeamVO> getDetail(
             @Parameter(description = "班组ID") @PathVariable Long id) {
         return R.ok(productionTeamService.getDetail(id));
@@ -39,12 +42,14 @@ public class ProductionTeamController {
 
     @Operation(summary = "新增班组")
     @PostMapping
+    @PreAuthorize("hasAuthority('team:production:create')")
     public R<Long> create(@Valid @RequestBody ProductionTeamDTO dto) {
         return R.ok("新增成功", productionTeamService.create(dto));
     }
 
     @Operation(summary = "修改班组")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('team:production:update')")
     public R<Void> update(
             @Parameter(description = "班组ID") @PathVariable Long id,
             @Valid @RequestBody ProductionTeamDTO dto) {
@@ -54,6 +59,7 @@ public class ProductionTeamController {
 
     @Operation(summary = "删除班组")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('team:production:delete')")
     public R<Void> delete(
             @Parameter(description = "班组ID") @PathVariable Long id) {
         productionTeamService.delete(id);
@@ -62,6 +68,7 @@ public class ProductionTeamController {
 
     @Operation(summary = "启用/停用班组")
     @PutMapping("/{id}/toggle-enabled")
+    @PreAuthorize("hasAuthority('team:production:toggle')")
     public R<Void> toggleEnabled(
             @Parameter(description = "班组ID") @PathVariable Long id) {
         productionTeamService.toggleEnabled(id);

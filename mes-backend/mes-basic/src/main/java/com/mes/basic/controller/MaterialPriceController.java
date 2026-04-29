@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,12 +27,14 @@ public class MaterialPriceController {
 
     @Operation(summary = "分页查询物料价格")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('basic:materialPrice:list')")
     public R<PageResult<MaterialPriceVO>> page(MaterialPriceQuery query) {
         return R.ok(materialPriceService.page(query));
     }
 
     @Operation(summary = "获取物料价格详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('basic:materialPrice:detail')")
     public R<MaterialPriceVO> getDetail(
             @Parameter(description = "价格ID") @PathVariable Long id) {
         return R.ok(materialPriceService.getDetail(id));
@@ -39,12 +42,14 @@ public class MaterialPriceController {
 
     @Operation(summary = "新增物料价格")
     @PostMapping
+    @PreAuthorize("hasAuthority('basic:materialPrice:create')")
     public R<Long> create(@Valid @RequestBody MaterialPriceDTO dto) {
         return R.ok("新增成功", materialPriceService.create(dto));
     }
 
     @Operation(summary = "修改物料价格")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('basic:materialPrice:update')")
     public R<Void> update(
             @Parameter(description = "价格ID") @PathVariable Long id,
             @Valid @RequestBody MaterialPriceDTO dto) {
@@ -54,6 +59,7 @@ public class MaterialPriceController {
 
     @Operation(summary = "删除物料价格")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('basic:materialPrice:delete')")
     public R<Void> delete(
             @Parameter(description = "价格ID") @PathVariable Long id) {
         materialPriceService.delete(id);

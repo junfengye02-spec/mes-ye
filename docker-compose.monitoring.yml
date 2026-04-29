@@ -1,0 +1,154 @@
+# ===============================================================
+# MES 监控告警栈（可叠加到任何主 compose 文件上）
+# 使用方式：
+#   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+# 或：
+#   docker compose -f docker-compose.ha.yml -f docker-compose.monitoring.yml up -d
+#
+# 含 5 个服务：prometheus / alertmanager / grafana / node-exporter / cadvisor
+# 外加：prometheus-webhook-dingtalk sidecar（负责把 alert 转成钉钉/飞书格式）
+#
+# 依赖的 env 变量（.env 或 shell 注入）：
+#   GRAFANA_ADMIN_USER / GRAFANA_PASSWORD
+#   DINGTALK_ROBOT_P0_URL / DINGTALK_ROBOT_P1_URL
+#   FEISHU_ROBOT_URL（可选）
+#   ALERT_EMAIL / SMTP_* （可选）
+#   MES_ENV（dev/staging/prod，用于告警中区分环境）
+# ===============================================================
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: mes-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    environment:
+      MES_ENV: ${MES_ENV:-dev}
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: mes-alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+      - alertmanager_data:/alertmanager
+    environment:
+      DINGTALK_ROBOT_P0_URL: ${DINGTALK_ROBOT_P0_URL:-}
+      DINGTALK_ROBOT_P1_URL: ${DINGTALK_ROBOT_P1_URL:-}
+      FEISHU_ROBOT_URL: ${FEISHU_ROBOT_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      ALERT_EMAIL: ${ALERT_EMAIL:-}
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # 钉钉/飞书消息格式转换 sidecar
+  # AlertManager 的 webhook 格式与钉钉/飞书不同，用此 sidecar 做中转
+  dingtalk-sidecar:
+    image: timonwong/prometheus-webhook-dingtalk:v2.1.0
+    container_name: mes-dingtalk-sidecar
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/dingtalk/config.yml'
+    volumes:
+      - ./monitoring/alertmanager/dingtalk.yml:/etc/dingtalk/config.yml:ro
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8060/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: mes-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required, avoid default admin123}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - mes-net
+
+  # 宿主机指标（CPU/内存/磁盘/网络/进程）
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: mes-node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    pid: host
+    volumes:
+      - '/:/host:ro,rslave'
+    ports:
+      - "9100:9100"
+    networks:
+      - mes-net
+
+  # 容器指标（每个容器的 CPU/内存/IO/网络）
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: mes-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8081:8080"
+    networks:
+      - mes-net
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+
+networks:
+  mes-net:
+    external: true
+    name: mes_mes-net

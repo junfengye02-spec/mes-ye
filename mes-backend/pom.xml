@@ -7,7 +7,16 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version>
+        <!--
+          3.2.5 → 3.2.12：修复 Spring Framework 6.1.x CVE-2024-38820（DataBinder 反射安全问题）
+          升级范围：仅 Spring Boot 3.2.x 补丁版，Spring Framework 同步 6.1.13 → 6.1.14。
+          兼容性：
+            - MyBatis Plus 3.5.5、Druid 1.2.21、Knife4j 4.3.0、Hutool 5.8.25、EasyExcel 3.3.3 — 全部继续可用
+            - Resilience4j 2.2.0（mes-aps）/ spring-cloud-starter-circuitbreaker-reactor-resilience4j（mes-gateway）— 全部继续可用
+            - Spring Cloud 2023.0.1 / Spring Cloud Alibaba 2023.0.1.0 — 与 Boot 3.2.12 官方兼容
+            - JJwt 0.12.5、MapStruct 1.5.5.Final、MySQL Connector/J — 无影响
+        -->
+        <version>3.2.12</version>
         <relativePath/>
     </parent>
 

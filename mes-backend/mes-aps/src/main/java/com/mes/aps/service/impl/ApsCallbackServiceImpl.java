@@ -7,6 +7,7 @@ import com.mes.aps.domain.vo.ApsScheduleCallbackVO;
 import com.mes.aps.domain.vo.ApsScheduleCallbackVO.TaskSummary;
 import com.mes.aps.enums.SyncDirection;
 import com.mes.aps.mapper.WorkOrderTaskSegmentMapper;
+import com.mes.aps.service.ApsCallbackIdempotencyService;
 import com.mes.aps.service.IApsCallbackService;
 import com.mes.aps.service.IApsSyncLogService;
 import com.mes.plan.domain.entity.OrderPlan;
@@ -31,11 +32,16 @@ public class ApsCallbackServiceImpl implements IApsCallbackService {
     private final WorkOrderMapper workOrderMapper;
     private final WorkOrderTaskSegmentMapper taskSegmentMapper;
     private final IApsSyncLogService syncLogService;
+    private final ApsCallbackIdempotencyService idempotencyService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void handleScheduleResult(ApsScheduleCallbackVO callback) {
         log.info("收到 APS 排程回调: requestId={}, status={}", callback.getRequestId(), callback.getStatus());
+        if (!idempotencyService.tryAcquire("scheduleResult", callback.getRequestId())) {
+            log.warn("重复回调忽略: type=scheduleResult, requestId={}", callback.getRequestId());
+            return;
+        }
 
         String batchId = UUID.randomUUID().toString();
         ApsSyncLog syncLog = syncLogService.createLog(
@@ -79,6 +85,10 @@ public class ApsCallbackServiceImpl implements IApsCallbackService {
     @Transactional(rollbackFor = Exception.class)
     public void handleRequestRejected(ApsScheduleCallbackVO callback) {
         log.warn("APS 请求被拒绝: requestId={}, reason={}", callback.getRequestId(), callback.getReason());
+        if (!idempotencyService.tryAcquire("requestRejected", callback.getRequestId())) {
+            log.warn("重复回调忽略: type=requestRejected, requestId={}", callback.getRequestId());
+            return;
+        }
 
         String batchId = UUID.randomUUID().toString();
         ApsSyncLog syncLog = syncLogService.createLog(

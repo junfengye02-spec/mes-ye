@@ -9,8 +9,8 @@
           <el-input v-model="query.realName" placeholder="姓名" clearable style="width: 120px" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
-          <el-button @click="handleReset"><el-icon><Refresh /></el-icon> 重置</el-button>
+          <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> {{ t('buttons.search') }}</el-button>
+          <el-button @click="handleReset"><el-icon><Refresh /></el-icon> {{ t('buttons.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -18,8 +18,8 @@
     <el-card shadow="never">
       <template #header>
         <div class="table-header">
-          <span class="table-title">用户管理</span>
-          <el-button type="primary" @click="openDialog(null)"><el-icon><Plus /></el-icon> 新增用户</el-button>
+          <span class="table-title">{{ t('system.user.title') }}</span>
+          <el-button v-auth="['system:user:create']" type="primary" @click="openDialog(null)"><el-icon><Plus /></el-icon> {{ t('buttons.add') }}</el-button>
         </div>
       </template>
 
@@ -52,10 +52,10 @@
         <el-table-column prop="createdTime" label="创建时间" width="170" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-button link type="warning" @click="handleResetPassword(row.id)">重置密码</el-button>
+            <el-button v-auth="['system:user:update']" link type="primary" @click="openDialog(row)">编辑</el-button>
+            <el-button v-auth="['system:user:resetPwd']" link type="warning" @click="handleResetPassword(row.id)">重置密码</el-button>
             <el-popconfirm title="确定删除？" @confirm="handleDelete(row.id)">
-              <template #reference><el-button link type="danger">删除</el-button></template>
+              <template #reference><el-button v-auth="['system:user:delete']" link type="danger">删除</el-button></template>
             </el-popconfirm>
           </template>
         </el-table-column>
@@ -107,11 +107,13 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { sysUserApi } from '@/api/system/user'
 import type { SysUserVO, SysUserDTO, SysUserQuery } from '@/api/system/user'
 import { sysRoleApi } from '@/api/system/role'
 import type { SysRoleVO } from '@/api/system/role'
 
+const { t } = useI18n()
 const loading = ref(false)
 const tableData = ref<SysUserVO[]>([])
 const total = ref(0)

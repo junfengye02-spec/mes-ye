@@ -1,0 +1,25 @@
+export default {
+  title: '物料管理',
+  inventoryTitle: '存储地点库存',
+  receiptTitle: '完工入库',
+  receiptRequestTitle: '完工入库申请',
+  requisitionTitle: '生产领料',
+  returnTitle: '生产退料',
+  deliverySignTitle: '发货签收',
+  fields: {
+    materialCode: '物料编码',
+    materialName: '物料名称',
+    spec: '规格',
+    unit: '单位',
+    qty: '数量',
+    location: '存储地点',
+    batchNo: '批次号',
+    workOrderNo: '关联工单',
+  },
+  actions: {
+    approve: '审批',
+    receive: '入库',
+    issue: '发料',
+    return: '退料',
+  },
+}

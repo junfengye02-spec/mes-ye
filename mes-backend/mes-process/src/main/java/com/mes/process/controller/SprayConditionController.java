@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,12 +27,14 @@ public class SprayConditionController {
 
     @Operation(summary = "分页查询喷涂条件")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('process:sprayCondition:list')")
     public R<PageResult<SprayConditionVO>> page(SprayConditionQuery query) {
         return R.ok(sprayConditionService.page(query));
     }
 
     @Operation(summary = "获取喷涂条件详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:sprayCondition:detail')")
     public R<SprayConditionVO> getDetail(
             @Parameter(description = "喷涂条件ID") @PathVariable Long id) {
         return R.ok(sprayConditionService.getDetail(id));
@@ -39,12 +42,14 @@ public class SprayConditionController {
 
     @Operation(summary = "新增喷涂条件")
     @PostMapping
+    @PreAuthorize("hasAuthority('process:sprayCondition:create')")
     public R<Long> create(@Valid @RequestBody SprayConditionDTO dto) {
         return R.ok("新增成功", sprayConditionService.create(dto));
     }
 
     @Operation(summary = "修改喷涂条件")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:sprayCondition:update')")
     public R<Void> update(
             @Parameter(description = "喷涂条件ID") @PathVariable Long id,
             @Valid @RequestBody SprayConditionDTO dto) {
@@ -54,6 +59,7 @@ public class SprayConditionController {
 
     @Operation(summary = "删除喷涂条件")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:sprayCondition:delete')")
     public R<Void> delete(
             @Parameter(description = "喷涂条件ID") @PathVariable Long id) {
         sprayConditionService.delete(id);

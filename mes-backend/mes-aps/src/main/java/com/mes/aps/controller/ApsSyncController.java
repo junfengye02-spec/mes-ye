@@ -11,6 +11,7 @@ import com.mes.common.result.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -33,12 +34,14 @@ public class ApsSyncController {
 
     @Operation(summary = "手动触发下行同步（全量）")
     @PostMapping("/downstream")
+    @PreAuthorize("hasAuthority('aps:sync:downstream')")
     public R<ApsSyncResultVO> triggerDownstreamSync() {
         return R.ok(downstreamSyncService.syncAll());
     }
 
     @Operation(summary = "手动触发下行同步（指定类型）")
     @PostMapping("/downstream/{syncType}")
+    @PreAuthorize("hasAuthority('aps:sync:downstream')")
     public R<ApsSyncResultVO> triggerDownstreamSyncByType(@PathVariable String syncType) {
         ApsSyncResultVO result = switch (syncType.toUpperCase()) {
             case "ORDER" -> downstreamSyncService.syncOrders();
@@ -54,18 +57,21 @@ public class ApsSyncController {
 
     @Operation(summary = "手动触发上行同步（消费队列）")
     @PostMapping("/upstream")
+    @PreAuthorize("hasAuthority('aps:sync:upstream')")
     public R<ApsSyncResultVO> triggerUpstreamSync() {
         return R.ok(upstreamSyncService.processQueue());
     }
 
     @Operation(summary = "手动触发补偿同步")
     @PostMapping("/compensate")
+    @PreAuthorize("hasAuthority('aps:sync:compensate')")
     public R<ApsSyncResultVO> triggerCompensation() {
         return R.ok(compensationService.compensate());
     }
 
     @Operation(summary = "获取同步状态概览")
     @GetMapping("/status")
+    @PreAuthorize("hasAuthority('aps:sync:status')")
     public R<Map<String, Object>> getSyncStatus() {
         Map<String, Object> status = Map.of(
                 "apsAvailable", apsClient.isAvailable(),
@@ -78,6 +84,7 @@ public class ApsSyncController {
 
     @Operation(summary = "APS 健康检查")
     @GetMapping("/health")
+    @PreAuthorize("hasAuthority('aps:sync:status')")
     public R<Map<String, Object>> healthCheck() {
         boolean available = apsClient.isAvailable();
         String cbState = apsClient.getCircuitBreakerState();
@@ -92,12 +99,14 @@ public class ApsSyncController {
 
     @Operation(summary = "手动触发主数据全量同步")
     @PostMapping("/master-data")
+    @PreAuthorize("hasAuthority('aps:sync:masterData')")
     public R<ApsSyncResultVO> triggerMasterDataSync() {
         return R.ok(masterDataSyncService.syncAllMasterData());
     }
 
     @Operation(summary = "手动触发主数据同步（指定类型）")
     @PostMapping("/master-data/{dataType}")
+    @PreAuthorize("hasAuthority('aps:sync:masterData')")
     public R<ApsSyncResultVO> triggerMasterDataSyncByType(@PathVariable String dataType) {
         ApsSyncResultVO result = switch (dataType.toUpperCase()) {
             case "WORK_CENTER" -> masterDataSyncService.syncWorkCenters();

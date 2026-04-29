@@ -81,5 +81,52 @@
             <artifactId>jjwt-jackson</artifactId>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- MinIO / S3 兼容对象存储 SDK -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>8.5.11</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!--
+          P2-26 Sentinel 限流熔断（Spring Cloud Alibaba 2023.0.1.0 BOM 管理版本，实际为 Sentinel Core 1.8.6+）
+          兼容性说明：
+            - spring-cloud-starter-alibaba-sentinel 与 Spring Boot 3.2.12 / Servlet 6 完全兼容
+            - 与项目内现有 RateLimitFilter / TenantRateLimitFilter 协同工作（那两者为 Redis 滑动窗口限流，本模块为进程内 Sentinel 限流）
+            - 若线上 Sentinel Dashboard 不起，可通过 mes.sentinel.enabled=false 关闭，Sentinel Bean 不装配（@ConditionalOnProperty）
+          mcp24 附带修复：去掉 <optional>true</optional>，让 SentinelResource 等注解
+          能传递到下游 Controller 模块（mes-system / mes-workorder 等）的编译期，
+          否则下游使用 @SentinelResource 会因找不到类而编译失败。运行期开关仍由
+          mes.sentinel.enabled 控制，多余打包体积可忽略。
+        -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+        </dependency>
+        <!-- Nacos 数据源（可选：通过 Nacos 配置中心动态下发 Sentinel 规则） -->
+        <dependency>
+            <groupId>com.alibaba.csp</groupId>
+            <artifactId>sentinel-datasource-nacos</artifactId>
+            <version>1.8.6</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!--
+          P2-28 Elasticsearch 查询加速：
+          spring-boot-starter-data-elasticsearch 由 Spring Boot 3.2.12 BOM 统一锁定到
+          spring-data-elasticsearch 5.2.x + co.elastic.clients:elasticsearch-java:8.11.x，
+          服务端支持 Elasticsearch 8.x 集群。
+          说明：
+            - 这里使用常规 compile scope（非 optional），是为了让所有业务模块都能在编译期
+              访问 ES 相关类（如 WorkOrderDoc / WorkOrderSearchServiceImpl 引用 NativeQuery 等）
+            - 运行时是否真正装配 ES 客户端由 mes.es.enabled 开关控制（ElasticsearchConfig @ConditionalOnProperty）
+            - 默认 mes.es.enabled=false，ES Bean 不注册，启动与现有行为完全一致
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>
     </dependencies>
 </project>

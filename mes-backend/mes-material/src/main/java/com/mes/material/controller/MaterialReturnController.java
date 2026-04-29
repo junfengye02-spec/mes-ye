@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,12 +27,14 @@ public class MaterialReturnController {
 
     @Operation(summary = "分页查询生产退料")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('material:return:list')")
     public R<PageResult<MaterialReturnVO>> page(MaterialReturnQuery query) {
         return R.ok(materialReturnService.page(query));
     }
 
     @Operation(summary = "获取生产退料详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('material:return:detail')")
     public R<MaterialReturnVO> getDetail(
             @Parameter(description = "生产退料ID") @PathVariable Long id) {
         return R.ok(materialReturnService.getDetail(id));
@@ -39,12 +42,14 @@ public class MaterialReturnController {
 
     @Operation(summary = "新增生产退料")
     @PostMapping
+    @PreAuthorize("hasAuthority('material:return:create')")
     public R<Long> create(@Valid @RequestBody MaterialReturnDTO dto) {
         return R.ok("新增成功", materialReturnService.create(dto));
     }
 
     @Operation(summary = "修改生产退料")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('material:return:update')")
     public R<Void> update(
             @Parameter(description = "生产退料ID") @PathVariable Long id,
             @Valid @RequestBody MaterialReturnDTO dto) {
@@ -54,6 +59,7 @@ public class MaterialReturnController {
 
     @Operation(summary = "删除生产退料")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('material:return:delete')")
     public R<Void> delete(
             @Parameter(description = "生产退料ID") @PathVariable Long id) {
         materialReturnService.delete(id);

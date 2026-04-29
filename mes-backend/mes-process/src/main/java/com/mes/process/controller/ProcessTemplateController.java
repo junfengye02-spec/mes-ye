@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,18 +29,21 @@ public class ProcessTemplateController {
 
     @Operation(summary = "分页查询工序模板")
     @GetMapping("/page")
+    @PreAuthorize("hasAuthority('process:processTemplate:list')")
     public R<PageResult<ProcessTemplateVO>> page(ProcessTemplateQuery query) {
         return R.ok(processTemplateService.page(query));
     }
 
     @Operation(summary = "树形结构查询工序模板")
     @GetMapping("/tree")
+    @PreAuthorize("hasAuthority('process:processTemplate:list')")
     public R<List<ProcessTemplateVO>> tree() {
         return R.ok(processTemplateService.tree());
     }
 
     @Operation(summary = "获取工序模板详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:processTemplate:detail')")
     public R<ProcessTemplateVO> getDetail(
             @Parameter(description = "工序模板ID") @PathVariable Long id) {
         return R.ok(processTemplateService.getDetail(id));
@@ -47,12 +51,14 @@ public class ProcessTemplateController {
 
     @Operation(summary = "新增工序模板")
     @PostMapping
+    @PreAuthorize("hasAuthority('process:processTemplate:create')")
     public R<Long> create(@Valid @RequestBody ProcessTemplateDTO dto) {
         return R.ok("新增成功", processTemplateService.create(dto));
     }
 
     @Operation(summary = "修改工序模板")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:processTemplate:update')")
     public R<Void> update(
             @Parameter(description = "工序模板ID") @PathVariable Long id,
             @Valid @RequestBody ProcessTemplateDTO dto) {
@@ -62,6 +68,7 @@ public class ProcessTemplateController {
 
     @Operation(summary = "删除工序模板")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('process:processTemplate:delete')")
     public R<Void> delete(
             @Parameter(description = "工序模板ID") @PathVariable Long id) {
         processTemplateService.delete(id);

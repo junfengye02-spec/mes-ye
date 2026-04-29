@@ -1,0 +1,119 @@
+# P2-28 Elasticsearch 集群 + Kibana（与主 docker-compose.yml 叠加使用）
+#
+# 启动命令：
+#   docker compose -f docker-compose.yml -f docker-compose.es.yml up -d
+#
+# 说明：
+#   - 3 节点 ES 集群（es01 / es02 / es03），最小可用集群配置
+#   - 默认开启 xpack security（elastic 用户），用 ELASTIC_PASSWORD 环境变量注入
+#   - bootstrap.memory_lock + vm.max_map_count 按 ES 官方推荐
+#   - ES 数据卷挂载，重启不丢数据
+#   - Kibana 同集群暴露 5601，生产请加 Nginx/WAF 限制来源 IP
+#
+# 资源要求：3 节点 ES 单节点至少 1G 内存，JVM heap 512m；生产请调大
+services:
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    container_name: mes-es01
+    environment:
+      - node.name=es01
+      - cluster.name=mes-es-cluster
+      - discovery.seed_hosts=es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - TZ=Asia/Shanghai
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - es01_data:/usr/share/elasticsearch/data
+    ports:
+      - "127.0.0.1:9200:9200"
+    networks:
+      - mes-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sS -u elastic:$ELASTIC_PASSWORD http://localhost:9200/_cluster/health | grep -E '\"status\":\"(green|yellow)\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  es02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    container_name: mes-es02
+    environment:
+      - node.name=es02
+      - cluster.name=mes-es-cluster
+      - discovery.seed_hosts=es01,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - TZ=Asia/Shanghai
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - es02_data:/usr/share/elasticsearch/data
+    networks:
+      - mes-net
+
+  es03:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    container_name: mes-es03
+    environment:
+      - node.name=es03
+      - cluster.name=mes-es-cluster
+      - discovery.seed_hosts=es01,es02
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - TZ=Asia/Shanghai
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - es03_data:/usr/share/elasticsearch/data
+    networks:
+      - mes-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.4
+    container_name: mes-kibana
+    depends_on:
+      es01:
+        condition: service_healthy
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es01:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_SYSTEM_PASSWORD:?KIBANA_SYSTEM_PASSWORD is required}
+      - SERVER_HOST=0.0.0.0
+      - I18N_LOCALE=zh-CN
+      - TZ=Asia/Shanghai
+    ports:
+      - "127.0.0.1:5601:5601"
+    networks:
+      - mes-net
+
+volumes:
+  es01_data:
+  es02_data:
+  es03_data:

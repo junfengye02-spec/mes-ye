@@ -1,0 +1,99 @@
+# ---------------------------------------------------------------
+# PR 快速检查
+# 触发：任何 PR 进入 main/develop
+# 目标：只做"快速反馈"——编译 + 单测 + 前端类型检查，5 分钟内出结果
+# 更重的集成测试 / 镜像构建 由 ci.yml 合并到主干后执行
+# ---------------------------------------------------------------
+name: PR Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  backend-quick-check:
+    name: Backend Quick Compile + Unit Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Maven 编译并跑单测（跳过集成测试与镜像构建）
+        working-directory: mes-backend
+        run: mvn -B -ntp -T 1C test -DskipITs
+
+      - name: 汇总测试结果
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Backend Unit Tests
+          path: mes-backend/**/target/surefire-reports/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+  frontend-quick-check:
+    name: Frontend Type Check + Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mes-frontend/package-lock.json
+
+      - name: Install deps
+        working-directory: mes-frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check (tsc --noEmit)
+        working-directory: mes-frontend
+        run: npx tsc --noEmit
+
+      - name: Lint (如果项目配置了 lint 脚本)
+        working-directory: mes-frontend
+        run: |
+          if npm run | grep -q '^  lint'; then
+            npm run lint
+          else
+            echo "[skip] 项目未配置 lint script"
+          fi
+
+  # 路径变更检查：防止误把 secrets / .env 等敏感文件提交进仓库
+  secret-guard:
+    name: Sensitive File Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 检查敏感文件（.env / *.key / *.pem）
+        run: |
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | \
+             grep -E '\.env$|\.env\.(local|prod|production)$|id_rsa|\.pem$|\.key$'; then
+            echo "::error::本次 PR 包含敏感文件，请从暂存区移除"
+            exit 1
+          fi
+          echo "未检测到敏感文件"

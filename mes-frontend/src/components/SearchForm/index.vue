@@ -1,13 +1,24 @@
 <template>
-  <el-card shadow="never" class="search-form-card">
+  <!--
+    无障碍说明：
+    1) role="search" 让屏幕阅读器把整块识别为"搜索地标"
+    2) aria-label 明确这是"查询条件"区域
+    3) 两个操作按钮都已带文字（查询 / 重置），图标只作装饰（aria-hidden）
+  -->
+  <el-card
+    shadow="never"
+    class="search-form-card"
+    role="search"
+    aria-label="查询条件"
+  >
     <el-form :model="modelValue" inline @submit.prevent="handleSearch">
       <slot />
       <el-form-item>
         <el-button type="primary" @click="handleSearch">
-          <el-icon><Search /></el-icon> 查询
+          <el-icon aria-hidden="true"><Search /></el-icon> 查询
         </el-button>
         <el-button @click="handleReset">
-          <el-icon><Refresh /></el-icon> 重置
+          <el-icon aria-hidden="true"><Refresh /></el-icon> 重置
         </el-button>
       </el-form-item>
     </el-form>

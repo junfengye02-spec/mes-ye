@@ -3,8 +3,8 @@
     <el-card shadow="never">
       <template #header>
         <div class="table-header">
-          <span class="table-title">菜单管理</span>
-          <el-button type="primary" @click="openDialog(null)"><el-icon><Plus /></el-icon> 新增菜单</el-button>
+          <span class="table-title">{{ t('system.menu.title') }}</span>
+          <el-button type="primary" @click="openDialog(null)"><el-icon><Plus /></el-icon> {{ t('buttons.add') }}</el-button>
         </div>
       </template>
 
@@ -72,9 +72,11 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { sysMenuApi } from '@/api/system/menu'
 import type { SysMenuVO, SysMenuDTO } from '@/api/system/menu'
 
+const { t } = useI18n()
 const loading = ref(false)
 const menuTree = ref<SysMenuVO[]>([])
 const dialogVisible = ref(false)

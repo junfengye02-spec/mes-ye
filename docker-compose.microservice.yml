@@ -442,14 +442,15 @@ services:
       args:
         NGINX_CONF: nginx.microservice.conf
     container_name: mes-frontend
+    # M9-P3-13: 主进程 appuser(10001)，容器内 listen 8080；host:80 -> container:8080
     ports:
-      - "80:80"
+      - "80:8080"
     depends_on:
       - mes-gateway
     networks:
       - mes-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
