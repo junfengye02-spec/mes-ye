@@ -86,12 +86,20 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 ? user.getAccountType().toUpperCase(Locale.ROOT)
                 : "ADMIN";
 
-        return new LoginUser(
-                user.getId(), user.getUsername(), user.getPassword(),
-                user.getRealName(), Boolean.TRUE.equals(user.getEnabled()),
-                new HashSet<>(permissions),
-                tenantId,
-                accountType);
+        LoginUser loginUser = new LoginUser();
+        loginUser.setUserId(user.getId());
+        loginUser.setUsername(user.getUsername());
+        loginUser.setPassword(user.getPassword());
+        loginUser.setRealName(user.getRealName());
+        loginUser.setPhone(user.getPhone());
+        loginUser.setEmail(user.getEmail());
+        loginUser.setFactoryCode(user.getFactoryCode());
+        loginUser.setEnabled(Boolean.TRUE.equals(user.getEnabled()));
+        loginUser.setPermissions(new HashSet<>(permissions));
+        loginUser.setTenantId(tenantId);
+        loginUser.setAccountType(accountType);
+        loginUser.setMustChangePwd(user.getMustChangePassword() != null && user.getMustChangePassword() == 1);
+        return loginUser;
     }
 
     private Long resolveTenantId(String tenantCode) {

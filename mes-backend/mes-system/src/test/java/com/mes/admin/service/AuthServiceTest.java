@@ -37,7 +37,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -266,6 +265,7 @@ class AuthServiceTest {
         dto.setLoginClient("ADMIN");
 
         LoginUser loginUser = buildLoginUser(3L, "admin", "管理员", 1L, "ADMIN");
+        loginUser.setPermissions(Set.of("perm:a", "perm:b"));
         when(authentication.getPrincipal()).thenReturn(loginUser);
         when(authenticationManager.authenticate(any())).thenReturn(authentication);
         when(tokenProvider.createAccessToken(anyLong(), anyString(), anyLong(), any(), anyString())).thenReturn("a");
@@ -275,7 +275,6 @@ class AuthServiceTest {
         when(setOperations.add(anyString(), any(String[].class))).thenReturn(1L);
         when(redisTemplate.expire(anyString(), anyLong(), any(TimeUnit.class))).thenReturn(true);
         stubUserInfoRows(3L, "admin", "管理员");
-        when(userMapper.selectPermissionsByUserIdScoped(eq(3L), anyLong())).thenReturn(List.of("perm:a", "perm:b"));
 
         authService.login(dto);
 
@@ -284,6 +283,7 @@ class AuthServiceTest {
         verify(setOperations).add(eq(PERM_KEY_PREFIX + 3L), permCaptor.capture());
         assertEquals(Set.of("perm:a", "perm:b"), Set.of(permCaptor.getValue()));
         verify(redisTemplate).expire(eq(PERM_KEY_PREFIX + 3L), eq(2L), eq(TimeUnit.HOURS));
+        verify(userMapper, never()).selectPermissionsByUserIdScoped(eq(3L), anyLong());
     }
 
     // ==================== 辅助 ====================
@@ -295,7 +295,8 @@ class AuthServiceTest {
         u.setRealName(realName);
         u.setTenantId(tenantId);
         u.setAccountType(accountType);
-        u.setPermissions(Collections.emptySet());
+        u.setPermissions(Set.of("system:user:list"));
+        u.setMustChangePwd(Boolean.FALSE);
         return u;
     }
 

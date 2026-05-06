@@ -171,17 +171,15 @@ public class DispatchTaskServiceImpl extends ServiceImpl<DispatchTaskMapper, Dis
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long create(DispatchTaskCreateDTO dto) {
-        // 可选关联工单，若关联则校验工单存在
-        if (dto.getWorkOrderId() != null) {
-            WorkOrder workOrder = workOrderMapper.selectById(dto.getWorkOrderId());
-            AssertUtil.notNull(workOrder, "关联工单不存在");
-        }
+        Long currentTenantId = TenantContextHolder.requireTenantId();
+        AssertUtil.notNull(dto.getWorkOrderId(), "工单ID不能为空");
+        WorkOrder workOrder = workOrderMapper.selectById(dto.getWorkOrderId());
+        AssertUtil.notNull(workOrder, "关联工单不存在");
         validatePlanTime(dto.getPlanStartTime(), dto.getPlanEndTime());
 
         String currentUser = currentUsernameOrSystem();
         // P0 修复 R3（mcp30）：显式注入当前 TenantContext，防止 MetaObjectHandler
         // 因任何原因未生效时派工被写到默认租户 1 上，污染跨租户隔离。
-        Long currentTenantId = TenantContextHolder.requireTenantId();
         DispatchTask entity = new DispatchTask();
         entity.setWorkOrderId(dto.getWorkOrderId());
         entity.setWorkOrderTaskId(dto.getWorkOrderTaskId());

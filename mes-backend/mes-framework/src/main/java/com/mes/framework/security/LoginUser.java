@@ -23,12 +23,17 @@ public class LoginUser implements UserDetails {
     private String username;
     private String password;
     private String realName;
+    private String phone;
+    private String email;
+    private String factoryCode;
     private boolean enabled;
     private Set<String> permissions;
     /** 租户 ID，来自库表 */
     private Long tenantId;
     /** ADMIN=管理端+现场端；STAFF=仅现场端 */
     private String accountType;
+    /** 当前账号是否必须先改密 */
+    private Boolean mustChangePwd;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

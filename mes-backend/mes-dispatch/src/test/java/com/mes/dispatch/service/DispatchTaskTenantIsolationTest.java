@@ -1,6 +1,7 @@
 package com.mes.dispatch.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.mes.common.exception.BusinessException;
 import com.mes.dispatch.domain.dto.DispatchTaskCreateDTO;
 import com.mes.dispatch.domain.entity.DispatchTask;
 import com.mes.dispatch.enums.DispatchStatus;
@@ -91,6 +92,7 @@ class DispatchTaskTenantIsolationTest {
         TenantContextHolder.setTenantId(101L);
         DispatchTaskCreateDTO dto = sampleCreateDto();
 
+        mockWorkOrderExists(dto.getWorkOrderId());
         when(dispatchTaskMapper.insert(any(DispatchTask.class))).thenReturn(1);
 
         // when
@@ -114,6 +116,7 @@ class DispatchTaskTenantIsolationTest {
         TenantContextHolder.setTenantId(202L);
         DispatchTaskCreateDTO dto = sampleCreateDto();
 
+        mockWorkOrderExists(dto.getWorkOrderId());
         when(dispatchTaskMapper.insert(any(DispatchTask.class))).thenReturn(1);
 
         dispatchTaskService.create(dto);
@@ -182,6 +185,20 @@ class DispatchTaskTenantIsolationTest {
     }
 
     @Test
+    @DisplayName("create 参数错误：workOrderId 为空时返回业务异常，禁止落库")
+    void create_shouldRejectMissingWorkOrderId() {
+        TenantContextHolder.setTenantId(101L);
+        DispatchTaskCreateDTO dto = sampleCreateDto();
+        dto.setWorkOrderId(null);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> dispatchTaskService.create(dto));
+
+        assertEquals("工单ID不能为空", ex.getMessage());
+        verify(dispatchTaskMapper, never()).insert(any(DispatchTask.class));
+    }
+
+    @Test
     @DisplayName("generateFromWorkOrder 硬失败：无 TenantContext 时必须抛 IllegalStateException，禁止写库")
     void generateFromWorkOrder_shouldFailFast_whenNoTenantContext() {
         // given: 工单存在且有 1 条 workOrderTask，但不设 TenantContext
@@ -206,6 +223,7 @@ class DispatchTaskTenantIsolationTest {
 
     private static DispatchTaskCreateDTO sampleCreateDto() {
         DispatchTaskCreateDTO dto = new DispatchTaskCreateDTO();
+        dto.setWorkOrderId(10L);
         dto.setOrderNo("OP-T-001");
         dto.setProcessNo("WK-010");
         dto.setWorkName("数控精加工");
@@ -214,6 +232,12 @@ class DispatchTaskTenantIsolationTest {
         dto.setPlanStartTime(LocalDateTime.of(2026, 5, 1, 8, 0));
         dto.setPlanEndTime(LocalDateTime.of(2026, 5, 2, 17, 0));
         return dto;
+    }
+
+    private void mockWorkOrderExists(Long workOrderId) {
+        WorkOrder workOrder = new WorkOrder();
+        workOrder.setId(workOrderId);
+        when(workOrderMapper.selectById(workOrderId)).thenReturn(workOrder);
     }
 
     private static WorkOrderTask workOrderTask(Long id, Long woId, String taskNo, String name, int seq) {

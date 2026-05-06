@@ -282,7 +282,8 @@ class SystemModuleTest {
         user.setRealName(realName);
         user.setTenantId(tenantId);
         user.setAccountType(accountType);
-        user.setPermissions(Collections.emptySet());
+        user.setPermissions(Set.of("system:user:list"));
+        user.setMustChangePwd(Boolean.FALSE);
         return user;
     }
 

@@ -124,12 +124,12 @@ public class AuthServiceImpl implements IAuthService {
         String refreshToken = tokenProvider.createRefreshToken(
                 userId, loginUsername, tenantId, resolvedTenantCode, loginUser.getAccountType());
 
-        cachePermissions(tenantId, userId);
+        cachePermissions(tenantId, userId, loginUser.getPermissions());
 
         // 登录成功清空失败计数与验证码标记
         lockoutService.recordSuccess(tenantCode, username);
 
-        UserInfoVO userInfo = buildUserInfo(tenantId, userId, loginUsername, loginUser.getRealName());
+        UserInfoVO userInfo = buildUserInfo(loginUser, resolvedTenantCode);
         // P0-06：登录时回带"是否必须改密"标识，前端需据此阻断业务入口并弹出改密框
         LoginVO vo = new LoginVO(accessToken, refreshToken, userInfo);
         vo.setMustChangePwd(userInfo.getMustChangePwd());
@@ -256,17 +256,50 @@ public class AuthServiceImpl implements IAuthService {
         return info;
     }
 
+    private UserInfoVO buildUserInfo(LoginUser loginUser, String tenantCode) {
+        Long userId = loginUser.getUserId();
+        Long tenantId = loginUser.getTenantId();
+        List<SysRole> roles = roleMapper.selectRolesByUserIdScoped(userId, tenantId);
+
+        UserInfoVO info = new UserInfoVO();
+        info.setId(userId);
+        info.setUsername(loginUser.getUsername());
+        info.setRealName(loginUser.getRealName());
+        info.setPhone(loginUser.getPhone());
+        info.setEmail(loginUser.getEmail());
+        info.setFactoryCode(loginUser.getFactoryCode());
+        info.setTenantId(tenantId);
+        info.setTenantCode(tenantCode);
+        info.setAccountType(StringUtils.hasText(loginUser.getAccountType()) ? loginUser.getAccountType() : "ADMIN");
+        info.setMustChangePwd(Boolean.TRUE.equals(loginUser.getMustChangePwd()));
+        info.setRoles(roles.stream().map(SysRole::getRoleCode).collect(Collectors.toList()));
+        info.setPermissions(loginUser.getPermissions() != null ? new HashSet<>(loginUser.getPermissions()) : Set.of());
+        return info;
+    }
+
     private void cachePermissions(Long tenantId, Long userId) {
         try {
-            String key = buildPermissionKey(tenantId, userId);
-            redisTemplate.delete(key);
             Set<String> perms = new HashSet<>(userMapper.selectPermissionsByUserIdScoped(userId, tenantId));
-            if (!perms.isEmpty()) {
-                redisTemplate.opsForSet().add(key, perms.toArray(new String[0]));
-                redisTemplate.expire(key, 2, TimeUnit.HOURS);
-            }
+            writePermissionCache(tenantId, userId, perms);
         } catch (Exception e) {
             log.warn("Redis 缓存权限失败，降级运行: {}", e.getMessage());
+        }
+    }
+
+    private void cachePermissions(Long tenantId, Long userId, Set<String> permissions) {
+        try {
+            writePermissionCache(tenantId, userId, permissions);
+        } catch (Exception e) {
+            log.warn("Redis 缓存权限失败，降级运行: {}", e.getMessage());
+        }
+    }
+
+    private void writePermissionCache(Long tenantId, Long userId, Set<String> permissions) {
+        String key = buildPermissionKey(tenantId, userId);
+        redisTemplate.delete(key);
+        if (permissions != null && !permissions.isEmpty()) {
+            redisTemplate.opsForSet().add(key, permissions.toArray(new String[0]));
+            redisTemplate.expire(key, 2, TimeUnit.HOURS);
         }
     }
 

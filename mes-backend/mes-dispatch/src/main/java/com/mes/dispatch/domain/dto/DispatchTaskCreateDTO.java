@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 @Schema(description = "派工任务创建参数")
 public class DispatchTaskCreateDTO {
 
-    @Schema(description = "工单ID（可选，手动创建可不关联工单）")
+    @NotNull(message = "工单ID不能为空")
+    @Schema(description = "工单ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workOrderId;
 
     @Schema(description = "工作清单ID（可选，关联工单时可填）")
