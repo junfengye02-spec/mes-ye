@@ -37,10 +37,16 @@ test.describe('异常联络 / Abnormal (UI smoke)', () => {
 
   test('状态筛选或处理按钮可见', async ({ page }) => {
     await page.goto('/abnormal/contact')
-    const filters = page.locator('.el-form, .el-tag, button:has-text("处理"), button:has-text("关闭")').first()
-    const hasFilter = await filters.isVisible().catch(() => false)
-    const hasEmpty = await page.locator('.el-empty').first().isVisible().catch(() => false)
-    expect(hasFilter || hasEmpty).toBeTruthy()
+    await expect(page.locator('.abnormal-contact-list .search-card')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText('异常联系单列表')).toBeVisible()
+    const hasStatusFilter = await page
+      .locator('.abnormal-contact-list .search-card .el-form-item')
+      .filter({ hasText: '状态' })
+      .first()
+      .isVisible()
+      .catch(() => false)
+    const hasRowAction = (await page.locator('button:has-text("处理"), button:has-text("关闭")').filter({ visible: true }).count()) > 0
+    expect(hasStatusFilter || hasRowAction).toBeTruthy()
   })
 })
 
@@ -70,16 +76,22 @@ test.describe('异常联络 / Abnormal (数据级状态机)', () => {
     test.skip(!seed || !data || !!skipReason, `seed skip: ${skipReason || ''}`)
     const wo = data!.workOrders[0]
     const dto = {
-      title: `e2e-abn-${data!.prefix}`,
-      workOrderId: wo.id,
-      abnormalType: 'QUALITY',
-      description: 'playwright auto abnormal',
-      severity: 'LOW',
+      subject: `e2e-abn-${data!.prefix}`,
+      occurStage: 'PRODUCTION',
+      eventCategory: 'QUALITY',
+      orderNo: wo.orderNo,
+      customerProject: 'E2E',
+      initiateDept: 'QA',
+      productName: wo.materialName,
+      qty: 1,
+      discoveryDate: new Date().toISOString().slice(0, 10),
+      abnormalDesc: 'playwright auto abnormal',
+      affectSchedule: 0,
     }
     contactId = await api.post<number>('/abnormal/contact', dto)
     expect(Number(contactId)).toBeGreaterThan(0)
     const detail = await api.get<any>(`/abnormal/contact/${contactId}`)
-    expect(detail?.title).toBe(dto.title)
+    expect(detail?.subject).toBe(dto.subject)
   })
 
   test('A1.2: submit → 状态 SUBMITTED', async ({ api }) => {

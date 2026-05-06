@@ -19,48 +19,23 @@ const TOKEN_KEY = 'token'
 const REFRESH_KEY = 'refreshToken'
 
 /**
- * 登录：后端 /api/auth/login → token 写 localStorage；失败则 UI 表单 fallback。
- * 同时把 token 注入 addInitScript，保证后续任何页面加载都带 token。
+ * 登录：走真实登录页表单，保持路由守卫、Pinia 状态和浏览器存储一致。
  */
 export async function loginAsAdmin(page: Page): Promise<string | null> {
   await page.goto('/login')
-
-  try {
-    const res = await page.request.post(`${BACKEND_BASE}/api/auth/login`, {
-      data: {
-        username: E2E_USER,
-        password: E2E_PASS,
-        loginClient: 'ADMIN',
-        tenantCode: E2E_TENANT || undefined,
-      },
-      failOnStatusCode: false,
-      timeout: 5000,
-    })
-    if (res.ok()) {
-      const body = await res.json()
-      const token = body?.data?.accessToken
-      const refreshToken = body?.data?.refreshToken
-      if (token) {
-        await page.addInitScript(
-          ([t, r]) => {
-            window.localStorage.setItem('token', t)
-            if (r) window.localStorage.setItem('refreshToken', r)
-          },
-          [token, refreshToken] as const,
-        )
-        await page.goto('/')
-        return token as string
-      }
-    }
-  } catch {
-    // 忽略，走 UI fallback
+  if (E2E_TENANT) {
+    await page
+      .locator('input[placeholder*="租户"], input[placeholder*="Tenant"]')
+      .first()
+      .fill(E2E_TENANT)
+      .catch(() => undefined)
   }
 
   await page.fill(LOGIN_USERNAME_SELECTOR, E2E_USER)
   await page.fill(LOGIN_PASSWORD_SELECTOR, E2E_PASS)
   await page.click(LOGIN_SUBMIT_SELECTOR)
   await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 })
-  return null
+  return page.evaluate(() => window.localStorage.getItem('token'))
 }
 
 /**
@@ -97,7 +72,7 @@ export async function loginAs(
   const token = body?.data?.accessToken
   const refreshToken = body?.data?.refreshToken
   if (!token) return null
-  await page.addInitScript(
+  await page.evaluate(
     ([t, r]) => {
       window.localStorage.setItem('token', t)
       if (r) window.localStorage.setItem('refreshToken', r)

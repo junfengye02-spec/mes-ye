@@ -28,7 +28,10 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Keep E2E deterministic against the shared local admin account. Parallel
+  // browser sessions can invalidate each other's token and produce false
+  // route-guard failures.
+  workers: Number(process.env.E2E_WORKERS || '1'),
 
   // CI / 本地统一输出 junit + html + list；本地额外 on-failure 打开报告
   reporter: process.env.CI

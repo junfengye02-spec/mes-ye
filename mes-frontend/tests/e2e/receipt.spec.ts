@@ -1,6 +1,8 @@
 import { test, expect, loginAsAdmin } from './fixtures'
 import { E2ESeed, SeedUnavailableError, SeedData } from './seed/seed-data'
 
+const toLocalDateTime = (value: Date) => value.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')
+
 /**
  * 完工入库回归（数据级）：
  *   UI smoke（保留）：列表页可达 / 工具条可见
@@ -18,20 +20,14 @@ test.describe('完工入库 / Receipt (UI smoke)', () => {
   })
 
   test('入库申请列表可达', async ({ page }) => {
-    await page.goto('/material/receipt-request')
-    if (page.url().includes('/login')) {
-      await page.goto('/material-mgmt/receipt-request')
-    }
+    await page.goto('/material-mgmt/receipt-request')
     await expect(page).not.toHaveURL(/\/login/)
     const panel = page.locator('.el-table, .el-empty, [role="table"]').first()
     await expect(panel).toBeVisible({ timeout: 15000 })
   })
 
   test('完工入库列表可达', async ({ page }) => {
-    await page.goto('/material/receipt')
-    if (page.url().includes('/login')) {
-      await page.goto('/material-mgmt/receipt')
-    }
+    await page.goto('/material-mgmt/receipt')
     await expect(page).not.toHaveURL(/\/login/)
     const panel = page.locator('.el-table, .el-empty, [role="table"]').first()
     await expect(panel).toBeVisible({ timeout: 15000 })
@@ -66,11 +62,33 @@ test.describe('完工入库 / Receipt (主表+items 一致性)', () => {
     const wo = data!.workOrders[0]
     const [m0, m1] = data!.materials
     const dto = {
-      workOrderId: wo.id,
-      remark: `e2e receipt ${data!.prefix}`,
+      receiptType: 'NEW_PRODUCT',
+      warehouse: 'E2E-WH',
+      movementType: '101',
+      planReceiptTime: toLocalDateTime(new Date(Date.now() + 3600_000)),
       items: [
-        { materialId: m0.id, quantity: 30, remark: 'line 1' },
-        { materialId: m1.id, quantity: 70, remark: 'line 2' },
+        {
+          itemCode: `${data!.prefix}_RI0`,
+          workOrderId: wo.id,
+          workOrderNo: wo.code,
+          materialId: m0.id,
+          materialCode: m0.code,
+          materialName: m0.name,
+          receiptQty: 30,
+          unit: 'PCS',
+          storageLocation: 'E2E',
+        },
+        {
+          itemCode: `${data!.prefix}_RI1`,
+          workOrderId: wo.id,
+          workOrderNo: wo.code,
+          materialId: m1.id,
+          materialCode: m1.code,
+          materialName: m1.name,
+          receiptQty: 70,
+          unit: 'PCS',
+          storageLocation: 'E2E',
+        },
       ],
     }
     receiptId = await api.post<number>('/material/receipt', dto)
@@ -81,39 +99,55 @@ test.describe('完工入库 / Receipt (主表+items 一致性)', () => {
     const items: any[] = detail.items || detail.itemList || []
     expect(items.length).toBe(2)
 
-    // 按 materialId 对齐断言
-    const byMat = Object.fromEntries(items.map((x) => [Number(x.materialId ?? x.material?.id), x]))
-    expect(Number(byMat[m0.id]?.quantity)).toBe(30)
-    expect(Number(byMat[m1.id]?.quantity)).toBe(70)
+    // 按 materialCode 对齐断言。当前 VO 不暴露 materialId，以页面/API 返回契约为准。
+    const byMat = Object.fromEntries(items.map((x) => [String(x.materialCode), x]))
+    expect(Number(byMat[m0.code]?.receiptQty ?? byMat[m0.code]?.quantity)).toBe(30)
+    expect(Number(byMat[m1.code]?.receiptQty ?? byMat[m1.code]?.quantity)).toBe(70)
 
-    // 主表合计一致（若字段存在）
-    if (detail.quantity != null) {
-      expect(Number(detail.quantity)).toBe(100)
-    }
-    if (detail.totalQuantity != null) {
-      expect(Number(detail.totalQuantity)).toBe(100)
-    }
-
-    // 工单关联一致
-    expect(Number(detail.workOrderId ?? detail.workOrder?.id)).toBe(wo.id)
+    // 明细工单关联一致
+    expect(Number(items[0].workOrderId ?? items[0].workOrder?.id)).toBe(wo.id)
   })
 
-  test('R2: update remark → GET 回读一致', async ({ api }) => {
+  test('R2: update warehouse → GET 回读一致', async ({ api }) => {
     test.skip(!seed || !data || !!skipReason || !receiptId, `seed skip: ${skipReason || ''}`)
-    const newRemark = `updated-${Date.now()}`
+    const detailBefore = await api.get<any>(`/material/receipt/${receiptId}`)
+    const newWarehouse = `E2E-WH-${Date.now()}`
     const wo = data!.workOrders[0]
     const [m0, m1] = data!.materials
-    // 后端 update 期望与 create 一致的结构
+    // 后端 update 期望与 create 一致的结构。
     await api.put(`/material/receipt/${receiptId}`, {
-      workOrderId: wo.id,
-      remark: newRemark,
+      receiptNo: detailBefore.receiptNo,
+      receiptType: detailBefore.receiptType || 'NEW_PRODUCT',
+      warehouse: newWarehouse,
+      movementType: detailBefore.movementType || '101',
+      planReceiptTime: detailBefore.planReceiptTime || toLocalDateTime(new Date(Date.now() + 3600_000)),
       items: [
-        { materialId: m0.id, quantity: 30, remark: 'line 1' },
-        { materialId: m1.id, quantity: 70, remark: 'line 2' },
+        {
+          itemCode: `${data!.prefix}_RI0`,
+          workOrderId: wo.id,
+          workOrderNo: wo.code,
+          materialId: m0.id,
+          materialCode: m0.code,
+          materialName: m0.name,
+          receiptQty: 30,
+          unit: 'PCS',
+          storageLocation: 'E2E',
+        },
+        {
+          itemCode: `${data!.prefix}_RI1`,
+          workOrderId: wo.id,
+          workOrderNo: wo.code,
+          materialId: m1.id,
+          materialCode: m1.code,
+          materialName: m1.name,
+          receiptQty: 70,
+          unit: 'PCS',
+          storageLocation: 'E2E',
+        },
       ],
     })
     const detail = await api.get<any>(`/material/receipt/${receiptId}`)
-    expect(detail.remark).toBe(newRemark)
+    expect(detail.warehouse).toBe(newWarehouse)
   })
 
   test('R3: delete → 再次 GET 404/业务错误', async ({ api }) => {

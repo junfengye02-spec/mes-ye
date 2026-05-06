@@ -10,7 +10,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Slf4j
-@Configuration
+@Configuration("frameworkAsyncConfig")
 public class AsyncConfig implements AsyncConfigurer {
 
     @Bean("mesAsyncExecutor")

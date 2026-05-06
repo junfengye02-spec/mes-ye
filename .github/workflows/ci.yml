@@ -89,6 +89,10 @@ jobs:
         working-directory: mes-frontend
         run: npm ci --no-audit --no-fund
 
+      - name: Audit production dependencies
+        working-directory: mes-frontend
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Type check
         working-directory: mes-frontend
         run: npx tsc --noEmit
@@ -173,10 +177,18 @@ jobs:
         with:
           image-ref: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_BACKEND }}:${{ steps.meta.outputs.version }}
           format: table
-          exit-code: '0'
+          exit-code: '1'
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-        continue-on-error: true
+
+      - name: Scan Frontend Image (Trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.version }}
+          format: table
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
 
   # ===== Job 4: 仅 tag 生成 Release Draft =====
   release-draft:

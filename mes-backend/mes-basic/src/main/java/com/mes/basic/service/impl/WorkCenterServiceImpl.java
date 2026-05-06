@@ -16,6 +16,7 @@ import com.mes.common.utils.AssertUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -30,6 +31,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WorkCenterServiceImpl extends ServiceImpl<WorkCenterMapper, WorkCenter>
         implements IWorkCenterService {
+
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public PageResult<WorkCenterVO> page(WorkCenterQuery query) {
@@ -102,7 +105,13 @@ public class WorkCenterServiceImpl extends ServiceImpl<WorkCenterMapper, WorkCen
         WorkCenter workCenter = getById(id);
         AssertUtil.notNull(workCenter, ResultCode.DATA_NOT_EXIST);
 
-        // TODO: 检查是否被工序/工单引用，若引用则不允许删除
+        assertNotReferenced("mes_process_template", "work_center_id", id, "工艺模板");
+        assertNotReferenced("mes_process_info", "work_center_id", id, "工序");
+        assertNoWorkOrderReference(id);
+        assertNotReferenced("mes_work_order_task", "plan_work_center_id", id, "工单工作清单");
+        assertNotReferenced("mes_dispatch_task", "plan_work_center_id", id, "派工任务");
+        assertNotReferenced("mes_order_plan", "plan_work_center_id", id, "订单计划");
+        assertNotReferenced("mes_material_return", "plan_work_center_id", id, "退料单");
 
         removeById(id);
         log.info("删除工作中心: {} - {}", workCenter.getWorkCenterCode(), workCenter.getWorkCenterName());
@@ -146,5 +155,22 @@ public class WorkCenterServiceImpl extends ServiceImpl<WorkCenterMapper, WorkCen
         WorkCenterVO vo = new WorkCenterVO();
         BeanUtils.copyProperties(entity, vo);
         return vo;
+    }
+
+    private void assertNotReferenced(String table, String column, Long id, String label) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM " + table + " WHERE " + column + " = ?",
+                Long.class,
+                id);
+        AssertUtil.isFalse(count != null && count > 0, "该工作中心已被" + label + "引用，无法删除");
+    }
+
+    private void assertNoWorkOrderReference(Long id) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM mes_work_order WHERE plan_work_center_id = ? OR specified_work_center_id = ?",
+                Long.class,
+                id,
+                id);
+        AssertUtil.isFalse(count != null && count > 0, "该工作中心已被工单引用，无法删除");
     }
 }

@@ -51,7 +51,10 @@ export interface SeedWorkCenter {
 export interface SeedWorkOrder {
   id: number
   code: string
+  orderNo: string
   materialId: number
+  materialCode: string
+  materialName: string
   workCenterId: number
   quantity: number
 }
@@ -87,6 +90,10 @@ const DEFAULT_ADMIN: LoginOptions = {
   password: process.env.E2E_PASS || 'admin123',
   loginClient: 'ADMIN',
   tenantCode: process.env.E2E_TENANT || undefined,
+}
+
+function toLocalDateTime(value: Date): string {
+  return value.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')
 }
 
 export class E2ESeed {
@@ -138,7 +145,7 @@ export class E2ESeed {
     }
     const workOrders: SeedWorkOrder[] = []
     for (let i = 0; i < woCount; i++) {
-      workOrders.push(await this.createWorkOrder(i, materials[0].id, workCenters[0].id))
+      workOrders.push(await this.createWorkOrder(i, materials[0], workCenters[0].id))
     }
 
     this.data = {
@@ -209,42 +216,86 @@ export class E2ESeed {
   private async createMaterial(idx: number): Promise<SeedMaterial> {
     const code = `${this.prefix}_M${idx}`
     const dto = {
-      code,
-      name: `E2E物料-${this.prefix}-${idx}`,
-      spec: 'E2E-SPEC',
-      unit: 'PCS',
-      category: 'FG',
-      enabled: true,
+      materialCode: code,
+      materialName: `E2E物料-${this.prefix}-${idx}`,
+      materialType: 'FG',
+      categoryLevel1: 'E2E',
+      factory: 'E2E',
+      baseUnit: 'PCS',
+      traceMode: 'QUANTITY',
+      needInspection: 0,
     }
     const id = await this.client.post<number>('/basic/material', dto)
-    return { id, code, name: dto.name }
+    return { id, code, name: dto.materialName }
   }
 
   private async createWorkCenter(idx: number): Promise<SeedWorkCenter> {
     const code = `${this.prefix}_WC${idx}`
     const dto = {
-      code,
-      name: `E2E工作中心-${this.prefix}-${idx}`,
-      type: 'MACHINE',
-      enabled: true,
+      workCenterCode: code,
+      workCenterName: `E2E工作中心-${this.prefix}-${idx}`,
+      workCenterCategory: 'MACHINE',
+      businessUnit: 'E2E',
+      workCalendar: 'STANDARD',
+      resourceOrder: idx + 1,
+      usageQty: 1,
+      usageUnit: 'H',
+      batchQty: 1,
+      efficiency: 1,
+      resourceType: 'DEVICE',
+      resourceCapacity: 1,
+      processNoInterrupt: 0,
+      processNoCrossDay: 0,
+      fixedTaktProduction: 0,
     }
     const id = await this.client.post<number>('/basic/work-center', dto)
-    return { id, code, name: dto.name }
+    return { id, code, name: dto.workCenterName }
   }
 
-  private async createWorkOrder(idx: number, materialId: number, workCenterId: number): Promise<SeedWorkOrder> {
+  private async createWorkOrder(idx: number, material: SeedMaterial, workCenterId: number): Promise<SeedWorkOrder> {
     const code = `${this.prefix}_WO${idx}`
+    const orderNo = `${this.prefix}_ORD${idx}`
+    const quantity = 100
     const dto = {
-      code,
-      materialId,
-      workCenterId,
-      quantity: 100,
-      plannedStart: new Date(Date.now() + 3600_000).toISOString(),
-      plannedEnd: new Date(Date.now() + 2 * 3600_000).toISOString(),
+      workOrderNo: code,
+      workOrderType: 'E2E',
+      orderNo,
+      productCode: material.code,
+      productName: material.name,
+      projectName: 'E2E',
+      planQty: quantity,
+      qtyUnit: 'PCS',
+      planWorkCenterId: workCenterId,
+      specifiedWorkCenterId: workCenterId,
+      factoryOrg: 'E2E',
+      planOrg: 'E2E',
+      mainOrg: 'E2E',
+      planStartTime: toLocalDateTime(new Date(Date.now() + 3600_000)),
+      planEndTime: toLocalDateTime(new Date(Date.now() + 2 * 3600_000)),
       remark: `e2e workorder ${this.prefix}-${idx}`,
+      tasks: [
+        {
+          taskNo: `${this.prefix}_T${idx}_10`,
+          taskName: `E2E工序-${idx}`,
+          planWorkCenterId: workCenterId,
+          planQty: quantity,
+          qtyUnit: 'PCS',
+          sequenceNo: 10,
+          projectName: 'E2E',
+        },
+      ],
     }
     const id = await this.client.post<number>('/workorder/work-order', dto)
-    return { id, code, materialId, workCenterId, quantity: 100 }
+    return {
+      id,
+      code,
+      orderNo,
+      materialId: material.id,
+      materialCode: material.code,
+      materialName: material.name,
+      workCenterId,
+      quantity,
+    }
   }
 }
 

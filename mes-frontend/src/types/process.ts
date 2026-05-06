@@ -43,25 +43,25 @@ export interface InstructionQuery extends PageQuery {
 }
 
 export interface ProcessTemplateVO extends BaseEntity {
-  templateCode: string
-  templateName: string
-  parentId?: number
+  processNo: string
+  processName?: string
+  parentProcessNo?: string
   processType?: string
   description?: string
   children?: ProcessTemplateVO[]
 }
 
 export interface ProcessTemplateDTO {
-  templateCode: string
-  templateName: string
-  parentId?: number
+  processNo: string
+  processName?: string
+  parentProcessNo?: string
   processType?: string
   description?: string
 }
 
 export interface ProcessTemplateQuery extends PageQuery {
-  templateCode?: string
-  templateName?: string
+  processNo?: string
+  processName?: string
   processType?: string
 }
 

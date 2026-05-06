@@ -14,6 +14,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,6 +32,7 @@ class BasicModuleTest {
 
     @Mock private MaterialMapper materialMapper;
     @Mock private MaterialPriceMapper materialPriceMapper;
+    @Mock private JdbcTemplate jdbcTemplate;
 
     @Spy
     @InjectMocks

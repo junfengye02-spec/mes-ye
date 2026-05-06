@@ -16,6 +16,7 @@ import com.mes.team.service.IProductionTeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -30,6 +31,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductionTeamServiceImpl extends ServiceImpl<ProductionTeamMapper, ProductionTeam>
         implements IProductionTeamService {
+
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public PageResult<ProductionTeamVO> page(ProductionTeamQuery query) {
@@ -101,7 +104,12 @@ public class ProductionTeamServiceImpl extends ServiceImpl<ProductionTeamMapper,
         ProductionTeam team = getById(id);
         AssertUtil.notNull(team, ResultCode.DATA_NOT_EXIST);
 
-        // TODO: 检查是否被派工引用，若引用则不允许删除
+        assertNotReferenced("mes_process_info", "team_id", id, "工序");
+        assertNotReferenced("mes_storage_inventory", "team_id", id, "库存台账");
+        assertNotReferenced("mes_work_order_task_segment", "assigned_team_id", id, "APS任务段");
+        assertNotReferenced("mes_shift_handover", "handover_team_id", id, "交班记录");
+        assertNotReferenced("mes_shift_handover", "takeover_team_id", id, "接班记录");
+        assertNoActiveDispatchReference(id);
 
         removeById(id);
         log.info("删除班组: {} - {}", team.getTeamCode(), team.getTeamName());
@@ -141,5 +149,21 @@ public class ProductionTeamServiceImpl extends ServiceImpl<ProductionTeamMapper,
         ProductionTeamVO vo = new ProductionTeamVO();
         BeanUtils.copyProperties(entity, vo);
         return vo;
+    }
+
+    private void assertNotReferenced(String table, String column, Long id, String label) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM " + table + " WHERE " + column + " = ?",
+                Long.class,
+                id);
+        AssertUtil.isFalse(count != null && count > 0, "该班组已被" + label + "引用，无法删除");
+    }
+
+    private void assertNoActiveDispatchReference(Long id) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM mes_dispatch_assignment WHERE assign_type = 'TEAM' AND assignee_id = ?",
+                Long.class,
+                id);
+        AssertUtil.isFalse(count != null && count > 0, "该班组已被派工分配引用，无法删除");
     }
 }

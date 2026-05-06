@@ -30,6 +30,7 @@
 import { computed, ref } from 'vue'
 import type { UploadFile, UploadRawFile } from 'element-plus'
 import { ElMessage } from 'element-plus'
+import { API_BASE_URL } from '@/utils/apiBase'
 
 const props = withDefaults(defineProps<{
   directory?: string
@@ -54,7 +55,7 @@ const emit = defineEmits<{
 }>()
 
 const fileList = ref<UploadFile[]>([])
-const uploadUrl = computed(() => `${import.meta.env.VITE_API_BASE_URL}/file/upload`)
+const uploadUrl = computed(() => `${API_BASE_URL}/file/upload`)
 const uploadHeaders = computed(() => {
   const token = localStorage.getItem('token')
   return token ? { Authorization: `Bearer ${token}` } : {}

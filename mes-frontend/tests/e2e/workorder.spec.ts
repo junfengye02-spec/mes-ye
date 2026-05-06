@@ -65,9 +65,12 @@ test.describe('生产工单 / WorkOrder (full chain 数据级)', () => {
     const wo = data!.workOrders[0]
     const detail = await api.get<any>(`/workorder/work-order/${wo.id}`)
     expect(detail).toBeTruthy()
-    expect(String(detail.code || detail.orderCode || detail.workOrderCode)).toContain(data!.prefix)
-    expect(Number(detail.materialId ?? detail.material?.id)).toBe(wo.materialId)
-    expect(Number(detail.workCenterId ?? detail.workCenter?.id)).toBe(wo.workCenterId)
+    expect(String(detail.workOrderNo || detail.code || detail.orderCode || detail.workOrderCode)).toContain(
+      data!.prefix,
+    )
+    expect(String(detail.productCode)).toBe(wo.materialCode)
+    expect(Number(detail.planWorkCenterId ?? detail.specifiedWorkCenterId)).toBe(wo.workCenterId)
+    expect(Number(detail.planQty ?? detail.quantity)).toBe(wo.quantity)
   })
 
   test('S2: release → GET 状态 RELEASED', async ({ api }) => {
@@ -99,10 +102,14 @@ test.describe('生产工单 / WorkOrder (full chain 数据级)', () => {
     const task = rows.find((r) => Number(r.workOrderId ?? r.workOrder?.id) === wo.id)
     expect(task, '派工任务缺失，无法分配').toBeTruthy()
     const taskId = Number(task.id)
-    await api.post(`/dispatch/assignment/device/${taskId}`, {
-      targetId: wo.workCenterId,
-      quantity: 50,
-      remark: 'e2e device assignment',
+    await api.post('/dispatch/task/assign', {
+      taskId,
+      assignType: 'DEVICE',
+      assigneeIds: [wo.workCenterId],
+      assigneeCodes: [String(wo.workCenterId)],
+      assigneeNames: ['E2E device'],
+      assignedQty: 50,
+      qtyUnit: 'PCS',
     })
     const list = await api.get<any[]>(`/dispatch/assignment/list/${taskId}`)
     expect(Array.isArray(list)).toBeTruthy()
@@ -131,13 +138,21 @@ test.describe('生产工单 / WorkOrder (full chain 数据级)', () => {
     test.skip(!seed || !data || !!skipReason, `seed skip: ${skipReason || ''}`)
     const wo = data!.workOrders[0]
     const receiptDto = {
-      workOrderId: wo.id,
-      remark: `e2e receipt ${data!.prefix}`,
+      receiptType: 'NEW_PRODUCT',
+      warehouse: 'E2E-WH',
+      movementType: '101',
+      planReceiptTime: new Date(Date.now() + 3600_000).toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ''),
       items: [
         {
+          itemCode: `${data!.prefix}_R1`,
+          workOrderId: wo.id,
+          workOrderNo: wo.code,
           materialId: wo.materialId,
-          quantity: wo.quantity,
-          remark: 'e2e receipt item',
+          materialCode: wo.materialCode,
+          materialName: wo.materialName,
+          receiptQty: wo.quantity,
+          unit: 'PCS',
+          storageLocation: 'E2E',
         },
       ],
     }
@@ -147,8 +162,8 @@ test.describe('生产工单 / WorkOrder (full chain 数据级)', () => {
     expect(detail).toBeTruthy()
     const items = detail.items || detail.itemList || []
     expect(items.length).toBe(1)
-    expect(Number(items[0].materialId ?? items[0].material?.id)).toBe(wo.materialId)
-    expect(Number(items[0].quantity)).toBe(wo.quantity)
+    expect(String(items[0].materialCode)).toBe(wo.materialCode)
+    expect(Number(items[0].receiptQty ?? items[0].quantity)).toBe(wo.quantity)
     // 回收：删除入库单以便 teardown 可以删除 workOrder（后端有外键约束时需要）
     await api.delete(`/material/receipt/${receiptId}`).catch(() => undefined)
   })

@@ -12,6 +12,7 @@ import com.mes.dispatch.mapper.DispatchTaskMapper;
 import com.mes.dispatch.service.IDispatchStatusLogService;
 import com.mes.dispatch.service.impl.DispatchAssignmentServiceImpl;
 import com.mes.dispatch.service.impl.DispatchTaskServiceImpl;
+import com.mes.framework.tenant.TenantContextHolder;
 import com.mes.workorder.domain.entity.WorkOrder;
 import com.mes.workorder.domain.entity.WorkOrderTask;
 import com.mes.workorder.mapper.WorkOrderMapper;
@@ -55,6 +56,12 @@ class DispatchModuleTest {
         // DispatchTaskServiceImpl 继承 MyBatis-Plus ServiceImpl，需反射注入 baseMapper
         ReflectionTestUtils.setField(dispatchTaskService, "baseMapper", dispatchTaskMapper);
         // DispatchAssignmentServiceImpl 未继承 ServiceImpl，不需要 baseMapper
+        TenantContextHolder.setTenantId(1L);
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContextHolder.clear();
     }
 
     // ==================== 1. 派工任务生成测试 ====================
@@ -80,7 +87,8 @@ class DispatchModuleTest {
         dispatchTaskService.generateFromWorkOrder(1L);
 
         verify(dispatchTaskMapper, times(2)).insert(argThat(dt ->
-                DispatchStatus.UNASSIGNED.getCode().equals(dt.getDispatchStatus())));
+                DispatchStatus.UNASSIGNED.getCode().equals(dt.getDispatchStatus())
+                        && Long.valueOf(1L).equals(dt.getTenantId())));
     }
 
     @Test

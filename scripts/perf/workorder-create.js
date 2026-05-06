@@ -23,6 +23,16 @@ const VU = parseInt(__ENV.VU || '10', 10);
 
 const createdCounter = new Counter('workorder_created');
 
+function pad(n) {
+    return n < 10 ? '0' + n : '' + n;
+}
+
+function formatLocalDateTime(offsetMs) {
+    const d = new Date(Date.now() + offsetMs);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+        ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+
 export const options = {
     stages: [
         { duration: '30s', target: VU },
@@ -44,14 +54,17 @@ export function setup() {
 
 export default function (data) {
     const payload = JSON.stringify({
-        workOrderNo: `PERF-WO-${Date.now()}-${randomIntBetween(1000, 9999)}`,
-        productId: randomIntBetween(1, 100),
+        workOrderNo: 'PERF-WO-' + Date.now() + '-' + randomIntBetween(1000, 9999),
+        workOrderType: '压测工单',
         productCode: 'P-PERF-' + randomIntBetween(1, 100),
         productName: '压测产品-' + randomIntBetween(1, 100),
-        plannedQty: randomIntBetween(1, 500),
-        plannedStartTime: new Date().toISOString(),
-        plannedEndTime: new Date(Date.now() + 86400000).toISOString(),
-        priority: randomIntBetween(1, 5),
+        planQty: randomIntBetween(1, 500),
+        qtyUnit: 'PC',
+        factoryOrg: '压测工厂',
+        planOrg: '压测计划部',
+        mainOrg: '压测事业部',
+        planStartTime: formatLocalDateTime(0),
+        planEndTime: formatLocalDateTime(86400000),
         remark: 'k6 压测生成',
     });
 
@@ -68,7 +81,7 @@ export default function (data) {
     const ok = check(res, {
         '创建成功 (200)': (r) => r.status === 200,
         '响应体含工单 ID': (r) => {
-            try { const b = r.json(); return b.code === 0 && b.data !== null; } catch { return false; }
+            try { const b = r.json(); return (b.code === 0 || b.code === 200) && b.data !== null; } catch (e) { return false; }
         },
     });
 
@@ -80,9 +93,9 @@ export default function (data) {
 export function handleSummary(data) {
     return {
         'stdout': '\n=== Workorder Create 压测结果 ===\n' +
-            `总请求数: ${data.metrics.http_reqs.values.count}\n` +
-            `创建成功数: ${(data.metrics.workorder_created && data.metrics.workorder_created.values.count) || 0}\n` +
-            `P95: ${data.metrics.http_req_duration.values['p(95)'].toFixed(2)} ms\n` +
-            `失败率: ${(data.metrics.http_req_failed.values.rate * 100).toFixed(2)}%\n`,
+            '总请求数: ' + data.metrics.http_reqs.values.count + '\n' +
+            '创建成功数: ' + ((data.metrics.workorder_created && data.metrics.workorder_created.values.count) || 0) + '\n' +
+            'P95: ' + data.metrics.http_req_duration.values['p(95)'].toFixed(2) + ' ms\n' +
+            '失败率: ' + (data.metrics.http_req_failed.values.rate * 100).toFixed(2) + '%\n',
     };
 }

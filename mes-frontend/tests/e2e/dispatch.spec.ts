@@ -1,6 +1,8 @@
 import { test, expect, loginAsAdmin } from './fixtures'
 import { E2ESeed, SeedUnavailableError, SeedData } from './seed/seed-data'
 
+const toLocalDateTime = (value: Date) => value.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')
+
 /**
  * 派工管理回归（数据级）：
  *   UI smoke（保留）：列表页可达 / 工具条可见 / 操作按钮可见
@@ -29,11 +31,21 @@ test.describe('派工 / Dispatch (UI smoke)', () => {
 
   test('派工动作按钮可见（存在即算通过）', async ({ page }) => {
     await page.goto('/dispatch/task')
-    const actionBtn = page.locator(
-      'button:has-text("派工"), button:has-text("分配"), button:has-text("撤销"), button:has-text("回收")',
-    )
-    const hasAction = await actionBtn.first().isVisible().catch(() => false)
-    const hasEmpty = await page.locator('.el-empty').first().isVisible().catch(() => false)
+    if (page.url().includes('/login')) {
+      await loginAsAdmin(page)
+      await page.goto('/dispatch/task')
+    }
+    await expect(page).not.toHaveURL(/\/login/)
+    await expect(page.locator('.dispatch-task')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('[aria-label="派工任务列表"]')).toBeVisible()
+    const actionBtn = page
+      .locator('button:has-text("派人员"), button:has-text("派设备"), button:has-text("派班组"), button:has-text("查看派工")')
+      .filter({ visible: true })
+    const hasAction = (await actionBtn.count()) > 0
+    const hasEmpty =
+      (await page.locator('.dispatch-task .el-empty').first().isVisible().catch(() => false)) ||
+      (await page.getByText('No Data', { exact: true }).first().isVisible().catch(() => false)) ||
+      (await page.getByText('暂无数据', { exact: true }).first().isVisible().catch(() => false))
     expect(hasAction || hasEmpty).toBeTruthy()
   })
 })
@@ -42,6 +54,8 @@ test.describe('派工 / Dispatch (资源冲突数据级)', () => {
   let seed: E2ESeed | null = null
   let data: SeedData | null = null
   let skipReason: string | null = null
+  let conflictTask1Id: number | null = null
+  let conflictTask2Id: number | null = null
 
   test.beforeAll(async () => {
     try {
@@ -60,34 +74,56 @@ test.describe('派工 / Dispatch (资源冲突数据级)', () => {
   test('C1: 两条派工单抢同一设备 → 第二条冲突', async ({ api }) => {
     test.skip(!seed || !data || !!skipReason, `seed skip: ${skipReason || ''}`)
     const [wo1, wo2] = data!.workOrders
-    const deviceId = data!.workCenters[0].id
+    const device = data!.workCenters[0]
+    const start = toLocalDateTime(new Date(Date.now() + 3600_000))
+    const end = toLocalDateTime(new Date(Date.now() + 3 * 3600_000))
 
-    // 下达 + 生成派工任务
-    await api.post(`/workorder/work-order/${wo1.id}/release`).catch(() => undefined)
-    await api.post(`/workorder/work-order/${wo2.id}/release`).catch(() => undefined)
-    await api.post(`/dispatch/task/generate/${wo1.id}`).catch(() => undefined)
-    await api.post(`/dispatch/task/generate/${wo2.id}`).catch(() => undefined)
-
-    const taskPage = await api.get<any>('/dispatch/task/page', { pageNum: 1, pageSize: 50 })
-    const rows = (taskPage?.records || taskPage?.list || taskPage?.rows || []) as any[]
-    const task1 = rows.find((r) => Number(r.workOrderId ?? r.workOrder?.id) === wo1.id)
-    const task2 = rows.find((r) => Number(r.workOrderId ?? r.workOrder?.id) === wo2.id)
-    expect(task1 && task2, `派工任务生成缺失，rows=${JSON.stringify(rows).slice(0, 300)}`).toBeTruthy()
+    conflictTask1Id = await api.post<number>('/dispatch/task/create', {
+      workOrderId: wo1.id,
+      orderNo: wo1.orderNo,
+      processNo: `${data!.prefix}_D10`,
+      workName: 'E2E冲突测试任务1',
+      planWorkCenterId: device.id,
+      planQty: 10,
+      qtyUnit: 'PCS',
+      planStartTime: start,
+      planEndTime: end,
+    })
+    conflictTask2Id = await api.post<number>('/dispatch/task/create', {
+      workOrderId: wo2.id,
+      orderNo: wo2.orderNo,
+      processNo: `${data!.prefix}_D20`,
+      workName: 'E2E冲突测试任务2',
+      planWorkCenterId: device.id,
+      planQty: 10,
+      qtyUnit: 'PCS',
+      planStartTime: start,
+      planEndTime: end,
+    })
+    expect(conflictTask1Id && conflictTask2Id).toBeTruthy()
 
     // 第一条：分配设备 → 应成功
-    const first = await api.raw('POST', `/dispatch/assignment/device/${task1.id}`, {
-      targetId: deviceId,
-      quantity: 10,
-      remark: 'first',
+    const first = await api.raw('POST', '/dispatch/task/assign', {
+      taskId: conflictTask1Id,
+      assignType: 'DEVICE',
+      assigneeIds: [device.id],
+      assigneeCodes: [device.code],
+      assigneeNames: [device.name],
+      assignedQty: 10,
+      qtyUnit: 'PCS',
     })
     expect(first.status, `first assign http=${first.status} body=${first.text}`).toBe(200)
     expect(first.body?.code).toBe(200)
 
     // 第二条：同一设备 → 期望冲突
-    const second = await api.raw('POST', `/dispatch/assignment/device/${task2.id}`, {
-      targetId: deviceId,
-      quantity: 10,
-      remark: 'second (conflict)',
+    const second = await api.raw('POST', '/dispatch/task/assign', {
+      taskId: conflictTask2Id,
+      assignType: 'DEVICE',
+      assigneeIds: [device.id],
+      assigneeCodes: [device.code],
+      assigneeNames: [device.name],
+      assignedQty: 10,
+      qtyUnit: 'PCS',
     })
     const conflict =
       second.status === 409 ||
@@ -100,21 +136,14 @@ test.describe('派工 / Dispatch (资源冲突数据级)', () => {
   })
 
   test('C2: 撤销 task1 → task2 可重新占用', async ({ api }) => {
-    test.skip(!seed || !data || !!skipReason, `seed skip: ${skipReason || ''}`)
-    const [wo1, wo2] = data!.workOrders
-    const deviceId = data!.workCenters[0].id
-
-    const taskPage = await api.get<any>('/dispatch/task/page', { pageNum: 1, pageSize: 50 })
-    const rows = (taskPage?.records || taskPage?.list || taskPage?.rows || []) as any[]
-    const task1 = rows.find((r) => Number(r.workOrderId ?? r.workOrder?.id) === wo1.id)
-    const task2 = rows.find((r) => Number(r.workOrderId ?? r.workOrder?.id) === wo2.id)
-    expect(task1 && task2).toBeTruthy()
+    test.skip(!seed || !data || !!skipReason || !conflictTask1Id || !conflictTask2Id, `seed skip: ${skipReason || ''}`)
+    const device = data!.workCenters[0]
 
     // 获取 task1 的 device 分配记录
-    const assigns1 = await api.get<any[]>(`/dispatch/assignment/list/${task1.id}`)
+    const assigns1 = await api.get<any[]>(`/dispatch/assignment/list/${conflictTask1Id}`)
     expect(assigns1.length).toBeGreaterThanOrEqual(1)
     const deviceAssign = assigns1.find(
-      (a) => Number(a.targetId ?? a.deviceId ?? a.workCenterId) === deviceId,
+      (a) => Number(a.assigneeId ?? a.targetId ?? a.deviceId ?? a.workCenterId) === device.id,
     ) || assigns1[0]
 
     // 撤销
@@ -123,10 +152,14 @@ test.describe('派工 / Dispatch (资源冲突数据级)', () => {
     })
 
     // 再次给 task2 分配 → 应成功
-    const retry = await api.raw('POST', `/dispatch/assignment/device/${task2.id}`, {
-      targetId: deviceId,
-      quantity: 10,
-      remark: 'task2 retry after revoke',
+    const retry = await api.raw('POST', '/dispatch/task/assign', {
+      taskId: conflictTask2Id,
+      assignType: 'DEVICE',
+      assigneeIds: [device.id],
+      assigneeCodes: [device.code],
+      assigneeNames: [device.name],
+      assignedQty: 10,
+      qtyUnit: 'PCS',
     })
     const ok = retry.status === 200 && retry.body?.code === 200
     // 宽容：部分实现仍有历史占用状态，允许 http 200 + code 非 200；此时至少断言不是网络错误

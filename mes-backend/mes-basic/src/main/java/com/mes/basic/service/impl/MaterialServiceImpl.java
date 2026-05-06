@@ -18,6 +18,7 @@ import com.mes.common.utils.AssertUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -34,6 +35,7 @@ public class MaterialServiceImpl extends ServiceImpl<MaterialMapper, Material>
         implements IMaterialService {
 
     private final MaterialPriceMapper materialPriceMapper;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public PageResult<MaterialVO> page(MaterialQuery query) {
@@ -122,7 +124,20 @@ public class MaterialServiceImpl extends ServiceImpl<MaterialMapper, Material>
         AssertUtil.isFalse(materialPriceMapper.selectCount(priceWrapper) > 0,
                 "该物料存在价格记录，无法删除");
 
-        // TODO: 检查是否被工序/BOM/工单引用，若引用则不允许删除
+        assertNotReferenced("mes_manufacturing_bom", "product_id", id, "制造BOM主产品");
+        assertNotReferenced("mes_manufacturing_bom_item", "material_id", id, "制造BOM明细");
+        assertNotReferenced("mes_bom_substitute", "main_material_id", id, "BOM主物料替代关系");
+        assertNotReferenced("mes_bom_substitute", "substitute_material_id", id, "BOM替代物料关系");
+        assertNotReferenced("mes_work_order_input_material", "material_id", id, "工单投入物料");
+        assertNotReferenced("mes_work_order_output_material", "material_id", id, "工单产出物料");
+        assertNotReferenced("mes_storage_inventory", "material_id", id, "库存台账");
+        assertNotReferenced("mes_material_requisition_item", "material_id", id, "领料申请");
+        assertNotReferenced("mes_requisition_order", "material_id", id, "领料工单");
+        assertNotReferenced("mes_finished_goods_receipt_request", "material_id", id, "成品入库申请");
+        assertNotReferenced("mes_finished_goods_receipt_item", "material_id", id, "成品入库明细");
+        assertNotReferenced("mes_delivery_sign", "material_id", id, "交付签收");
+        assertNotReferenced("mes_outsource_order", "material_id", id, "APS外协订单");
+        assertNotReferenced("mes_transfer_order", "material_id", id, "APS调拨订单");
 
         removeById(id);
         log.info("删除物料: {} - {}", material.getMaterialCode(), material.getMaterialName());
@@ -161,5 +176,13 @@ public class MaterialServiceImpl extends ServiceImpl<MaterialMapper, Material>
         MaterialVO vo = new MaterialVO();
         BeanUtils.copyProperties(entity, vo);
         return vo;
+    }
+
+    private void assertNotReferenced(String table, String column, Long id, String label) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM " + table + " WHERE " + column + " = ?",
+                Long.class,
+                id);
+        AssertUtil.isFalse(count != null && count > 0, "该物料已被" + label + "引用，无法删除");
     }
 }

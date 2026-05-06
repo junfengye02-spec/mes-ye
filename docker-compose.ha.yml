@@ -462,6 +462,8 @@ services:
       SPRING_CLOUD_NACOS_DISCOVERY_USERNAME: ${NACOS_USERNAME:-nacos}
       SPRING_CLOUD_NACOS_DISCOVERY_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
+      MES_APS_API_KEY: ${MES_APS_API_KEY:?MES_APS_API_KEY is required}
+      MES_APS_HMAC_KEY: ${MES_APS_HMAC_KEY:?MES_APS_HMAC_KEY is required (>=32 random bytes)}
       SERVER_PORT: 9090
       TZ: Asia/Shanghai
     volumes:
@@ -499,6 +501,8 @@ services:
       SPRING_CLOUD_NACOS_DISCOVERY_USERNAME: ${NACOS_USERNAME:-nacos}
       SPRING_CLOUD_NACOS_DISCOVERY_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
+      MES_APS_API_KEY: ${MES_APS_API_KEY:?MES_APS_API_KEY is required}
+      MES_APS_HMAC_KEY: ${MES_APS_HMAC_KEY:?MES_APS_HMAC_KEY is required (>=32 random bytes)}
       SERVER_PORT: 9090
       TZ: Asia/Shanghai
     volumes:
@@ -533,6 +537,7 @@ services:
     container_name: mes-gateway-1
     restart: unless-stopped
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       NACOS_SERVER_ADDR: nacos-1:8848,nacos-2:8848,nacos-3:8848
       SPRING_CLOUD_NACOS_DISCOVERY_USERNAME: ${NACOS_USERNAME:-nacos}
       SPRING_CLOUD_NACOS_DISCOVERY_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
@@ -540,6 +545,7 @@ services:
       SPRING_DATA_REDIS_SENTINEL_NODES: redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
+      MES_CORS_ALLOWED_ORIGIN: ${MES_CORS_ALLOWED_ORIGIN:?MES_CORS_ALLOWED_ORIGIN is required (https origin)}
       JAVA_OPTS: "-Xms512m -Xmx1024m"
       TZ: Asia/Shanghai
     depends_on:
@@ -564,6 +570,7 @@ services:
     container_name: mes-gateway-2
     restart: unless-stopped
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       NACOS_SERVER_ADDR: nacos-1:8848,nacos-2:8848,nacos-3:8848
       SPRING_CLOUD_NACOS_DISCOVERY_USERNAME: ${NACOS_USERNAME:-nacos}
       SPRING_CLOUD_NACOS_DISCOVERY_PASSWORD: ${NACOS_PASSWORD:?NACOS_PASSWORD is required}
@@ -571,6 +578,7 @@ services:
       SPRING_DATA_REDIS_SENTINEL_NODES: redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
+      MES_CORS_ALLOWED_ORIGIN: ${MES_CORS_ALLOWED_ORIGIN:?MES_CORS_ALLOWED_ORIGIN is required (https origin)}
       JAVA_OPTS: "-Xms512m -Xmx1024m"
       TZ: Asia/Shanghai
     depends_on:
@@ -694,7 +702,7 @@ services:
     image: prom/mysqld-exporter:latest
     container_name: mes-mysql-exporter
     environment:
-      DATA_SOURCE_NAME: "root:${MYSQL_ROOT_PASSWORD:-12345678}@(mysql-primary:3306)/"
+      DATA_SOURCE_NAME: "root:${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}@(mysql-primary:3306)/"
     depends_on:
       mysql-primary:
         condition: service_healthy

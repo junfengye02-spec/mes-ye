@@ -11,7 +11,7 @@ export interface LoginParams {
 
 export interface LoginResult {
   accessToken: string
-  refreshToken: string
+  refreshToken?: string | null
   userInfo: UserInfo
 }
 
@@ -32,7 +32,7 @@ export interface UserInfo {
 
 export const authApi = {
   login: (data: LoginParams) => request.post<LoginResult>('/auth/login', data),
-  refresh: (refreshToken: string) => request.post<LoginResult>('/auth/refresh', { refreshToken }),
+  refresh: () => request.post<LoginResult>('/auth/refresh', {}),
   logout: () => request.post('/auth/logout'),
   getUserInfo: () => request.get<UserInfo>('/auth/user-info'),
 }

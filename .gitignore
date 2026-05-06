@@ -20,6 +20,8 @@
 # Node / Frontend
 **/node_modules/
 **/dist/
+**/playwright-report/
+**/test-results/
 
 # OS
 .DS_Store
@@ -36,6 +38,7 @@ Thumbs.db
 **/agent-transcripts/
 
 # Local smoke/test scratch files
+/logs/
 /_*.json
 /_check_*.sh
 /_mcp*_*.sh

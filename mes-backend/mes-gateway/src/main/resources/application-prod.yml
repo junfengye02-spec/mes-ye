@@ -1,0 +1,28 @@
+mes:
+  gateway:
+    cors:
+      allowed-origin: ${MES_CORS_ALLOWED_ORIGIN:}
+
+spring:
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origin-patterns:
+              - ${MES_CORS_ALLOWED_ORIGIN:}
+            allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true

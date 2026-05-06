@@ -34,6 +34,7 @@
 - `13-APS集成模块/接口契约.md`
 - `13-APS集成模块/数据映射.md`
 - **`14-实施计划.md`** ← 项目实施路线图
+- **`operations/production-readiness-plan.md`** ← 生产级就绪整改计划
 
 ## SQL 建表脚本（sql/ 目录）
 

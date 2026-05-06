@@ -9,7 +9,7 @@ services:
       TZ: Asia/Shanghai
     ports:
       # 避免与宿主机已占用的 3306 冲突；容器内仍为 3306，mes-backend 走服务名 mysql 不变
-      - "3307:3306"
+      - "${MES_MYSQL_HOST_PORT:-3307}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./sql:/docker-entrypoint-initdb.d
@@ -28,7 +28,7 @@ services:
     container_name: mes-redis
     # 生产上建议仅对后端服务暴露；本文件保留映射便于本地调试，但要求必须设置 REDIS_PASSWORD
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${MES_REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -61,8 +61,8 @@ services:
       TZ: Asia/Shanghai
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:${MES_MINIO_API_HOST_PORT:-9000}:9000"
+      - "127.0.0.1:${MES_MINIO_CONSOLE_HOST_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     networks:
@@ -89,15 +89,17 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       MES_JWT_SECRET: ${MES_JWT_SECRET:?MES_JWT_SECRET is required (>=32 random bytes)}
-      # 文件存储：local（默认，写本地 volume）或 minio（写对象存储，生产推荐）
-      MES_FILE_STORAGE_TYPE: ${MES_FILE_STORAGE_TYPE:-local}
+      MES_APS_API_KEY: ${MES_APS_API_KEY:?MES_APS_API_KEY is required}
+      MES_APS_HMAC_KEY: ${MES_APS_HMAC_KEY:?MES_APS_HMAC_KEY is required (>=32 random bytes)}
+      # 文件存储：生产默认使用 minio；本地开发如需单机磁盘可显式 MES_FILE_STORAGE_TYPE=local
+      MES_FILE_STORAGE_TYPE: ${MES_FILE_STORAGE_TYPE:-minio}
       MES_FILE_MINIO_ENDPOINT: ${MES_FILE_MINIO_ENDPOINT:-http://minio:9000}
-      MES_FILE_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-}
-      MES_FILE_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-}
+      MES_FILE_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MES_FILE_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
       MES_FILE_MINIO_BUCKET: ${MES_FILE_MINIO_BUCKET:-mes}
       TZ: Asia/Shanghai
     ports:
-      - "9090:9090"
+      - "127.0.0.1:${MES_BACKEND_HOST_PORT:-9090}:9090"
     volumes:
       - uploads:/app/uploads
     depends_on:
@@ -121,7 +123,7 @@ services:
     container_name: mes-frontend
     # M9-P3-13: 主进程非 root，容器内 listen 8080；host 继续暴露 80 对客户端无感
     ports:
-      - "80:8080"
+      - "${MES_FRONTEND_HOST_PORT:-80}:8080"
     depends_on:
       mes-backend:
         condition: service_healthy

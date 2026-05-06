@@ -39,7 +39,9 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
             "/api/swagger-ui/**",
             "/api/v3/api-docs/**",
             "/api/webjars/**",
-            "/api/actuator/**",
+            "/api/actuator/health",
+            "/api/actuator/health/**",
+            "/api/actuator/info",
             "/api/files/**"
     );
 

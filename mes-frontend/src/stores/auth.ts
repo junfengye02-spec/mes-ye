@@ -5,7 +5,6 @@ import type { UserInfo, LoginParams } from '@/api/system/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref(localStorage.getItem('token') || '')
-  const refreshToken = ref(localStorage.getItem('refreshToken') || '')
   const userInfo = ref<UserInfo | null>(null)
   let refreshPromise: Promise<void> | null = null
 
@@ -15,10 +14,9 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(params: LoginParams) {
     const res = await authApi.login(params)
     accessToken.value = res.accessToken
-    refreshToken.value = res.refreshToken
     userInfo.value = res.userInfo
     localStorage.setItem('token', res.accessToken)
-    localStorage.setItem('refreshToken', res.refreshToken)
+    localStorage.removeItem('refreshToken')
   }
 
   async function fetchUserInfo() {
@@ -34,12 +32,10 @@ export const useAuthStore = defineStore('auth', () => {
     if (refreshPromise) return refreshPromise
     refreshPromise = (async () => {
       try {
-        if (!refreshToken.value) throw new Error('no refresh token')
-        const res = await authApi.refresh(refreshToken.value)
+        const res = await authApi.refresh()
         accessToken.value = res.accessToken
-        refreshToken.value = res.refreshToken
         localStorage.setItem('token', res.accessToken)
-        localStorage.setItem('refreshToken', res.refreshToken)
+        localStorage.removeItem('refreshToken')
       } finally {
         refreshPromise = null
       }
@@ -50,7 +46,6 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     authApi.logout().catch(() => {})
     accessToken.value = ''
-    refreshToken.value = ''
     userInfo.value = null
     refreshPromise = null
     localStorage.removeItem('token')
@@ -64,7 +59,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     accessToken,
-    refreshToken,
     userInfo,
     isLoggedIn,
     username,

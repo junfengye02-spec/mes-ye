@@ -102,8 +102,8 @@ public class SecurityConfig {
             )
             // APS 回调 HMAC 校验必须在 JWT 校验之前完成：因为 /aps/callback/** 在 permitAll，
             // 不会走 JWT 拦截，必须由 HmacSignatureFilter 负责身份校验
-            .addFilterBefore(hmacSignatureFilter, JwtAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(hmacSignatureFilter, JwtAuthenticationFilter.class)
             .addFilterAfter(staffPortalRestrictionFilter, JwtAuthenticationFilter.class);
 
         return http.build();

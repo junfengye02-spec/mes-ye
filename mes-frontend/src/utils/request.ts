@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig, AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
+import { API_BASE_URL } from '@/utils/apiBase'
 
 export interface R<T = any> {
   code: number
@@ -9,8 +10,9 @@ export interface R<T = any> {
 }
 
 const service: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json;charset=UTF-8' },
 })
 
@@ -73,13 +75,6 @@ service.interceptors.response.use(
     }
 
     if (status === 401 && !originalRequest._retried) {
-      const storedRefreshToken = localStorage.getItem('refreshToken')
-      if (!storedRefreshToken) {
-        rejectPending(error)
-        handleLogout()
-        return Promise.reject(error)
-      }
-
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           pendingRequests.push({

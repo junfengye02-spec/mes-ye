@@ -5,6 +5,16 @@ spring:
     nacos:
       discovery:
         enabled: false
+    sentinel:
+      # dev 关闭 CommonFilter，避免和 Spring Security / 租户限流 Filter 产生过滤器顺序冲突
+      filter:
+        enabled: false
+      # dev 不对接 Dashboard，规则用代码里 SentinelRuleInitializer 初始化
+      eager: false
+      transport:
+        dashboard: ""
+      log:
+        dir: ./logs/sentinel
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/mes?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
@@ -90,16 +100,3 @@ resilience4j:
 mes:
   sentinel:
     enabled: true
-
-spring:
-  cloud:
-    sentinel:
-      # dev 关闭 CommonFilter，避免和 Spring Security / 租户限流 Filter 产生过滤器顺序冲突
-      filter:
-        enabled: false
-      # dev 不对接 Dashboard，规则用代码里 SentinelRuleInitializer 初始化
-      eager: false
-      transport:
-        dashboard: ""
-      log:
-        dir: ./logs/sentinel

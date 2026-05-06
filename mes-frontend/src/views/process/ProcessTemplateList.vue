@@ -22,8 +22,8 @@
         <template #empty>
           <el-empty description="暂无数据" />
         </template>
-        <el-table-column prop="templateCode" label="模板编码" min-width="120" />
-        <el-table-column prop="templateName" label="模板名称" min-width="140" />
+        <el-table-column prop="processNo" label="工序号" min-width="120" />
+        <el-table-column prop="processName" label="工序名" min-width="140" />
         <el-table-column prop="processType" label="工序类型" min-width="100" />
         <el-table-column prop="description" label="描述" min-width="180" />
         <el-table-column label="操作" width="150" fixed="right">
@@ -37,18 +37,18 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑工序模板' : '新增工序模板'" width="560px" destroy-on-close @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="formRules" :label-width="100">
-        <el-form-item label="模板编码" prop="templateCode">
-          <el-input v-model="form.templateCode" placeholder="请输入" :disabled="isEdit" />
+        <el-form-item label="工序号" prop="processNo">
+          <el-input v-model="form.processNo" placeholder="请输入" :disabled="isEdit" />
         </el-form-item>
-        <el-form-item label="模板名称" prop="templateName">
-          <el-input v-model="form.templateName" placeholder="请输入" />
+        <el-form-item label="工序名" prop="processName">
+          <el-input v-model="form.processName" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="上级模板" prop="parentId">
+        <el-form-item label="父工序" prop="parentProcessNo">
           <el-tree-select
-            v-model="form.parentId"
+            v-model="form.parentProcessNo"
             :data="(list as any)"
-            node-key="id"
-            :props="{ label: 'templateName', children: 'children' }"
+            node-key="processNo"
+            :props="{ label: 'processName', children: 'children' }"
             placeholder="请选择（可选）"
             clearable
             check-strictly
@@ -87,16 +87,16 @@ const formRef = ref()
 const editId = ref<number | null>(null)
 
 const form = reactive({
-  templateCode: '',
-  templateName: '',
-  parentId: undefined as number | undefined,
+  processNo: '',
+  processName: '',
+  parentProcessNo: undefined as string | undefined,
   processType: '',
   description: '',
 } as ProcessTemplateDTO)
 
 const formRules = {
-  templateCode: [{ required: true, message: '请输入模板编码', trigger: 'blur' }],
-  templateName: [{ required: true, message: '请输入模板名称', trigger: 'blur' }],
+  processNo: [{ required: true, message: '请输入工序号', trigger: 'blur' }],
+  processName: [{ required: true, message: '请输入工序名', trigger: 'blur' }],
 }
 
 async function loadData() {
@@ -119,9 +119,9 @@ function handleEdit(row: ProcessTemplateVO) {
   isEdit.value = true
   editId.value = row.id
   Object.assign(form, {
-    templateCode: row.templateCode,
-    templateName: row.templateName,
-    parentId: row.parentId,
+    processNo: row.processNo,
+    processName: row.processName,
+    parentProcessNo: row.parentProcessNo,
     processType: row.processType,
     description: row.description,
   })
@@ -130,9 +130,9 @@ function handleEdit(row: ProcessTemplateVO) {
 
 function resetForm() {
   Object.assign(form, {
-    templateCode: '',
-    templateName: '',
-    parentId: undefined,
+    processNo: '',
+    processName: '',
+    parentProcessNo: undefined,
     processType: '',
     description: '',
   })

@@ -15,6 +15,7 @@ import com.mes.framework.sentinel.SentinelResources;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +30,8 @@ public class AuthController {
 
     private static final String AUTH_HEADER = "Authorization";
     private static final String TOKEN_PREFIX = "Bearer ";
+    private static final String REFRESH_COOKIE = "MES_REFRESH_TOKEN";
+    private static final int REFRESH_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
     private final IAuthService authService;
 
@@ -38,8 +41,13 @@ public class AuthController {
     @SentinelResource(value = SentinelResources.AUTH_LOGIN,
             blockHandler = "handleR", blockHandlerClass = SentinelBlockHandlers.class)
     @MesRateLimit(resource = SentinelResources.AUTH_LOGIN, key = MesRateLimit.Key.IP, count = 10)
-    public R<LoginVO> login(@Valid @RequestBody LoginDTO dto) {
-        return R.ok(authService.login(dto));
+    public R<LoginVO> login(@Valid @RequestBody LoginDTO dto,
+                            HttpServletRequest request,
+                            HttpServletResponse response) {
+        LoginVO vo = authService.login(dto);
+        writeRefreshCookie(response, request, vo.getRefreshToken(), REFRESH_COOKIE_MAX_AGE_SECONDS);
+        vo.setRefreshToken(null);
+        return R.ok(vo);
     }
 
     @Operation(summary = "图形验证码（P1-14）", description = "返回 base64 PNG + captchaKey，TTL 5 分钟")
@@ -50,18 +58,31 @@ public class AuthController {
 
     @Operation(summary = "刷新令牌", description = "一次性轮换：旧 refresh 立即失效；重放则吊销该用户全部会话")
     @PostMapping("/refresh")
-    public R<LoginVO> refresh(@Valid @RequestBody RefreshTokenDTO dto) {
-        return R.ok(authService.refreshToken(dto.getRefreshToken()));
+    public R<LoginVO> refresh(@RequestBody(required = false) RefreshTokenDTO dto,
+                              @CookieValue(name = REFRESH_COOKIE, required = false) String refreshCookie,
+                              HttpServletRequest request,
+                              HttpServletResponse response) {
+        String refreshToken = dto != null && StringUtils.hasText(dto.getRefreshToken())
+                ? dto.getRefreshToken()
+                : refreshCookie;
+        if (!StringUtils.hasText(refreshToken)) {
+            throw new com.mes.common.exception.BusinessException("refreshToken 不能为空");
+        }
+        LoginVO vo = authService.refreshToken(refreshToken);
+        writeRefreshCookie(response, request, vo.getRefreshToken(), REFRESH_COOKIE_MAX_AGE_SECONDS);
+        vo.setRefreshToken(null);
+        return R.ok(vo);
     }
 
     @Operation(summary = "登出", description = "将当前 access token 加入黑名单，立即失效")
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")
-    public R<Void> logout(HttpServletRequest request) {
+    public R<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         Long userId = SecurityUtils.getCurrentUserId();
         if (userId != null) {
             authService.logout(userId, extractAccessToken(request));
         }
+        writeRefreshCookie(response, request, "", 0);
         return R.ok();
     }
 
@@ -82,5 +103,27 @@ public class AuthController {
             return header.substring(TOKEN_PREFIX.length());
         }
         return null;
+    }
+
+    private void writeRefreshCookie(HttpServletResponse response,
+                                    HttpServletRequest request,
+                                    String token,
+                                    int maxAgeSeconds) {
+        StringBuilder cookie = new StringBuilder(REFRESH_COOKIE)
+                .append('=')
+                .append(token == null ? "" : token)
+                .append("; Path=/api/auth")
+                .append("; Max-Age=").append(maxAgeSeconds)
+                .append("; HttpOnly")
+                .append("; SameSite=Lax");
+        if (isSecureRequest(request)) {
+            cookie.append("; Secure");
+        }
+        response.addHeader("Set-Cookie", cookie.toString());
+    }
+
+    private boolean isSecureRequest(HttpServletRequest request) {
+        String forwardedProto = request.getHeader("X-Forwarded-Proto");
+        return request.isSecure() || "https".equalsIgnoreCase(forwardedProto);
     }
 }
