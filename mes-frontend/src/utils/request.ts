@@ -9,6 +9,10 @@ export interface R<T = any> {
   data: T
 }
 
+export interface RequestConfig extends AxiosRequestConfig {
+  skipErrorMessage?: boolean
+}
+
 const service: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
@@ -42,6 +46,16 @@ function isRefreshUrl(url?: string): boolean {
   return !!url && /\/auth\/refresh\b/.test(url)
 }
 
+function toApiError(message: string, code?: number) {
+  const err = new Error(message || '请求失败') as Error & { code?: number }
+  err.code = code
+  return err
+}
+
+function shouldSkipErrorMessage(config?: AxiosRequestConfig): boolean {
+  return Boolean((config as RequestConfig | undefined)?.skipErrorMessage)
+}
+
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getToken()
@@ -57,8 +71,10 @@ service.interceptors.response.use(
   (response: AxiosResponse<R>) => {
     const res = response.data
     if (res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
-      return Promise.reject(new Error(res.message || '请求失败'))
+      if (!shouldSkipErrorMessage(response.config)) {
+        ElMessage.error(res.message || '请求失败')
+      }
+      return Promise.reject(toApiError(res.message || '请求失败', res.code))
     }
     return res.data as any
   },
@@ -111,7 +127,12 @@ service.interceptors.response.use(
     }
 
     const msg = error.response?.data?.message || error.message || '网络异常'
-    ElMessage.error(msg)
+    if (error.response?.data?.code && !error.code) {
+      error.code = error.response.data.code
+    }
+    if (!shouldSkipErrorMessage(originalRequest)) {
+      ElMessage.error(msg)
+    }
     return Promise.reject(error)
   },
 )
@@ -128,16 +149,16 @@ function handleLogout() {
 }
 
 const request = {
-  get<T = any>(url: string, params?: any, config?: AxiosRequestConfig): Promise<T> {
+  get<T = any>(url: string, params?: any, config?: RequestConfig): Promise<T> {
     return service.get(url, { params, ...config })
   },
-  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  post<T = any>(url: string, data?: any, config?: RequestConfig): Promise<T> {
     return service.post(url, data, config)
   },
-  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  put<T = any>(url: string, data?: any, config?: RequestConfig): Promise<T> {
     return service.put(url, data, config)
   },
-  delete<T = any>(url: string, params?: any, config?: AxiosRequestConfig): Promise<T> {
+  delete<T = any>(url: string, params?: any, config?: RequestConfig): Promise<T> {
     return service.delete(url, { params, ...config })
   },
   upload<T = any>(url: string, file: File, directory?: string): Promise<T> {

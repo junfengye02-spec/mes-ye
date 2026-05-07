@@ -7,7 +7,17 @@
  * 生产环境建议：统一主域（如 mes.example.com）作为平台入口（强制手动输入 tenantCode），
  * 子域（如 factory-a.mes.example.com）作为租户入口（自动识别）。
  */
-const RESERVED_SUBDOMAINS = new Set(['www', 'admin', 'app', 'api', 'gateway', 'portal'])
+const RESERVED_SUBDOMAINS = new Set([
+  'www',
+  'admin',
+  'app',
+  'api',
+  'gateway',
+  'portal',
+  // 当前 Cloudflare 入口域名是应用名，不是租户编码。
+  'mesmac',
+  'apsmac',
+])
 const IP_REGEX = /^\d{1,3}(?:\.\d{1,3}){3}$/
 
 export function resolveTenantCodeFromHost(host = window.location.hostname): string | null {

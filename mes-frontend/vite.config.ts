@@ -75,6 +75,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    allowedHosts: ['mesmac.0000238.xyz'],
     proxy: {
       '/api': {
         target: 'http://localhost:9091',

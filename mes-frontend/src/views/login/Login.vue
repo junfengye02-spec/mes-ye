@@ -77,6 +77,28 @@
             show-password
           />
         </el-form-item>
+        <el-form-item v-if="captchaVisible" prop="captchaCode">
+          <div class="captcha-row">
+            <el-input
+              v-model="form.captchaCode"
+              placeholder="图形验证码"
+              aria-label="图形验证码"
+              autocomplete="off"
+              size="large"
+              maxlength="6"
+            />
+            <button
+              type="button"
+              class="captcha-image-btn"
+              :disabled="captchaLoading"
+              aria-label="刷新图形验证码"
+              @click="loadCaptcha"
+            >
+              <img v-if="captchaImage" :src="captchaImage" alt="图形验证码" />
+              <span v-else>{{ captchaLoading ? '加载中' : '刷新' }}</span>
+            </button>
+          </div>
+        </el-form-item>
         <el-form-item>
           <el-button
             type="primary"
@@ -111,6 +133,8 @@ import { User, Lock, OfficeBuilding, ArrowDown } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useLocaleStore } from '@/stores/locale'
+import { authApi } from '@/api/system/auth'
+import type { LoginParams } from '@/api/system/auth'
 import { SUPPORTED_LOCALES } from '@/locales'
 import type { LocaleKey } from '@/locales'
 import { resolveTenantCodeFromHost, setStoredTenantCode } from '@/utils/tenant'
@@ -128,7 +152,11 @@ const formRef = ref<FormInstance>()
 const usernameRef = ref<InputInstance>()
 const loading = ref(false)
 const liveMessage = ref('')
-const form = reactive({ username: '', password: '', tenantCode: '' })
+const form = reactive({ username: '', password: '', tenantCode: '', captchaCode: '' })
+const captchaVisible = ref(false)
+const captchaLoading = ref(false)
+const captchaKey = ref('')
+const captchaImage = ref('')
 
 const domainLockedTenant = ref<string | null>(null)
 const tenantBadge = computed(() => domainLockedTenant.value || form.tenantCode || '')
@@ -154,6 +182,9 @@ onMounted(() => {
 const rules = computed<FormRules>(() => ({
   username: [{ required: true, message: t('login.rules.usernameRequired'), trigger: 'blur' }],
   password: [{ required: true, message: t('login.rules.passwordRequired'), trigger: 'blur' }],
+  captchaCode: captchaVisible.value
+    ? [{ required: true, message: '请输入图形验证码', trigger: 'blur' }]
+    : [],
 }))
 
 async function handleLocaleChange(locale: LocaleKey) {
@@ -164,7 +195,7 @@ async function handleLogin() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
-  const payload: { username: string; password: string; loginClient: 'ADMIN'; tenantCode?: string } = {
+  const payload: LoginParams = {
     username: form.username,
     password: form.password,
     loginClient: 'ADMIN',
@@ -172,6 +203,10 @@ async function handleLogin() {
   const tenant = (domainLockedTenant.value || form.tenantCode || '').trim()
   if (tenant) {
     payload.tenantCode = tenant
+  }
+  if (captchaVisible.value) {
+    payload.captchaKey = captchaKey.value
+    payload.captchaCode = form.captchaCode.trim()
   }
 
   loading.value = true
@@ -184,12 +219,36 @@ async function handleLogin() {
     const redirect = (router.currentRoute.value.query.redirect as string) || '/'
     const safeRedirect = redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/'
     router.push(safeRedirect)
-  } catch (e: any) {
-    const msg = e?.message || t('messages.loginFail')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : t('messages.loginFail')
+    if (isCaptchaError(e)) {
+      captchaVisible.value = true
+    }
+    if (captchaVisible.value) {
+      form.captchaCode = ''
+      await loadCaptcha().catch(() => undefined)
+    }
     ElMessage.error(msg)
     liveMessage.value = msg
   } finally {
     loading.value = false
+  }
+}
+
+function isCaptchaError(e: unknown): boolean {
+  const code = Number((e as { code?: number })?.code)
+  const message = e instanceof Error ? e.message : ''
+  return code === 1101 || code === 1102 || message.includes('验证码')
+}
+
+async function loadCaptcha() {
+  captchaLoading.value = true
+  try {
+    const captcha = await authApi.getCaptcha()
+    captchaKey.value = captcha.captchaKey
+    captchaImage.value = captcha.imageBase64
+  } finally {
+    captchaLoading.value = false
   }
 }
 </script>
@@ -258,6 +317,36 @@ async function handleLogin() {
 
 .login-btn {
   width: 100%;
+}
+
+.captcha-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 10px;
+  width: 100%;
+}
+
+.captcha-image-btn {
+  height: 40px;
+  padding: 0;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #fff;
+  color: #606266;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.captcha-image-btn:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.captcha-image-btn img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* 可访问的隐藏状态提示（仅屏幕阅读器朗读） */
