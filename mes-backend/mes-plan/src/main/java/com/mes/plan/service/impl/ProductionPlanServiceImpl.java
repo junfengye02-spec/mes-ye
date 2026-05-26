@@ -18,7 +18,11 @@ import com.mes.plan.mapper.ProductionPlanMapper;
 import com.mes.plan.service.IOrderPlanService;
 import com.mes.plan.service.IPlanStatusLogService;
 import com.mes.plan.service.IProductionPlanService;
+import com.mes.process.domain.vo.RouteStepVO;
+import com.mes.process.domain.vo.RouteVO;
+import com.mes.process.service.IRouteService;
 import com.mes.workorder.domain.dto.WorkOrderDTO;
+import com.mes.workorder.domain.dto.WorkOrderTaskDTO;
 import com.mes.workorder.service.IWorkOrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -42,6 +47,7 @@ public class ProductionPlanServiceImpl extends ServiceImpl<ProductionPlanMapper,
     private final IOrderPlanService orderPlanService;
     private final IPlanStatusLogService planStatusLogService;
     private final IWorkOrderService workOrderService;
+    private final IRouteService routeService;
 
     @Override
     public PageResult<ProductionPlanVO> page(ProductionPlanQuery query) {
@@ -154,6 +160,8 @@ public class ProductionPlanServiceImpl extends ServiceImpl<ProductionPlanMapper,
         AssertUtil.isTrue(ProductionPlanStatus.CREATED.getCode().equals(entity.getStatus()),
                 "仅创建状态的生产计划可以下达");
 
+        List<WorkOrderTaskDTO> tasks = buildWorkOrderTasks(entity);
+
         String fromStatus = entity.getStatus();
         entity.setStatus(ProductionPlanStatus.RELEASED.getCode());
         updateById(entity);
@@ -185,10 +193,37 @@ public class ProductionPlanServiceImpl extends ServiceImpl<ProductionPlanMapper,
         workOrderDTO.setWbsElement(entity.getWbsElement());
         workOrderDTO.setPlanStartTime(entity.getPlanStartTime());
         workOrderDTO.setPlanEndTime(entity.getPlanEndTime());
+        workOrderDTO.setTasks(tasks);
 
         Long workOrderId = workOrderService.create(workOrderDTO);
 
         log.info("生产计划下达: id={}, 自动创建工单: {} (id={})", id, workOrderNo, workOrderId);
+    }
+
+    private List<WorkOrderTaskDTO> buildWorkOrderTasks(ProductionPlan plan) {
+        RouteVO route = routeService.findActiveRouteWithSteps(
+                plan.getProductCode(), plan.getProductCategory(),
+                plan.getMachineModel(), plan.getProductType());
+        AssertUtil.isTrue(route.getSteps() != null && !route.getSteps().isEmpty(),
+                "工艺路线未配置工序步骤");
+
+        return route.getSteps().stream()
+                .sorted(Comparator
+                        .comparing(RouteStepVO::getSequenceNo,
+                                Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(RouteStepVO::getId,
+                                Comparator.nullsLast(Long::compareTo)))
+                .map(step -> {
+                    WorkOrderTaskDTO dto = new WorkOrderTaskDTO();
+                    dto.setTaskNo(step.getProcessNo());
+                    dto.setTaskName(step.getProcessName());
+                    dto.setPlanWorkCenterId(step.getWorkCenterId());
+                    dto.setPlanQty(plan.getPlanQty());
+                    dto.setQtyUnit(plan.getQtyUnit());
+                    dto.setSequenceNo(step.getSequenceNo());
+                    return dto;
+                })
+                .toList();
     }
 
     /**

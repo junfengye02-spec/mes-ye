@@ -20,5 +20,9 @@
             <groupId>com.mes</groupId>
             <artifactId>mes-workorder</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-process</artifactId>
+        </dependency>
     </dependencies>
 </project>
