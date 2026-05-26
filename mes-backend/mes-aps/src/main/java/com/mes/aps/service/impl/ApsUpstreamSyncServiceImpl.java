@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -36,6 +37,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
+
+    private static final Set<String> SUPPORTED_UPSTREAM_SYNC_TYPES = Set.of(
+            "WORKORDER", "INVENTORY", "QUALITY", "OUTSOURCE", "TRANSFER", "ABNORMAL");
 
     private final ApsSyncQueueMapper syncQueueMapper;
     private final ApsClient apsClient;
@@ -77,6 +81,14 @@ public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
 
         for (ApsSyncQueue item : pendingItems) {
             try {
+                if (isUnsupportedUpstreamType(item)) {
+                    failCount++;
+                    markUnsupportedTypeFailed(item);
+                    log.warn("跳过APS不支持的同步类型: id={}, type={}, dataNo={}",
+                            item.getId(), item.getSyncType(), item.getDataNo());
+                    continue;
+                }
+
                 // 标记为处理中
                 item.setSyncStatus(SyncStatus.PROCESSING.getCode());
                 item.setUpdatedTime(LocalDateTime.now());
@@ -139,6 +151,17 @@ public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
     }
 
     // ==================== 私有方法 ====================
+
+    private boolean isUnsupportedUpstreamType(ApsSyncQueue item) {
+        return !SUPPORTED_UPSTREAM_SYNC_TYPES.contains(item.getSyncType());
+    }
+
+    private void markUnsupportedTypeFailed(ApsSyncQueue item) {
+        item.setSyncStatus(SyncStatus.FAILED.getCode());
+        item.setErrorMessage("APS不支持当前同步类型: " + item.getSyncType());
+        item.setUpdatedTime(LocalDateTime.now());
+        syncQueueMapper.updateById(item);
+    }
 
     private void pushToAps(ApsSyncQueue item) {
         String syncType = item.getSyncType();
