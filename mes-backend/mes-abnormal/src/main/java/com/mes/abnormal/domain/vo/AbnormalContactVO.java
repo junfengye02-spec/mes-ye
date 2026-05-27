@@ -21,6 +21,12 @@ public class AbnormalContactVO {
     @Schema(description = "异常联络单号")
     private String contactNo;
 
+    @Schema(description = "关联工单ID")
+    private Long workOrderId;
+
+    @Schema(description = "关联派工任务ID")
+    private Long dispatchTaskId;
+
     @Schema(description = "主题")
     private String subject;
 

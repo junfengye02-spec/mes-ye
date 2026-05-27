@@ -13,6 +13,7 @@ import com.mes.abnormal.domain.vo.AbnormalContactAttachmentVO;
 import com.mes.abnormal.domain.vo.AbnormalContactLogVO;
 import com.mes.abnormal.domain.vo.AbnormalContactVO;
 import com.mes.abnormal.enums.AbnormalContactStatus;
+import com.mes.common.event.AbnormalSubmittedEvent;
 import com.mes.abnormal.mapper.AbnormalContactAttachmentMapper;
 import com.mes.abnormal.mapper.AbnormalContactLogMapper;
 import com.mes.abnormal.mapper.AbnormalContactMapper;
@@ -180,6 +181,17 @@ public class AbnormalContactServiceImpl extends ServiceImpl<AbnormalContactMappe
 
         addLog(id, fromStatus, AbnormalContactStatus.SUBMITTED.getCode(), "提交",
                 "异常联络单 " + entity.getContactNo() + " 已提交");
+
+        eventPublisher.publishEvent(new AbnormalSubmittedEvent(
+                this,
+                entity.getId(),
+                entity.getContactNo(),
+                entity.getWorkOrderId(),
+                entity.getDispatchTaskId(),
+                entity.getOrderNo(),
+                entity.getEventCategory(),
+                entity.getAbnormalDesc()
+        ));
 
         // 如果影响排程，触发 APS 重排（带防抖）
         if (Integer.valueOf(1).equals(entity.getAffectSchedule())) {

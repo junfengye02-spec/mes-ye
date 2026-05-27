@@ -17,6 +17,12 @@ public class RecheckRequestVO {
     @Schema(description = "ID")
     private Long id;
 
+    @Schema(description = "关联工单ID")
+    private Long workOrderId;
+
+    @Schema(description = "关联派工任务ID")
+    private Long dispatchTaskId;
+
     @Schema(description = "项目编码")
     private String projectCode;
 

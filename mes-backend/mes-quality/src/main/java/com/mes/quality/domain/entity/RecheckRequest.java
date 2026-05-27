@@ -16,6 +16,12 @@ import java.time.LocalDateTime;
 @TableName("mes_recheck_request")
 public class RecheckRequest extends BaseEntity {
 
+    /** 关联工单ID */
+    private Long workOrderId;
+
+    /** 关联派工任务ID */
+    private Long dispatchTaskId;
+
     /** 项目编码 */
     private String projectCode;
 

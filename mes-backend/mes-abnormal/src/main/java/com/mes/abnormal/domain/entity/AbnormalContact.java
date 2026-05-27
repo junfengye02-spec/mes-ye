@@ -20,6 +20,12 @@ public class AbnormalContact extends BaseEntity {
     /** 异常联络单号 */
     private String contactNo;
 
+    /** 关联工单ID */
+    private Long workOrderId;
+
+    /** 关联派工任务ID */
+    private Long dispatchTaskId;
+
     /** 主题 */
     private String subject;
 

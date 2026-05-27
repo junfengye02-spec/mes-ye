@@ -3,6 +3,10 @@ package com.mes.dispatch.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mes.common.event.DispatchAllTasksCompletedEvent;
+import com.mes.common.event.DispatchTaskCompletedEvent;
+import com.mes.common.event.DispatchTaskQualityFailedEvent;
+import com.mes.common.event.DispatchTaskStartedEvent;
 import com.mes.common.core.PageResult;
 import com.mes.common.exception.BusinessException;
 import com.mes.common.result.ResultCode;
@@ -34,6 +38,7 @@ import com.mes.workorder.mapper.WorkOrderTaskMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -57,6 +62,7 @@ public class DispatchTaskServiceImpl extends ServiceImpl<DispatchTaskMapper, Dis
     private final WorkOrderTaskMapper workOrderTaskMapper;
     private final IDispatchStatusLogService statusLogService;
     private final IDispatchAssignmentService assignmentService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 允许"修改 / 撤销指派"的状态集合 */
     private static final Set<String> EDITABLE_STATUS = Set.of(
@@ -357,6 +363,17 @@ public class DispatchTaskServiceImpl extends ServiceImpl<DispatchTaskMapper, Dis
         statusLogService.log(id, fromStatus, DispatchStatus.IN_PROGRESS.getCode(),
                 "开工", "实际开工时间: " + task.getActualStartTime());
 
+        WorkOrder workOrder = task.getWorkOrderId() == null ? null : workOrderMapper.selectById(task.getWorkOrderId());
+        eventPublisher.publishEvent(new DispatchTaskStartedEvent(
+                this,
+                task.getId(),
+                task.getWorkOrderId(),
+                task.getWorkOrderTaskId(),
+                workOrder != null ? workOrder.getWorkOrderNo() : null,
+                task.getProcessNo(),
+                task.getWorkName()
+        ));
+
         log.info("派工任务开工: id={}", id);
     }
 
@@ -392,6 +409,52 @@ public class DispatchTaskServiceImpl extends ServiceImpl<DispatchTaskMapper, Dis
                 + (StringUtils.hasText(dto.getRemark()) ? "；备注=" + dto.getRemark() : "");
         statusLogService.log(id, fromStatus, DispatchStatus.COMPLETED.getCode(),
                 "完工", remark);
+
+        WorkOrder workOrder = task.getWorkOrderId() == null ? null : workOrderMapper.selectById(task.getWorkOrderId());
+        String workOrderNo = workOrder != null ? workOrder.getWorkOrderNo() : null;
+        String operator = currentUsernameOrSystem();
+        eventPublisher.publishEvent(new DispatchTaskCompletedEvent(
+                this,
+                task.getId(),
+                task.getWorkOrderId(),
+                task.getWorkOrderTaskId(),
+                workOrderNo,
+                task.getProcessNo(),
+                task.getWorkName(),
+                task.getProjectName(),
+                task.getSerialNo(),
+                task.getActualQty(),
+                task.getQualityResult(),
+                task.getActualEndTime(),
+                dto.getRemark(),
+                operator
+        ));
+
+        if ("FAIL".equalsIgnoreCase(task.getQualityResult())) {
+            eventPublisher.publishEvent(new DispatchTaskQualityFailedEvent(
+                    this,
+                    task.getId(),
+                    task.getWorkOrderId(),
+                    task.getWorkOrderTaskId(),
+                    workOrderNo,
+                    task.getProcessNo(),
+                    task.getWorkName(),
+                    task.getProjectName(),
+                    task.getSerialNo(),
+                    task.getActualQty(),
+                    task.getActualEndTime(),
+                    dto.getRemark(),
+                    operator
+            ));
+        }
+
+        long unfinishedCount = count(new LambdaQueryWrapper<DispatchTask>()
+                .eq(DispatchTask::getWorkOrderId, task.getWorkOrderId())
+                .ne(DispatchTask::getDispatchStatus, DispatchStatus.COMPLETED.getCode()));
+        if (unfinishedCount == 0) {
+            eventPublisher.publishEvent(new DispatchAllTasksCompletedEvent(
+                    this, task.getWorkOrderId(), workOrderNo));
+        }
 
         log.info("派工任务完工: id={}, qty={}, quality={}",
                 id, dto.getActualQty(), dto.getQualityResult());

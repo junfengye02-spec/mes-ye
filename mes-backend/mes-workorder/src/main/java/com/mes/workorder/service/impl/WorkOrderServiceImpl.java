@@ -3,6 +3,7 @@ package com.mes.workorder.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mes.common.event.WorkOrderCompletedEvent;
 import com.mes.common.core.PageResult;
 import com.mes.common.result.ResultCode;
 import com.mes.common.utils.AssertUtil;
@@ -245,6 +246,15 @@ public class WorkOrderServiceImpl extends ServiceImpl<WorkOrderMapper, WorkOrder
 
         // 发布APS同步事件：工单完工
         publishApsSyncEvent(entity, WorkOrderStatus.COMPLETED.getCode());
+        eventPublisher.publishEvent(new WorkOrderCompletedEvent(
+                this,
+                entity.getId(),
+                entity.getWorkOrderNo(),
+                entity.getProductionPlanNo(),
+                entity.getOrderPlanNo(),
+                entity.getPlanQty(),
+                entity.getActualEndTime()
+        ));
 
         log.info("工单完工: {}", entity.getWorkOrderNo());
     }

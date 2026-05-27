@@ -16,6 +16,7 @@ public enum DispatchStatus {
     UNASSIGNED("UNASSIGNED", "未分派"),
     ASSIGNED("ASSIGNED", "已分派"),
     IN_PROGRESS("IN_PROGRESS", "开工中"),
+    ABNORMAL("ABNORMAL", "异常中"),
     COMPLETED("COMPLETED", "已完工"),
     CANCELLED("CANCELLED", "已撤销"),
     REVOKED("REVOKED", "已取消指派");

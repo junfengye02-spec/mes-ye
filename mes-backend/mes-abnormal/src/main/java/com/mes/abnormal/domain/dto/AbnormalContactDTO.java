@@ -17,6 +17,12 @@ public class AbnormalContactDTO {
     @Schema(description = "异常联络单号（可手工录入，留空则自动生成）")
     private String contactNo;
 
+    @Schema(description = "关联工单ID")
+    private Long workOrderId;
+
+    @Schema(description = "关联派工任务ID")
+    private Long dispatchTaskId;
+
     @NotBlank(message = "主题不能为空")
     @Schema(description = "主题", requiredMode = Schema.RequiredMode.REQUIRED)
     private String subject;

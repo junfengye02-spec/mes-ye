@@ -6,6 +6,7 @@ import com.mes.abnormal.domain.dto.AbnormalContactDTO;
 import com.mes.abnormal.domain.entity.AbnormalContact;
 import com.mes.abnormal.domain.entity.AbnormalContactAttachment;
 import com.mes.abnormal.enums.AbnormalContactStatus;
+import com.mes.common.event.AbnormalSubmittedEvent;
 import com.mes.abnormal.mapper.AbnormalContactAttachmentMapper;
 import com.mes.abnormal.mapper.AbnormalContactLogMapper;
 import com.mes.abnormal.mapper.AbnormalContactMapper;
@@ -33,6 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -168,9 +170,12 @@ class AbnormalContactServiceTest {
         contactService.submit(1L);
 
         ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
-        verify(eventPublisher).publishEvent(captor.capture());
-        assertTrue(captor.getValue() instanceof ApsSyncEvent);
-        ApsSyncEvent ev = (ApsSyncEvent) captor.getValue();
+        verify(eventPublisher, times(2)).publishEvent(captor.capture());
+        ApsSyncEvent ev = captor.getAllValues().stream()
+                .filter(ApsSyncEvent.class::isInstance)
+                .map(ApsSyncEvent.class::cast)
+                .findFirst()
+                .orElseThrow();
         assertEquals("ABNORMAL", ev.getSyncType());
         assertEquals("LINE_DOWN", ev.getDataType());
     }
@@ -193,7 +198,34 @@ class AbnormalContactServiceTest {
         contactService.submit(1L);
         contactService.submit(2L);
 
-        verify(eventPublisher, times(1)).publishEvent(any());
+        long apsEvents = mockingDetails(eventPublisher).getInvocations().stream()
+                .map(invocation -> invocation.getArgument(0))
+                .filter(ApsSyncEvent.class::isInstance)
+                .count();
+        assertEquals(1L, apsEvents);
+    }
+
+    @Test
+    @DisplayName("8.1 提交时发布 AbnormalSubmittedEvent")
+    void submit_publishesAbnormalSubmittedEvent() {
+        AbnormalContact draft = contact(1L, "YC-LINK", AbnormalContactStatus.DRAFT);
+        draft.setAffectSchedule(0);
+        draft.setWorkOrderId(10L);
+        draft.setDispatchTaskId(20L);
+        draft.setOrderNo("WO-001");
+        when(contactMapper.selectById(1L)).thenReturn(draft);
+        when(contactMapper.updateById(any(AbnormalContact.class))).thenReturn(1);
+        when(logMapper.insert(any())).thenReturn(1);
+
+        contactService.submit(1L);
+
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertTrue(captor.getValue() instanceof AbnormalSubmittedEvent);
+        AbnormalSubmittedEvent event = (AbnormalSubmittedEvent) captor.getValue();
+        assertEquals(10L, event.getWorkOrderId());
+        assertEquals(20L, event.getDispatchTaskId());
+        assertEquals("WO-001", event.getOrderNo());
     }
 
     @Test

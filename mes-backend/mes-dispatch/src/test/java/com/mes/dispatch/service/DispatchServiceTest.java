@@ -1,8 +1,13 @@
 package com.mes.dispatch.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.mes.common.event.DispatchAllTasksCompletedEvent;
+import com.mes.common.event.DispatchTaskCompletedEvent;
+import com.mes.common.event.DispatchTaskQualityFailedEvent;
+import com.mes.common.event.DispatchTaskStartedEvent;
 import com.mes.common.exception.BusinessException;
 import com.mes.dispatch.domain.dto.DispatchAssignDTO;
+import com.mes.dispatch.domain.dto.DispatchTaskCompleteDTO;
 import com.mes.dispatch.domain.entity.DispatchAssignment;
 import com.mes.dispatch.domain.entity.DispatchTask;
 import com.mes.dispatch.enums.AssignType;
@@ -22,16 +27,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -58,6 +68,8 @@ class DispatchServiceTest {
     private WorkOrderTaskMapper workOrderTaskMapper;
     @Mock
     private IDispatchStatusLogService statusLogService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private DispatchTaskServiceImpl dispatchTaskService;
@@ -138,6 +150,72 @@ class DispatchServiceTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> dispatchTaskService.generateFromWorkOrder(10L));
         assertEquals("该工单已生成派工任务，不可重复生成", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("4.1 派工开工后发布 DispatchTaskStartedEvent")
+    void start_publishesDispatchTaskStartedEvent() {
+        DispatchTask task = dispatchTask(1L, DispatchStatus.ASSIGNED);
+        task.setWorkOrderId(10L);
+        task.setWorkOrderTaskId(101L);
+        task.setProcessNo("OP10");
+        task.setWorkName("工序一");
+        WorkOrder workOrder = new WorkOrder();
+        workOrder.setId(10L);
+        workOrder.setWorkOrderNo("WO-001");
+
+        when(dispatchTaskMapper.selectById(1L)).thenReturn(task);
+        when(workOrderMapper.selectById(10L)).thenReturn(workOrder);
+        when(dispatchTaskMapper.updateById(any(DispatchTask.class))).thenReturn(1);
+
+        dispatchTaskService.start(1L);
+
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertTrue(captor.getValue() instanceof DispatchTaskStartedEvent);
+        DispatchTaskStartedEvent event = (DispatchTaskStartedEvent) captor.getValue();
+        assertEquals(1L, event.getDispatchTaskId());
+        assertEquals(10L, event.getWorkOrderId());
+        assertEquals(101L, event.getWorkOrderTaskId());
+        assertEquals("WO-001", event.getWorkOrderNo());
+        assertEquals("OP10", event.getWorkNo());
+    }
+
+    @Test
+    @DisplayName("4.2 质量 FAIL 且工单任务全部完工时发布级联事件")
+    void complete_qualityFail_publishesCascadeEvents() {
+        DispatchTask task = dispatchTask(1L, DispatchStatus.IN_PROGRESS);
+        task.setWorkOrderId(10L);
+        task.setWorkOrderTaskId(101L);
+        task.setProcessNo("OP10");
+        task.setWorkName("工序一");
+        task.setProjectName("项目A");
+        task.setSerialNo("SN-001");
+        task.setActualStartTime(LocalDateTime.of(2026, 5, 27, 8, 0));
+
+        WorkOrder workOrder = new WorkOrder();
+        workOrder.setId(10L);
+        workOrder.setWorkOrderNo("WO-001");
+
+        DispatchTaskCompleteDTO dto = new DispatchTaskCompleteDTO();
+        dto.setActualEndTime(LocalDateTime.of(2026, 5, 27, 12, 0));
+        dto.setActualQty(new BigDecimal("5"));
+        dto.setQualityResult("FAIL");
+        dto.setRemark("尺寸超差");
+
+        when(dispatchTaskMapper.selectById(1L)).thenReturn(task);
+        when(workOrderMapper.selectById(10L)).thenReturn(workOrder);
+        when(dispatchTaskMapper.updateById(any(DispatchTask.class))).thenReturn(1);
+        when(dispatchTaskMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+
+        dispatchTaskService.complete(1L, dto);
+
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
+        verify(eventPublisher, times(3)).publishEvent(captor.capture());
+        List<ApplicationEvent> published = captor.getAllValues();
+        assertTrue(published.stream().anyMatch(DispatchTaskCompletedEvent.class::isInstance));
+        assertTrue(published.stream().anyMatch(DispatchTaskQualityFailedEvent.class::isInstance));
+        assertTrue(published.stream().anyMatch(DispatchAllTasksCompletedEvent.class::isInstance));
     }
 
     // —— DispatchAssignmentServiceImpl ——

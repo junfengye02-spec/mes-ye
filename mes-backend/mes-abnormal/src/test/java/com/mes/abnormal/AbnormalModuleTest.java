@@ -7,10 +7,13 @@ import com.mes.abnormal.domain.entity.AbnormalContact;
 import com.mes.abnormal.domain.entity.AbnormalContactAttachment;
 import com.mes.abnormal.domain.entity.AbnormalContactLog;
 import com.mes.abnormal.enums.AbnormalContactStatus;
+import com.mes.common.event.AbnormalSubmittedEvent;
+import com.mes.common.event.ApsSyncEvent;
 import com.mes.abnormal.mapper.AbnormalContactAttachmentMapper;
 import com.mes.abnormal.mapper.AbnormalContactLogMapper;
 import com.mes.abnormal.mapper.AbnormalContactMapper;
 import com.mes.abnormal.service.impl.AbnormalContactServiceImpl;
+import org.springframework.context.ApplicationEvent;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -19,6 +22,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -197,9 +202,11 @@ class AbnormalModuleTest {
 
         contactService.submit(1L);
 
-        // ApsSyncEvent 继承 ApplicationEvent；Spring 6 下 Mockito 会绑定 publishEvent(ApplicationEvent) 重载，
-        // 用 any(ApplicationEvent) 避免 argThat(Object) 被绑定到另一重载签名。
-        verify(eventPublisher).publishEvent(any(org.springframework.context.ApplicationEvent.class));
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
+        verify(eventPublisher, times(2)).publishEvent(captor.capture());
+        List<ApplicationEvent> published = captor.getAllValues();
+        assertTrue(published.stream().anyMatch(AbnormalSubmittedEvent.class::isInstance));
+        assertTrue(published.stream().anyMatch(ApsSyncEvent.class::isInstance));
     }
 
     @Test

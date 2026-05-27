@@ -11,7 +11,8 @@ import lombok.Getter;
 public enum ProductionPlanStatus {
 
     CREATED("CREATED", "创建"),
-    RELEASED("RELEASED", "已下达");
+    RELEASED("RELEASED", "已下达"),
+    COMPLETED("COMPLETED", "已完成");
 
     private final String code;
     private final String desc;

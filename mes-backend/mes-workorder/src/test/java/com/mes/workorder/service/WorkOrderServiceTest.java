@@ -2,6 +2,7 @@ package com.mes.workorder.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mes.common.event.ApsSyncEvent;
+import com.mes.common.event.WorkOrderCompletedEvent;
 import com.mes.common.exception.BusinessException;
 import com.mes.workorder.domain.dto.*;
 import com.mes.workorder.domain.entity.*;
@@ -23,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -278,6 +280,36 @@ class WorkOrderServiceTest {
         when(workOrderMapper.selectById(1L)).thenReturn(existing);
 
         assertThrows(BusinessException.class, () -> workOrderService.complete(1L));
+    }
+
+    @Test
+    @DisplayName("完工后发布 WorkOrderCompletedEvent 和 ApsSyncEvent")
+    void complete_publishesCompletedAndApsSyncEvents() {
+        WorkOrder existing = workOrder(1L, "WO-1", WorkOrderStatus.IN_PROGRESS);
+        existing.setProductionPlanNo("100");
+        existing.setOrderPlanNo("ORDPLAN-001");
+        existing.setPlanQty(new BigDecimal("5"));
+        when(workOrderMapper.selectById(1L)).thenReturn(existing);
+        when(workOrderMapper.updateById(any(WorkOrder.class))).thenReturn(1);
+
+        workOrderService.complete(1L);
+
+        ArgumentCaptor<org.springframework.context.ApplicationEvent> captor =
+                ArgumentCaptor.forClass(org.springframework.context.ApplicationEvent.class);
+        verify(eventPublisher, times(2)).publishEvent(captor.capture());
+        List<org.springframework.context.ApplicationEvent> published = captor.getAllValues();
+        assertTrue(published.stream().anyMatch(WorkOrderCompletedEvent.class::isInstance));
+        WorkOrderCompletedEvent completedEvent = published.stream()
+                .filter(WorkOrderCompletedEvent.class::isInstance)
+                .map(WorkOrderCompletedEvent.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(1L, completedEvent.getWorkOrderId());
+        assertEquals("100", completedEvent.getProductionPlanNo());
+        assertEquals("ORDPLAN-001", completedEvent.getOrderPlanNo());
+        assertEquals(new BigDecimal("5"), completedEvent.getCompletedQty());
+        assertNotNull(completedEvent.getActualEndTime());
+        assertTrue(published.stream().anyMatch(ApsSyncEvent.class::isInstance));
     }
 
     @Test
