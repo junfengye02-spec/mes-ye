@@ -2,6 +2,7 @@
   <div class="ai-message" :class="`is-${message.role}`">
     <div class="message-bubble">
       <div class="message-content">{{ safeContent }}</div>
+      <div v-if="message.streaming" class="streaming-indicator">正在生成...</div>
 
       <div v-if="message.response?.refusalReason" class="refusal">
         {{ message.response.refusalReason }}
@@ -98,6 +99,12 @@ function navLabel(path: string): string {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   line-height: 1.6;
+}
+.streaming-indicator {
+  margin-top: 6px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.4;
 }
 .refusal {
   margin-top: 8px;

@@ -69,37 +69,52 @@ async function handleSend() {
   if (!text || loading.value) return
 
   messages.value.push({ id: crypto.randomUUID(), role: 'user', content: text })
+  messages.value.push({
+    id: crypto.randomUUID(),
+    role: 'assistant',
+    content: '',
+    streaming: true,
+  })
+  const assistantMessage = messages.value[messages.value.length - 1]
   question.value = ''
   loading.value = true
   try {
-    const response = await aiAssistantApi.chat({
-      question: text,
-      pageContext: route.fullPath,
-    })
-    messages.value.push({
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: response.answer,
-      response,
-    })
+    const response = await aiAssistantApi.chatStream(
+      {
+        question: text,
+        pageContext: route.fullPath,
+      },
+      {
+        onDelta: (content) => {
+          assistantMessage.content += content
+        },
+        onDone: (response) => {
+          assistantMessage.response = response
+          if (!assistantMessage.content.trim()) {
+            assistantMessage.content = response.answer
+          }
+        },
+      },
+    )
+    assistantMessage.response = response
+    if (!assistantMessage.content.trim()) {
+      assistantMessage.content = response.answer
+    }
   } catch (e: any) {
     const message = e?.message || 'AI助手暂时不可用'
-    messages.value.push({
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: message,
-      response: {
-        answer: message,
-        intent: 'UNAVAILABLE',
-        relatedModules: [],
-        evidenceSummary: [],
-        suggestedNavigation: [],
-        refusalReason: message,
-        modelConfigured: false,
-      },
-    })
+    assistantMessage.content = message
+    assistantMessage.response = {
+      answer: message,
+      intent: 'UNAVAILABLE',
+      relatedModules: [],
+      evidenceSummary: [],
+      suggestedNavigation: [],
+      refusalReason: message,
+      modelConfigured: false,
+    }
     ElMessage.error(message)
   } finally {
+    assistantMessage.streaming = false
     loading.value = false
   }
 }

@@ -18,5 +18,6 @@ export interface AiAssistantMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  streaming?: boolean
   response?: AiChatResponse
 }
