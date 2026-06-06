@@ -1,0 +1,14 @@
+package com.mes.ai.domain.model;
+
+public enum AiIntent {
+    PRODUCTION_QUERY,
+    WORK_ORDER_STATUS,
+    DISPATCH_STATUS,
+    QUALITY_STATUS,
+    ABNORMAL_ISSUE,
+    MATERIAL_STATUS,
+    APS_STATUS,
+    PROCESS_GUIDANCE,
+    MES_CONSULTATION,
+    UNSUPPORTED
+}

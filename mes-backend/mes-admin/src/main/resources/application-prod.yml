@@ -198,3 +198,11 @@ mes:
   # P2-26 Sentinel 限流熔断
   sentinel:
     enabled: ${MES_SENTINEL_ENABLED:true}
+  ai-assistant:
+    enabled: ${MES_AI_ASSISTANT_ENABLED:false}
+    provider: ${MES_AI_ASSISTANT_PROVIDER:openai-compatible}
+    base-url: ${MES_AI_ASSISTANT_BASE_URL:}
+    api-key: ${MES_AI_ASSISTANT_API_KEY:}
+    model: ${MES_AI_ASSISTANT_MODEL:}
+    timeout-seconds: ${MES_AI_ASSISTANT_TIMEOUT_SECONDS:20}
+    max-answer-chars: ${MES_AI_ASSISTANT_MAX_ANSWER_CHARS:1200}

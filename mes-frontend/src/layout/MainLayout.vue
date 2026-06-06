@@ -53,6 +53,17 @@
           <BreadcrumbNav />
         </div>
         <div class="header-right">
+          <button
+            v-if="canUseAiAssistant"
+            type="button"
+            class="assistant-trigger"
+            aria-label="AI助手"
+            title="AI助手"
+            @click="aiAssistantVisible = true"
+          >
+            <el-icon aria-hidden="true"><ChatDotRound /></el-icon>
+          </button>
+
           <!-- 主题切换下拉：不引入新的 i18n 文案（P2-23 文案冻结），用图标 + aria-label 表达语义 -->
           <el-dropdown trigger="click" @command="handleThemeCommand">
             <span
@@ -159,6 +170,7 @@
         </router-view>
       </el-main>
     </el-container>
+    <AiAssistantDrawer v-model="aiAssistantVisible" />
   </el-container>
 </template>
 
@@ -166,13 +178,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Sunny, Moon, Monitor } from '@element-plus/icons-vue'
+import { ChatDotRound, Sunny, Moon, Monitor } from '@element-plus/icons-vue'
 import SidebarMenu from './SidebarMenu.vue'
 import BreadcrumbNav from './BreadcrumbNav.vue'
+import AiAssistantDrawer from '@/components/AiAssistant/AiAssistantDrawer.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePermissionStore } from '@/stores/permission'
 import { useLocaleStore } from '@/stores/locale'
 import { useThemeStore } from '@/stores/theme'
+import { hasAnyPermission } from '@/directives/auth'
 import type { ThemeMode } from '@/stores/theme'
 import { SUPPORTED_LOCALES } from '@/locales'
 import type { LocaleKey } from '@/locales'
@@ -184,11 +198,14 @@ const localeStore = useLocaleStore()
 const themeStore = useThemeStore()
 const { t } = useI18n()
 const isCollapse = ref(false)
+const aiAssistantVisible = ref(false)
 
 const currentLocaleLabel = computed(() => {
   const item = SUPPORTED_LOCALES.find(l => l.value === localeStore.current)
   return item ? item.short : ''
 })
+
+const canUseAiAssistant = computed(() => hasAnyPermission(['ai:assistant:chat']))
 
 // 主题切换按钮的 title / aria-label：不走 vue-i18n 字典（P2-23 文案冻结），使用静态英文
 const themeTitle = computed(() => {
@@ -302,6 +319,27 @@ function handleCommand(command: string) {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+.assistant-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--mes-header-border);
+  border-radius: 4px;
+  background: var(--mes-header-bg);
+  color: var(--mes-header-text);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+.assistant-trigger:hover,
+.assistant-trigger:focus-visible {
+  color: var(--mes-primary);
+  border-color: var(--mes-primary);
+  background: rgba(64, 158, 255, 0.08);
+  outline: none;
 }
 .theme-dropdown,
 .lang-dropdown {

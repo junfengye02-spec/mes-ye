@@ -110,6 +110,14 @@ mes:
     max-conn-per-route: 10
     # 多环境隔离用：dev-/test-/prod-，生产可留空
     index-prefix: ${MES_ES_INDEX_PREFIX:}
+  ai-assistant:
+    enabled: ${MES_AI_ASSISTANT_ENABLED:false}
+    provider: ${MES_AI_ASSISTANT_PROVIDER:openai-compatible}
+    base-url: ${MES_AI_ASSISTANT_BASE_URL:}
+    api-key: ${MES_AI_ASSISTANT_API_KEY:}
+    model: ${MES_AI_ASSISTANT_MODEL:}
+    timeout-seconds: ${MES_AI_ASSISTANT_TIMEOUT_SECONDS:20}
+    max-answer-chars: ${MES_AI_ASSISTANT_MAX_ANSWER_CHARS:1200}
 
 # APS 集成配置（运行时从 mes_aps_sync_config 表读取，此处为启动默认值）
 aps:

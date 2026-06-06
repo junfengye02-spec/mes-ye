@@ -7,6 +7,7 @@ import workorder from './workorder'
 import dispatch from './dispatch'
 import material from './material'
 import system from './system'
+import assistant from './assistant'
 
 export default {
   common,
@@ -18,4 +19,5 @@ export default {
   dispatch,
   material,
   system,
+  assistant,
 }

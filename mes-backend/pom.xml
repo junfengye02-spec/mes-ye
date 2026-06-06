@@ -47,6 +47,7 @@
         <module>mes-query</module>
         <module>mes-material</module>
         <module>mes-aps</module>
+        <module>mes-ai</module>
 
         <!-- 单体聚合（兼容模式） -->
         <module>mes-admin</module>
@@ -180,6 +181,11 @@
             <dependency>
                 <groupId>com.mes</groupId>
                 <artifactId>mes-aps</artifactId>
+                <version>${mes.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mes</groupId>
+                <artifactId>mes-ai</artifactId>
                 <version>${mes.version}</version>
             </dependency>
 

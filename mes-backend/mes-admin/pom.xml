@@ -66,6 +66,10 @@
             <groupId>com.mes</groupId>
             <artifactId>mes-aps</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-ai</artifactId>
+        </dependency>
 
         <!-- Spring Cloud -->
         <dependency>

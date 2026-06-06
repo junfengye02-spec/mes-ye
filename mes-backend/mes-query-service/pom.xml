@@ -19,6 +19,10 @@
             <groupId>com.mes</groupId>
             <artifactId>mes-query</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-ai</artifactId>
+        </dependency>
 
         <!-- Spring Cloud -->
         <dependency>

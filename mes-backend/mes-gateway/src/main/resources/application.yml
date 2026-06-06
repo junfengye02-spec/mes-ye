@@ -120,6 +120,13 @@ spring:
           filters:
             - StripPrefix=0
 
+        - id: mes-ai-assistant
+          uri: lb://mes-query-svc
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=0
+
         # ==================== 共享路由 ====================
         - id: mes-files
           uri: lb://mes-system

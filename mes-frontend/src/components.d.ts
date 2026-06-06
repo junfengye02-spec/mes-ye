@@ -7,6 +7,9 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AiAssistantDrawer: typeof import('./components/AiAssistant/AiAssistantDrawer.vue')['default']
+    AiAssistantMessage: typeof import('./components/AiAssistant/AiAssistantMessage.vue')['default']
+    AiAssistantSuggestions: typeof import('./components/AiAssistant/AiAssistantSuggestions.vue')['default']
     BatchEdit: typeof import('./components/BatchEdit/index.vue')['default']
     DataTable: typeof import('./components/DataTable/index.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
