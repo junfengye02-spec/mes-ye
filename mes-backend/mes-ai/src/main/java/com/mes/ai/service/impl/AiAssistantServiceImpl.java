@@ -13,7 +13,7 @@ import com.mes.ai.service.AiKnowledgeService;
 import com.mes.ai.service.AiModelClient;
 import com.mes.ai.service.AiToolRegistry;
 import com.mes.ai.service.GuardrailDecision;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -24,7 +24,6 @@ import java.util.Locale;
 import java.util.Set;
 
 @Service
-@RequiredArgsConstructor
 public class AiAssistantServiceImpl implements AiAssistantService {
 
     private final AiGuardrailService guardrailService;
@@ -32,6 +31,19 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     private final AiToolRegistry toolRegistry;
     private final AiModelClient modelClient;
     private final AiAuditService auditService;
+
+    @Autowired
+    public AiAssistantServiceImpl(AiGuardrailService guardrailService,
+                                  AiKnowledgeService knowledgeService,
+                                  AiToolRegistry toolRegistry,
+                                  AiModelClient modelClient,
+                                  AiAuditService auditService) {
+        this.guardrailService = guardrailService;
+        this.knowledgeService = knowledgeService;
+        this.toolRegistry = toolRegistry;
+        this.modelClient = modelClient;
+        this.auditService = auditService;
+    }
 
     public AiAssistantServiceImpl(AiGuardrailService guardrailService,
                                   AiKnowledgeService knowledgeService,
