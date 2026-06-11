@@ -10,7 +10,7 @@ export interface WorkStatusViewVO extends BaseEntity {
   processDrawing?: string
   status?: string
   description?: string
-  furnaceNo?: string
+  resourceGroupCode?: string
   belongProcess?: string
   factory?: string
   businessOrg?: string

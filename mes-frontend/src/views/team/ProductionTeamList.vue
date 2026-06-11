@@ -7,12 +7,6 @@
       <el-form-item label="班组名称">
         <el-input v-model="query.teamName" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
-      <el-form-item label="班组类型">
-        <el-input v-model="query.teamType" placeholder="请输入" clearable style="width: 180px" />
-      </el-form-item>
-      <el-form-item label="工厂">
-        <el-input v-model="query.factory" placeholder="请输入" clearable style="width: 180px" />
-      </el-form-item>
       <el-form-item label="启用状态">
         <el-select v-model="query.enabled" placeholder="全部" clearable style="width: 120px">
           <el-option label="启用" :value="1" />
@@ -37,11 +31,9 @@
       </template>
       <el-table-column prop="teamCode" label="班组编码" min-width="120" />
       <el-table-column prop="teamName" label="班组名称" min-width="140" />
-      <el-table-column prop="teamType" label="班组类型" min-width="100" />
-      <el-table-column prop="leaderName" label="班长" width="100" />
-      <el-table-column prop="factory" label="工厂" width="100" />
-      <el-table-column prop="workCenterName" label="工作中心" min-width="120" />
-      <el-table-column prop="memberCount" label="成员数" width="80" />
+      <el-table-column prop="orgCode" label="生产组织编码" min-width="120" />
+      <el-table-column prop="orgName" label="生产组织名称" min-width="140" />
+      <el-table-column prop="description" label="说明" min-width="160" show-overflow-tooltip />
       <el-table-column prop="enabled" label="启用" width="100">
         <template #default="{ row }">
           <el-tag :type="row.enabled === 1 ? 'success' : 'info'">
@@ -68,28 +60,17 @@
         <el-form-item label="班组名称" prop="teamName">
           <el-input v-model="form.teamName" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="班组类型" prop="teamType">
-          <el-input v-model="form.teamType" placeholder="请输入" />
+        <el-form-item label="生产组织ID" prop="orgId">
+          <el-input-number v-model="form.orgId" placeholder="请输入生产组织ID" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="班长" prop="leaderId">
-          <el-input-number v-model="form.leaderId" placeholder="请输入班长ID" style="width: 100%" />
+        <el-form-item label="生产组织编码" prop="orgCode">
+          <el-input v-model="form.orgCode" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="工厂" prop="factory">
-          <el-input v-model="form.factory" placeholder="请输入" />
+        <el-form-item label="生产组织名称" prop="orgName">
+          <el-input v-model="form.orgName" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="工作中心" prop="workCenterId">
-          <el-input-number
-            :model-value="form.workCenterId != null ? Number(form.workCenterId) : undefined"
-            @update:model-value="(v: number | undefined) => { form.workCenterId = v }"
-            placeholder="请输入工作中心ID"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="启用" prop="enabled">
-          <el-switch v-model="form.enabled" :active-value="1" :inactive-value="0" />
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" rows="3" placeholder="请输入" />
+        <el-form-item label="说明" prop="description">
+          <el-input v-model="form.description" type="textarea" rows="3" placeholder="请输入" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -112,8 +93,6 @@ import type { ProductionTeamVO, ProductionTeamDTO, ProductionTeamQuery } from '@
 const query = reactive<ProductionTeamQuery>({
   teamCode: undefined,
   teamName: undefined,
-  teamType: undefined,
-  factory: undefined,
   enabled: undefined,
   pageNum: 1,
   pageSize: 20,
@@ -131,12 +110,10 @@ const editId = ref<number | null>(null)
 const form = reactive<ProductionTeamDTO>({
   teamCode: '',
   teamName: '',
-  teamType: '',
-  leaderId: undefined,
-  factory: '',
-  workCenterId: undefined,
-  enabled: 1,
-  remark: '',
+  orgId: undefined,
+  orgCode: '',
+  orgName: '',
+  description: '',
 })
 
 const formRules = {
@@ -174,12 +151,10 @@ function handleEdit(row: ProductionTeamVO) {
   Object.assign(form, {
     teamCode: row.teamCode,
     teamName: row.teamName,
-    teamType: row.teamType,
-    leaderId: row.leaderId,
-    factory: row.factory,
-    workCenterId: row.workCenterId,
-    enabled: row.enabled ?? 1,
-    remark: row.remark,
+    orgId: row.orgId,
+    orgCode: row.orgCode,
+    orgName: row.orgName,
+    description: row.description,
   })
   dialogVisible.value = true
 }
@@ -188,12 +163,10 @@ function resetForm() {
   Object.assign(form, {
     teamCode: '',
     teamName: '',
-    teamType: '',
-    leaderId: undefined,
-    factory: '',
-    workCenterId: undefined,
-    enabled: 1,
-    remark: '',
+    orgId: undefined,
+    orgCode: '',
+    orgName: '',
+    description: '',
   })
   formRef.value?.clearValidate()
 }

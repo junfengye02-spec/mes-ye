@@ -3,6 +3,7 @@ package com.mes.plan.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mes.common.exception.BusinessException;
 import com.mes.plan.domain.dto.OrderPlanDTO;
+import com.mes.plan.domain.dto.ProductionPlanDTO;
 import com.mes.plan.domain.entity.OrderPlan;
 import com.mes.plan.enums.*;
 import com.mes.plan.mapper.OrderPlanMapper;
@@ -12,10 +13,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -36,6 +39,10 @@ class OrderPlanServiceTest {
     private OrderPlanMapper orderPlanMapper;
     @Mock
     private IPlanStatusLogService planStatusLogService;
+    @Mock
+    private ObjectProvider<IProductionPlanService> productionPlanServiceProvider;
+    @Mock
+    private IProductionPlanService productionPlanService;
 
     @InjectMocks
     private OrderPlanServiceImpl orderPlanService;
@@ -50,6 +57,8 @@ class OrderPlanServiceTest {
     @DisplayName("创建订单计划 - 正常（初始状态 CREATED/RUNNING/UNEXPANDED/NOT_STARTED）")
     void create_success_initialFields() {
         OrderPlanDTO dto = baseDto("ORD-001");
+        dto.setFlowCode("FLOW-TURBINE");
+        dto.setBusinessType("INSPECTION");
 
         when(orderPlanMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
         when(orderPlanMapper.insert(any(OrderPlan.class))).thenAnswer(inv -> {
@@ -66,6 +75,8 @@ class OrderPlanServiceTest {
                         && FlowStatus.RUNNING.getCode().equals(plan.getFlowStatus())
                         && ExpandStatus.UNEXPANDED.getCode().equals(plan.getExpandStatus())
                         && CompletionStatus.NOT_STARTED.getCode().equals(plan.getCompletionStatus())
+                        && "FLOW-TURBINE".equals(plan.getFlowCode())
+                        && "INSPECTION".equals(plan.getBusinessType())
                         && "MANUAL".equals(plan.getDataSource())));
         verify(planStatusLogService).log(eq(PlanType.ORDER.getCode()), eq(200L),
                 isNull(), eq(OrderPlanStatus.CREATED.getCode()), eq("创建"), anyString());
@@ -201,12 +212,34 @@ class OrderPlanServiceTest {
         OrderPlan existing = plan(1L, "ORD-1", OrderPlanStatus.RELEASED);
         existing.setExpandStatus(ExpandStatus.UNEXPANDED.getCode());
         when(orderPlanMapper.selectById(1L)).thenReturn(existing);
+        when(productionPlanServiceProvider.getObject()).thenReturn(productionPlanService);
+        when(productionPlanService.create(any(ProductionPlanDTO.class))).thenReturn(300L);
         when(orderPlanMapper.updateById(any(OrderPlan.class))).thenReturn(1);
 
         orderPlanService.expand(1L);
 
+        verify(productionPlanService).create(argThat(dto ->
+                Long.valueOf(1L).equals(dto.getOrderPlanId())
+                        && "ORD-1".equals(dto.getOrderNo())
+                        && "P1".equals(dto.getProductCode())
+                        && "产品".equals(dto.getProductName())
+                        && "INSPECTION".equals(dto.getBusinessType())
+                        && "M1".equals(dto.getMachineModel())
+                        && "CAT-A".equals(dto.getProductCategory())
+                        && "TYPE-A".equals(dto.getProductType())
+                        && "WBS-1".equals(dto.getWbsElement())
+                        && new BigDecimal("100").compareTo(dto.getPlanQty()) == 0
+                        && "PCS".equals(dto.getQtyUnit())
+                        && "ORG-PLAN".equals(dto.getPlanOrg())));
         verify(orderPlanMapper).updateById(argThat(p ->
                 ExpandStatus.EXPANDED.getCode().equals(p.getExpandStatus())));
+        verify(planStatusLogService).log(eq(PlanType.ORDER.getCode()), eq(1L),
+                eq(ExpandStatus.UNEXPANDED.getCode()), eq(ExpandStatus.EXPANDED.getCode()),
+                eq("展开"), contains("300"));
+
+        InOrder inOrder = inOrder(productionPlanService, orderPlanMapper);
+        inOrder.verify(productionPlanService).create(any(ProductionPlanDTO.class));
+        inOrder.verify(orderPlanMapper).updateById(any(OrderPlan.class));
     }
 
     @Test
@@ -218,6 +251,23 @@ class OrderPlanServiceTest {
 
         assertThrows(BusinessException.class, () -> orderPlanService.expand(1L));
         verify(orderPlanMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("展开 - 生产计划创建失败时不更新展开状态")
+    void expand_rejected_whenProductionPlanCreateFails() {
+        OrderPlan existing = plan(1L, "ORD-1", OrderPlanStatus.RELEASED);
+        when(orderPlanMapper.selectById(1L)).thenReturn(existing);
+        when(productionPlanServiceProvider.getObject()).thenReturn(productionPlanService);
+        when(productionPlanService.create(any(ProductionPlanDTO.class)))
+                .thenThrow(new BusinessException("生产计划创建失败"));
+
+        assertThrows(BusinessException.class, () -> orderPlanService.expand(1L));
+
+        verify(orderPlanMapper, never()).updateById(any());
+        verify(planStatusLogService, never()).log(eq(PlanType.ORDER.getCode()), eq(1L),
+                eq(ExpandStatus.UNEXPANDED.getCode()), eq(ExpandStatus.EXPANDED.getCode()),
+                eq("展开"), anyString());
     }
 
     private static OrderPlanDTO baseDto(String orderNo) {
@@ -233,6 +283,17 @@ class OrderPlanServiceTest {
         OrderPlan p = new OrderPlan();
         p.setId(id);
         p.setOrderNo(orderNo);
+        p.setProductCode("P1");
+        p.setProductName("产品");
+        p.setNewOrRepairType("NEW");
+        p.setBusinessType("INSPECTION");
+        p.setMachineModel("M1");
+        p.setProductCategory("CAT-A");
+        p.setProductType("TYPE-A");
+        p.setWbsElement("WBS-1");
+        p.setPlanOrg("ORG-PLAN");
+        p.setPlanQty(new BigDecimal("100"));
+        p.setQtyUnit("PCS");
         p.setStatus(status.getCode());
         p.setFlowStatus(FlowStatus.RUNNING.getCode());
         p.setExpandStatus(ExpandStatus.UNEXPANDED.getCode());

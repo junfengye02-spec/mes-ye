@@ -14,7 +14,15 @@
     <dependencies>
         <dependency>
             <groupId>com.mes</groupId>
+            <artifactId>mes-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
             <artifactId>mes-framework</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mes</groupId>
+            <artifactId>mes-workorder</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

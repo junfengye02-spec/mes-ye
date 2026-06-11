@@ -7,6 +7,7 @@ import com.mes.common.core.PageResult;
 import com.mes.common.exception.BusinessException;
 import com.mes.common.result.ResultCode;
 import com.mes.common.utils.AssertUtil;
+import com.mes.process.domain.entity.ProcessInfo;
 import com.mes.process.domain.dto.WorkInstructionDTO;
 import com.mes.process.domain.dto.WorkInstructionPersonDTO;
 import com.mes.process.domain.entity.WorkInstruction;
@@ -14,6 +15,7 @@ import com.mes.process.domain.entity.WorkInstructionPerson;
 import com.mes.process.domain.query.WorkInstructionQuery;
 import com.mes.process.domain.vo.WorkInstructionPersonVO;
 import com.mes.process.domain.vo.WorkInstructionVO;
+import com.mes.process.mapper.ProcessInfoMapper;
 import com.mes.process.mapper.WorkInstructionMapper;
 import com.mes.process.mapper.WorkInstructionPersonMapper;
 import com.mes.process.service.IWorkInstructionService;
@@ -25,8 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * 指导书 Service 实现
@@ -38,12 +43,17 @@ public class WorkInstructionServiceImpl extends ServiceImpl<WorkInstructionMappe
         implements IWorkInstructionService {
 
     private final WorkInstructionPersonMapper personMapper;
+    private final ProcessInfoMapper processInfoMapper;
 
     @Override
     public PageResult<WorkInstructionVO> page(WorkInstructionQuery query) {
         LambdaQueryWrapper<WorkInstruction> wrapper = new LambdaQueryWrapper<WorkInstruction>()
                 .like(StringUtils.hasText(query.getInstructionCode()),
                         WorkInstruction::getInstructionCode, query.getInstructionCode())
+                .like(StringUtils.hasText(query.getInstructionName()),
+                        WorkInstruction::getInstructionName, query.getInstructionName())
+                .eq(query.getProcessId() != null,
+                        WorkInstruction::getProcessId, query.getProcessId())
                 .eq(StringUtils.hasText(query.getLevel()),
                         WorkInstruction::getLevel, query.getLevel())
                 .eq(StringUtils.hasText(query.getStatus()),
@@ -55,8 +65,9 @@ public class WorkInstructionServiceImpl extends ServiceImpl<WorkInstructionMappe
                 wrapper
         );
 
+        Map<Long, String> processNameMap = getProcessNameMap(page.getRecords());
         List<WorkInstructionVO> voList = page.getRecords().stream()
-                .map(this::toVO)
+                .map(record -> toVO(record, processNameMap))
                 .toList();
 
         return PageResult.of(voList, page.getTotal());
@@ -67,7 +78,7 @@ public class WorkInstructionServiceImpl extends ServiceImpl<WorkInstructionMappe
         WorkInstruction entity = getById(id);
         AssertUtil.notNull(entity, ResultCode.DATA_NOT_EXIST);
 
-        WorkInstructionVO vo = toVO(entity);
+        WorkInstructionVO vo = toVO(entity, getProcessNameMap(entity));
         // 查询关联人员列表
         List<WorkInstructionPerson> persons = personMapper.selectList(
                 new LambdaQueryWrapper<WorkInstructionPerson>()
@@ -81,6 +92,7 @@ public class WorkInstructionServiceImpl extends ServiceImpl<WorkInstructionMappe
     @Transactional(rollbackFor = Exception.class)
     public Long create(WorkInstructionDTO dto) {
         checkCodeUnique(dto.getInstructionCode(), null);
+        validateProcess(dto.getProcessId());
 
         WorkInstruction entity = new WorkInstruction();
         BeanUtils.copyProperties(dto, entity);
@@ -100,6 +112,7 @@ public class WorkInstructionServiceImpl extends ServiceImpl<WorkInstructionMappe
         AssertUtil.notNull(existing, ResultCode.DATA_NOT_EXIST);
 
         checkCodeUnique(dto.getInstructionCode(), id);
+        validateProcess(dto.getProcessId());
 
         BeanUtils.copyProperties(dto, existing);
         existing.setId(id);
@@ -150,9 +163,10 @@ public class WorkInstructionServiceImpl extends ServiceImpl<WorkInstructionMappe
         }
     }
 
-    private WorkInstructionVO toVO(WorkInstruction entity) {
+    private WorkInstructionVO toVO(WorkInstruction entity, Map<Long, String> processNameMap) {
         WorkInstructionVO vo = new WorkInstructionVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setProcessName(processNameMap.get(entity.getProcessId()));
         return vo;
     }
 
@@ -160,5 +174,48 @@ public class WorkInstructionServiceImpl extends ServiceImpl<WorkInstructionMappe
         WorkInstructionPersonVO vo = new WorkInstructionPersonVO();
         BeanUtils.copyProperties(entity, vo);
         return vo;
+    }
+
+    private void validateProcess(Long processId) {
+        if (processId == null) {
+            return;
+        }
+        ProcessInfo processInfo = processInfoMapper.selectById(processId);
+        AssertUtil.notNull(processInfo, "关联工序不存在");
+    }
+
+    private Map<Long, String> getProcessNameMap(List<WorkInstruction> instructions) {
+        if (CollectionUtils.isEmpty(instructions)) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> processIds = instructions.stream()
+                .map(WorkInstruction::getProcessId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (processIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<ProcessInfo> processInfos = processInfoMapper.selectBatchIds(processIds);
+        Map<Long, String> processNameMap = new HashMap<>();
+        for (ProcessInfo processInfo : processInfos) {
+            processNameMap.put(processInfo.getId(), processInfo.getProcessName());
+        }
+        return processNameMap;
+    }
+
+    private Map<Long, String> getProcessNameMap(WorkInstruction instruction) {
+        if (instruction == null || instruction.getProcessId() == null) {
+            return Collections.emptyMap();
+        }
+
+        ProcessInfo processInfo = processInfoMapper.selectById(instruction.getProcessId());
+        if (processInfo == null) {
+            return Collections.emptyMap();
+        }
+
+        return Map.of(processInfo.getId(), processInfo.getProcessName());
     }
 }

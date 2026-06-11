@@ -6,12 +6,14 @@ import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 指示书返回 VO
+ * <p>用于展示具体工单/批次执行过程中的指示与其引用的标准作业指导书。</p>
  */
 @Data
-@Schema(description = "指示书信息")
+@Schema(description = "指示书信息（随工单执行指示/流转卡）")
 public class InstructionVO {
 
     @Schema(description = "ID")
@@ -41,7 +43,10 @@ public class InstructionVO {
     @Schema(description = "类型")
     private String mainType;
 
-    @Schema(description = "G/T类型")
+    @Schema(description = "扩展属性")
+    private Map<String, Object> extensionData;
+
+    @Schema(description = "G/T类型（兼容字段，请改用 extensionData.gtType）")
     private String gtType;
 
     @Schema(description = "产品类别")
@@ -55,6 +60,9 @@ public class InstructionVO {
 
     @Schema(description = "生产订单编号")
     private String workOrderNo;
+
+    @Schema(description = "关联作业指导书ID（引用可复用SOP模板）")
+    private Long workInstructionId;
 
     @Schema(description = "生产完工日期")
     private LocalDate finishDate;
@@ -74,7 +82,7 @@ public class InstructionVO {
     @Schema(description = "项目·图纸号")
     private String drawingNo;
 
-    @Schema(description = "维修指导图")
+    @Schema(description = "维修指导图（兼容字段，请改用 extensionData.repairGuideDrawing）")
     private String repairGuideDrawing;
 
     @Schema(description = "担当")

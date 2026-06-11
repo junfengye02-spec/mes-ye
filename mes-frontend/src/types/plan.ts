@@ -7,6 +7,7 @@ export interface OrderPlanVO extends BaseEntity {
   projectName?: string
   wbsElement?: string
   newOrRepairType?: string
+  businessType?: string
   workType?: string
   machineModel?: string
   productCategory?: string
@@ -22,7 +23,7 @@ export interface OrderPlanVO extends BaseEntity {
   expandStatus?: string
   completionStatus?: string
   isOrder?: boolean
-  pcclFlow?: string
+  flowCode?: string
   planStartTime?: string
   planEndTime?: string
   actualStartTime?: string
@@ -40,6 +41,7 @@ export interface OrderPlanDTO {
   projectName?: string
   wbsElement?: string
   newOrRepairType?: string
+  businessType?: string
   workType?: string
   machineModel?: string
   productCategory?: string
@@ -51,7 +53,7 @@ export interface OrderPlanDTO {
   mainOrg?: string
   planWorkCenterId?: number
   isOrder?: boolean
-  pcclFlow?: string
+  flowCode?: string
   planStartTime?: string
   planEndTime?: string
   dataSource?: string
@@ -64,6 +66,7 @@ export interface OrderPlanQuery extends PageQuery {
   status?: string
   flowStatus?: string
   expandStatus?: string
+  businessType?: string
   workType?: string
   machineModel?: string
   productCategory?: string
@@ -76,6 +79,7 @@ export interface ProductionPlanVO extends BaseEntity {
   productCode?: string
   productName?: string
   newOrRepairType?: string
+  businessType?: string
   workType?: string
   machineModel?: string
   productCategory?: string
@@ -99,6 +103,7 @@ export interface ProductionPlanDTO {
   productCode?: string
   productName?: string
   newOrRepairType?: string
+  businessType?: string
   workType?: string
   machineModel?: string
   productCategory?: string
@@ -117,6 +122,7 @@ export interface ProductionPlanQuery extends PageQuery {
   productCode?: string
   productName?: string
   status?: string
+  businessType?: string
   workType?: string
   machineModel?: string
   productCategory?: string

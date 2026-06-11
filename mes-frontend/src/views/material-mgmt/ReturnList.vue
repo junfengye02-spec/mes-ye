@@ -8,9 +8,6 @@
         <el-form-item label="工单号">
           <el-input v-model="query.workOrderNo" placeholder="请输入" clearable style="width: 160px" />
         </el-form-item>
-        <el-form-item label="物料编码">
-          <el-input v-model="query.materialCode" placeholder="请输入" clearable style="width: 160px" />
-        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="query.status" placeholder="请选择" clearable style="width: 140px">
             <el-option
@@ -45,11 +42,14 @@
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="returnNo" label="退料单号" min-width="140" />
         <el-table-column prop="workOrderNo" label="工单号" min-width="120" />
-        <el-table-column prop="materialCode" label="物料编码" min-width="120" />
-        <el-table-column prop="materialName" label="物料名称" min-width="140" />
-        <el-table-column prop="returnQty" label="退料数量" width="100" align="right" />
-        <el-table-column prop="qtyUnit" label="单位" width="80" align="center" />
-        <el-table-column prop="returnReason" label="退料原因" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="orderNo" label="订单号" min-width="120" />
+        <el-table-column prop="productCode" label="产品编码" min-width="120" />
+        <el-table-column prop="productName" label="产品名称" min-width="140" />
+        <el-table-column prop="projectName" label="项目" min-width="120" />
+        <el-table-column prop="businessType" label="业务类型" width="110" />
+        <el-table-column prop="flowCode" label="流程编码" width="110" />
+        <el-table-column prop="planQty" label="计划数量" width="100" align="right" />
+        <el-table-column prop="completedQty" label="完工数量" width="100" align="right" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="getDictType('materialReturnStatus', row.status || '') as any">
@@ -86,54 +86,42 @@
       destroy-on-close
       @close="handleDialogClose"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="工单" prop="workOrderId">
-          <el-select
-            v-model="form.workOrderId"
-            placeholder="请选择工单"
-            filterable
-            remote
-            :remote-method="searchWorkOrders"
-            :loading="workOrderLoading"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="wo in workOrderOptions"
-              :key="wo.id"
-              :label="wo.workOrderNo"
-              :value="wo.id"
-            />
-          </el-select>
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
+        <el-form-item label="工单ID" prop="workOrderId">
+          <el-input-number v-model="form.workOrderId" :min="0" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="物料" prop="materialId">
-          <el-select
-            v-model="form.materialId"
-            placeholder="请选择物料"
-            filterable
-            remote
-            :remote-method="searchMaterials"
-            :loading="materialLoading"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="m in materialOptions"
-              :key="m.id"
-              :label="`${m.materialCode} - ${m.materialName}`"
-              :value="m.id"
-            />
-          </el-select>
+        <el-form-item label="工单号" prop="workOrderNo">
+          <el-input v-model="form.workOrderNo" placeholder="请输入工单号" />
         </el-form-item>
-        <el-form-item label="退料数量" prop="returnQty">
-          <el-input-number v-model="form.returnQty" :min="0.0001" :precision="4" style="width: 100%" />
+        <el-form-item label="订单号" prop="orderNo">
+          <el-input v-model="form.orderNo" placeholder="请输入订单号" />
         </el-form-item>
-        <el-form-item label="单位" prop="qtyUnit">
-          <el-input v-model="form.qtyUnit" placeholder="请输入单位" />
+        <el-form-item label="产品编码" prop="productCode">
+          <el-input v-model="form.productCode" placeholder="请输入产品编码" />
         </el-form-item>
-        <el-form-item label="退料原因" prop="returnReason">
-          <el-input v-model="form.returnReason" type="textarea" :rows="3" placeholder="请输入退料原因" />
+        <el-form-item label="产品名称" prop="productName">
+          <el-input v-model="form.productName" placeholder="请输入产品名称" />
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入备注" />
+        <el-form-item label="项目" prop="projectName">
+          <el-input v-model="form.projectName" placeholder="请输入项目" />
+        </el-form-item>
+        <el-form-item label="WBS元素" prop="wbsElement">
+          <el-input v-model="form.wbsElement" placeholder="请输入WBS元素" />
+        </el-form-item>
+        <el-form-item label="新制维修类型" prop="newOrRepairType">
+          <el-input v-model="form.newOrRepairType" placeholder="请输入新制维修类型" />
+        </el-form-item>
+        <el-form-item label="业务类型" prop="businessType">
+          <el-input v-model="form.businessType" placeholder="请输入业务类型" />
+        </el-form-item>
+        <el-form-item label="流程编码" prop="flowCode">
+          <el-input v-model="form.flowCode" placeholder="请输入流程编码" />
+        </el-form-item>
+        <el-form-item label="计划数量" prop="planQty">
+          <el-input-number v-model="form.planQty" :min="0" :precision="4" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="完工数量" prop="completedQty">
+          <el-input-number v-model="form.completedQty" :min="0" :precision="4" style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -151,11 +139,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import { getDictLabel, getDictType, getDictList } from '@/utils/dict'
 import type { MaterialReturnVO, MaterialReturnDTO, MaterialReturnQuery } from '@/types/material-mgmt'
-import type { WorkOrderVO } from '@/types/workorder'
-import type { MaterialVO } from '@/types/basic'
 import { materialReturnApi } from '@/api/material-mgmt/materialReturn'
-import { workOrderApi } from '@/api/workorder/workOrder'
-import { materialApi } from '@/api/basic/material'
 
 const loading = ref(false)
 const list = ref<MaterialReturnVO[]>([])
@@ -163,7 +147,6 @@ const total = ref(0)
 const query = reactive<MaterialReturnQuery>({
   returnNo: '',
   workOrderNo: '',
-  materialCode: '',
   status: '',
   pageNum: 1,
   pageSize: 20,
@@ -176,44 +159,21 @@ const submitLoading = ref(false)
 const editId = ref<number | null>(null)
 const form = reactive<MaterialReturnDTO>({
   workOrderId: undefined,
-  materialId: undefined,
-  returnQty: undefined,
-  qtyUnit: '',
-  returnReason: '',
-  remark: '',
+  workOrderNo: '',
+  orderNo: '',
+  productCode: '',
+  productName: '',
+  projectName: '',
+  wbsElement: '',
+  newOrRepairType: '',
+  businessType: '',
+  flowCode: '',
+  planQty: undefined,
+  completedQty: undefined,
 })
 
-const workOrderOptions = ref<WorkOrderVO[]>([])
-const materialOptions = ref<MaterialVO[]>([])
-const workOrderLoading = ref(false)
-const materialLoading = ref(false)
-
 const rules: FormRules = {
-  workOrderId: [{ required: true, message: '请选择工单', trigger: 'change' }],
-  materialId: [{ required: true, message: '请选择物料', trigger: 'change' }],
-  returnQty: [{ required: true, message: '请输入退料数量', trigger: 'blur' }],
-}
-
-async function searchWorkOrders(keyword: string) {
-  if (!keyword) return
-  workOrderLoading.value = true
-  try {
-    const res = await workOrderApi.page({ workOrderNo: keyword, pageNum: 1, pageSize: 20 })
-    workOrderOptions.value = res?.list ?? []
-  } finally {
-    workOrderLoading.value = false
-  }
-}
-
-async function searchMaterials(keyword: string) {
-  if (!keyword) return
-  materialLoading.value = true
-  try {
-    const res = await materialApi.page({ materialCode: keyword, materialName: keyword, pageNum: 1, pageSize: 20 })
-    materialOptions.value = res?.list ?? []
-  } finally {
-    materialLoading.value = false
-  }
+  workOrderId: [{ required: true, message: '请输入工单ID', trigger: 'blur' }],
 }
 
 async function loadList() {
@@ -235,7 +195,6 @@ function handleSearch() {
 function handleReset() {
   query.returnNo = ''
   query.workOrderNo = ''
-  query.materialCode = ''
   query.status = ''
   query.pageNum = 1
   loadList()
@@ -246,14 +205,18 @@ function handleAdd() {
   editId.value = null
   Object.assign(form, {
     workOrderId: undefined,
-    materialId: undefined,
-    returnQty: undefined,
-    qtyUnit: '',
-    returnReason: '',
-    remark: '',
+    workOrderNo: '',
+    orderNo: '',
+    productCode: '',
+    productName: '',
+    projectName: '',
+    wbsElement: '',
+    newOrRepairType: '',
+    businessType: '',
+    flowCode: '',
+    planQty: undefined,
+    completedQty: undefined,
   })
-  workOrderOptions.value = []
-  materialOptions.value = []
   dialogVisible.value = true
 }
 
@@ -262,14 +225,17 @@ function handleEdit(row: MaterialReturnVO) {
   editId.value = row.id
   Object.assign(form, {
     workOrderId: row.workOrderId,
-    materialId: row.materialId,
-    returnQty: row.returnQty,
-    qtyUnit: row.qtyUnit ?? '',
-    returnReason: row.returnReason ?? '',
-    remark: row.remark ?? '',
+    workOrderNo: row.workOrderNo ?? '',
+    orderNo: row.orderNo ?? '',
+    productCode: row.productCode ?? '',
+    productName: row.productName ?? '',
+    projectName: row.projectName ?? '',
+    newOrRepairType: row.newOrRepairType ?? '',
+    businessType: row.businessType ?? '',
+    flowCode: row.flowCode ?? '',
+    planQty: row.planQty,
+    completedQty: row.completedQty,
   })
-  if (row.workOrderId) workOrderOptions.value = [{ id: row.workOrderId, workOrderNo: row.workOrderNo ?? '' } as WorkOrderVO]
-  if (row.materialId) materialOptions.value = [{ id: row.materialId, materialCode: row.materialCode ?? '', materialName: row.materialName ?? '' } as MaterialVO]
   dialogVisible.value = true
 }
 

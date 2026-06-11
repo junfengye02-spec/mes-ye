@@ -104,7 +104,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getDictLabel, getDictType } from '@/utils/dict'
 import type { ShiftHandoverVO, ShiftHandoverQuery } from '@/types/quality'
-import { shiftHandoverApi } from '@/api/quality/shiftHandover'
+import { workQueryApi } from '@/api/query/workQuery'
 
 const loading = ref(false)
 const tableData = ref<ShiftHandoverVO[]>([])
@@ -123,7 +123,7 @@ const detailData = ref<ShiftHandoverVO | null>(null)
 async function fetchList() {
   loading.value = true
   try {
-    const res = await shiftHandoverApi.page(query)
+    const res = await workQueryApi.shiftHandoverPage(query)
     tableData.value = res?.list || []
     total.value = res?.total || 0
   } finally {
@@ -145,7 +145,7 @@ function handleReset() {
 }
 
 async function handleRowClick(row: ShiftHandoverVO) {
-  const res = await shiftHandoverApi.getDetail(Number(row.id))
+  const res = await workQueryApi.shiftHandoverDetail(Number(row.id))
   detailData.value = res
   drawerVisible.value = true
 }

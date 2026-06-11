@@ -48,8 +48,8 @@ public class WorkCenter extends BaseEntity {
     /** 资源种类 */
     private String resourceType;
 
-    /** 炉资源类型 */
-    private String furnaceResourceType;
+    /** 资源子类型 */
+    private String resourceSubtype;
 
     /** 资源能力 */
     private BigDecimal resourceCapacity;

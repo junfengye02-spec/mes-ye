@@ -2,13 +2,13 @@
   <div class="page-container">
     <SearchForm v-model="query" @search="loadData">
       <el-form-item label="指示书编码">
-        <el-input v-model="query.instructionCode" placeholder="请输入" clearable style="width: 180px" />
+        <el-input v-model="query.instructionNo" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
-      <el-form-item label="指示书名称">
-        <el-input v-model="query.instructionName" placeholder="请输入" clearable style="width: 180px" />
+      <el-form-item label="产品类别">
+        <el-input v-model="query.productCategory" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
-      <el-form-item label="产品编码">
-        <el-input v-model="query.productCode" placeholder="请输入" clearable style="width: 180px" />
+      <el-form-item label="产品类型">
+        <el-input v-model="query.productType" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
       <el-form-item label="状态">
         <el-input v-model="query.status" placeholder="请输入" clearable style="width: 180px" />
@@ -29,11 +29,13 @@
           <el-icon><Plus /></el-icon> 新增
         </el-button>
       </template>
-      <el-table-column prop="instructionCode" label="指示书编码" min-width="120" />
-      <el-table-column prop="instructionName" label="指示书名称" min-width="140" />
+      <el-table-column prop="instructionNo" label="指示书号" min-width="120" />
       <el-table-column prop="version" label="版本" width="80" />
-      <el-table-column prop="productCode" label="产品编码" min-width="120" />
-      <el-table-column prop="productName" label="产品名称" min-width="140" />
+      <el-table-column prop="workInstructionId" label="关联指导书ID" width="120" />
+      <el-table-column prop="projectNo" label="项目编号" min-width="120" />
+      <el-table-column prop="productCategory" label="产品类别" min-width="120" />
+      <el-table-column prop="productType" label="产品类型" min-width="120" />
+      <el-table-column prop="workOrderNo" label="生产订单编号" min-width="130" />
       <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">
           <el-tag :type="(getDictType('instructionStatus', row.status) || undefined) as any">
@@ -53,20 +55,29 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑指示书' : '新增指示书'" width="560px" destroy-on-close @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="formRules" :label-width="100">
-        <el-form-item label="指示书编码" prop="instructionCode">
-          <el-input v-model="form.instructionCode" placeholder="请输入" :disabled="isEdit" />
+        <el-form-item label="指示书号" prop="instructionNo">
+          <el-input v-model="form.instructionNo" placeholder="请输入" :disabled="isEdit" />
         </el-form-item>
-        <el-form-item label="指示书名称" prop="instructionName">
-          <el-input v-model="form.instructionName" placeholder="请输入" />
+        <el-form-item label="项目编号" prop="projectNo">
+          <el-input v-model="form.projectNo" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="版本" prop="version">
-          <el-input v-model="form.version" placeholder="请输入" />
+        <el-form-item label="WBS" prop="wbs">
+          <el-input v-model="form.wbs" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="产品编码" prop="productCode">
-          <el-input v-model="form.productCode" placeholder="请输入" />
+        <el-form-item label="产品类别" prop="productCategory">
+          <el-input v-model="form.productCategory" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="产品名称" prop="productName">
-          <el-input v-model="form.productName" placeholder="请输入" />
+        <el-form-item label="产品类型" prop="productType">
+          <el-input v-model="form.productType" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="生产订单编号" prop="workOrderNo">
+          <el-input v-model="form.workOrderNo" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="数量" prop="qty">
+          <el-input-number v-model="form.qty" :min="0" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="关联指导书ID" prop="workInstructionId">
+          <el-input-number v-model="form.workInstructionId" placeholder="请输入指导书ID" style="width: 100%" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" rows="3" placeholder="请输入" />
@@ -91,9 +102,9 @@ import { instructionApi } from '@/api/process/instruction'
 import type { InstructionVO, InstructionDTO, InstructionQuery } from '@/types/process'
 
 const query = reactive<InstructionQuery>({
-  instructionCode: undefined,
-  instructionName: undefined,
-  productCode: undefined,
+  instructionNo: undefined,
+  productCategory: undefined,
+  productType: undefined,
   status: undefined,
   pageNum: 1,
   pageSize: 20,
@@ -109,17 +120,19 @@ const formRef = ref()
 const editId = ref<number | null>(null)
 
 const form = reactive<InstructionDTO>({
-  instructionCode: '',
-  instructionName: '',
-  version: '',
-  productCode: '',
-  productName: '',
+  instructionNo: '',
+  projectNo: '',
+  wbs: '',
+  productCategory: '',
+  productType: '',
+  workOrderNo: '',
+  qty: undefined,
+  workInstructionId: undefined,
   remark: '',
 })
 
 const formRules = {
-  instructionCode: [{ required: true, message: '请输入指示书编码', trigger: 'blur' }],
-  instructionName: [{ required: true, message: '请输入指示书名称', trigger: 'blur' }],
+  instructionNo: [{ required: true, message: '请输入指示书号', trigger: 'blur' }],
 }
 
 async function loadData() {
@@ -150,11 +163,14 @@ function handleEdit(row: InstructionVO) {
   isEdit.value = true
   editId.value = row.id
   Object.assign(form, {
-    instructionCode: row.instructionCode,
-    instructionName: row.instructionName,
-    version: row.version,
-    productCode: row.productCode,
-    productName: row.productName,
+    instructionNo: row.instructionNo,
+    projectNo: row.projectNo,
+    wbs: row.wbs,
+    productCategory: row.productCategory,
+    productType: row.productType,
+    workOrderNo: row.workOrderNo,
+    qty: row.qty,
+    workInstructionId: row.workInstructionId,
     remark: row.remark,
   })
   dialogVisible.value = true
@@ -162,11 +178,14 @@ function handleEdit(row: InstructionVO) {
 
 function resetForm() {
   Object.assign(form, {
-    instructionCode: '',
-    instructionName: '',
-    version: '',
-    productCode: '',
-    productName: '',
+    instructionNo: '',
+    projectNo: '',
+    wbs: '',
+    productCategory: '',
+    productType: '',
+    workOrderNo: '',
+    qty: undefined,
+    workInstructionId: undefined,
     remark: '',
   })
   formRef.value?.clearValidate()

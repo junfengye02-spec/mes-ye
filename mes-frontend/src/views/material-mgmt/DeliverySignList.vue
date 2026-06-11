@@ -2,24 +2,11 @@
   <div class="delivery-sign-list">
     <el-card shadow="never" class="search-card">
       <el-form :model="query" inline @submit.prevent="handleSearch">
-        <el-form-item label="发货单号">
-          <el-input v-model="query.deliveryNo" placeholder="请输入" clearable style="width: 160px" />
+        <el-form-item label="工单号">
+          <el-input v-model="query.workOrderNo" placeholder="请输入" clearable style="width: 160px" />
         </el-form-item>
-        <el-form-item label="订单号">
-          <el-input v-model="query.orderNo" placeholder="请输入" clearable style="width: 160px" />
-        </el-form-item>
-        <el-form-item label="产品编码">
-          <el-input v-model="query.productCode" placeholder="请输入" clearable style="width: 160px" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="query.status" placeholder="请选择" clearable style="width: 140px">
-            <el-option
-              v-for="item in getDictList('deliverySignStatus')"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
+        <el-form-item label="物料编码">
+          <el-input v-model="query.materialCode" placeholder="请输入" clearable style="width: 160px" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -43,26 +30,19 @@
       </template>
       <el-table v-loading="loading" :data="list" border stripe>
         <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="deliveryNo" label="发货单号" min-width="140" />
-        <el-table-column prop="orderNo" label="订单号" min-width="120" />
-        <el-table-column prop="productCode" label="产品编码" min-width="120" />
-        <el-table-column prop="productName" label="产品名称" min-width="140" />
-        <el-table-column prop="deliveryQty" label="发货数量" width="100" align="right" />
-        <el-table-column prop="qtyUnit" label="单位" width="80" align="center" />
-        <el-table-column prop="deliveryDate" label="发货日期" width="120" />
-        <el-table-column prop="signDate" label="签收日期" width="120" />
-        <el-table-column prop="signPerson" label="签收人" width="100" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getDictType('deliverySignStatus', row.status || '') as any">
-              {{ getDictLabel('deliverySignStatus', row.status || '') }}
-            </el-tag>
-          </template>
-        </el-table-column>
+        <el-table-column prop="lineNo" label="行号" width="90" />
+        <el-table-column prop="workOrderNo" label="工单号" min-width="140" />
+        <el-table-column prop="materialCode" label="物料编码" min-width="120" />
+        <el-table-column prop="materialName" label="物料名称" min-width="140" />
+        <el-table-column prop="planDeliveryQty" label="计划发货数量" width="120" align="right" />
+        <el-table-column prop="pendingSignQty" label="待签收数量" width="120" align="right" />
+        <el-table-column prop="unit" label="单位" width="80" align="center" />
+        <el-table-column prop="deliveryWarehouse" label="发货仓库" min-width="120" />
+        <el-table-column prop="deliverer" label="发货人" width="100" />
+        <el-table-column prop="deliveryTime" label="发货时间" width="170" />
         <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{ row }">
             <el-button
-              v-if="row.status === 'PENDING' || !row.status"
               type="primary"
               link
               size="small"
@@ -94,33 +74,39 @@
       destroy-on-close
       @close="handleDialogClose"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="订单号" prop="orderNo">
-          <el-input v-model="form.orderNo" placeholder="请输入订单号" />
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <el-form-item label="行号" prop="lineNo">
+          <el-input v-model="form.lineNo" placeholder="请输入行号" />
         </el-form-item>
-        <el-form-item label="产品编码" prop="productCode">
-          <el-input v-model="form.productCode" placeholder="请输入产品编码" />
+        <el-form-item label="工单ID" prop="workOrderId">
+          <el-input-number v-model="form.workOrderId" :min="0" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="产品名称" prop="productName">
-          <el-input v-model="form.productName" placeholder="请输入产品名称" />
+        <el-form-item label="工单号" prop="workOrderNo">
+          <el-input v-model="form.workOrderNo" placeholder="请输入工单号" />
         </el-form-item>
-        <el-form-item label="发货数量" prop="deliveryQty">
-          <el-input-number v-model="form.deliveryQty" :min="0.0001" :precision="4" style="width: 100%" />
+        <el-form-item label="物料ID" prop="materialId">
+          <el-input-number v-model="form.materialId" :min="0" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="单位" prop="qtyUnit">
-          <el-input v-model="form.qtyUnit" placeholder="请输入单位" />
+        <el-form-item label="物料编码" prop="materialCode">
+          <el-input v-model="form.materialCode" placeholder="请输入物料编码" />
         </el-form-item>
-        <el-form-item label="发货日期" prop="deliveryDate">
-          <el-date-picker
-            v-model="form.deliveryDate"
-            type="date"
-            placeholder="选择日期"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
+        <el-form-item label="物料名称" prop="materialName">
+          <el-input v-model="form.materialName" placeholder="请输入物料名称" />
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+        <el-form-item label="计划发货数量" prop="planDeliveryQty">
+          <el-input-number v-model="form.planDeliveryQty" :min="0.0001" :precision="4" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="待签收数量" prop="pendingSignQty">
+          <el-input-number v-model="form.pendingSignQty" :min="0.0001" :precision="4" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="单位" prop="unit">
+          <el-input v-model="form.unit" placeholder="请输入单位" />
+        </el-form-item>
+        <el-form-item label="发货仓库" prop="deliveryWarehouse">
+          <el-input v-model="form.deliveryWarehouse" placeholder="请输入发货仓库" />
+        </el-form-item>
+        <el-form-item label="发货存储地点" prop="deliveryLocation">
+          <el-input v-model="form.deliveryLocation" placeholder="请输入发货存储地点" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -136,7 +122,6 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
-import { getDictLabel, getDictType, getDictList } from '@/utils/dict'
 import type { DeliverySignVO, DeliverySignDTO, DeliverySignQuery } from '@/types/material-mgmt'
 import { deliverySignApi } from '@/api/material-mgmt/deliverySign'
 
@@ -144,10 +129,8 @@ const loading = ref(false)
 const list = ref<DeliverySignVO[]>([])
 const total = ref(0)
 const query = reactive<DeliverySignQuery>({
-  deliveryNo: '',
-  orderNo: '',
-  productCode: '',
-  status: '',
+  workOrderNo: '',
+  materialCode: '',
   pageNum: 1,
   pageSize: 20,
 })
@@ -156,19 +139,24 @@ const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const submitLoading = ref(false)
 const form = reactive<DeliverySignDTO>({
-  orderNo: '',
-  productCode: '',
-  productName: '',
-  deliveryQty: undefined,
-  qtyUnit: '',
-  deliveryDate: '',
-  remark: '',
+  lineNo: '',
+  workOrderId: undefined,
+  workOrderNo: '',
+  materialId: undefined,
+  materialCode: '',
+  materialName: '',
+  planDeliveryQty: undefined,
+  pendingSignQty: undefined,
+  unit: '',
+  deliveryWarehouse: '',
+  deliveryLocation: '',
 })
 
 const rules: FormRules = {
-  orderNo: [{ required: true, message: '请输入订单号', trigger: 'blur' }],
-  productCode: [{ required: true, message: '请输入产品编码', trigger: 'blur' }],
-  deliveryQty: [{ required: true, message: '请输入发货数量', trigger: 'blur' }],
+  workOrderNo: [{ required: true, message: '请输入工单号', trigger: 'blur' }],
+  materialCode: [{ required: true, message: '请输入物料编码', trigger: 'blur' }],
+  planDeliveryQty: [{ required: true, message: '请输入计划发货数量', trigger: 'blur' }],
+  pendingSignQty: [{ required: true, message: '请输入待签收数量', trigger: 'blur' }],
 }
 
 async function loadList() {
@@ -188,23 +176,25 @@ function handleSearch() {
 }
 
 function handleReset() {
-  query.deliveryNo = ''
-  query.orderNo = ''
-  query.productCode = ''
-  query.status = ''
+  query.workOrderNo = ''
+  query.materialCode = ''
   query.pageNum = 1
   loadList()
 }
 
 function handleAdd() {
   Object.assign(form, {
-    orderNo: '',
-    productCode: '',
-    productName: '',
-    deliveryQty: undefined,
-    qtyUnit: '',
-    deliveryDate: '',
-    remark: '',
+    lineNo: '',
+    workOrderId: undefined,
+    workOrderNo: '',
+    materialId: undefined,
+    materialCode: '',
+    materialName: '',
+    planDeliveryQty: undefined,
+    pendingSignQty: undefined,
+    unit: '',
+    deliveryWarehouse: '',
+    deliveryLocation: '',
   })
   dialogVisible.value = true
 }

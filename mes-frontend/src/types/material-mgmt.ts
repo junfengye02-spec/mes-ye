@@ -26,29 +26,79 @@ export interface RequisitionVO extends BaseEntity {
   requisitionNo?: string
   workOrderId?: number
   workOrderNo?: string
-  materialId?: number
-  materialCode?: string
-  materialName?: string
-  requiredQty?: number
-  issuedQty?: number
+  productCode?: string
+  productName?: string
+  planQty?: number
+  actualQty?: number
+  qualifiedQty?: number
   qtyUnit?: string
+  mainOrg?: string
+  planStartTime?: string
+  planEndTime?: string
+  actualStartTime?: string
+  actualEndTime?: string
+  salesOrderLine?: string
+  projectName?: string
+  wbsElement?: string
   status?: string
-  remark?: string
+  items?: RequisitionItemVO[]
 }
 
 export interface RequisitionDTO {
+  requisitionNo?: string
   workOrderId?: number
-  materialId?: number
-  requiredQty?: number
+  workOrderNo?: string
+  productCode?: string
+  productName?: string
+  planQty?: number
+  actualQty?: number
+  qualifiedQty?: number
   qtyUnit?: string
-  remark?: string
+  mainOrg?: string
+  planStartTime?: string
+  planEndTime?: string
+  actualStartTime?: string
+  actualEndTime?: string
+  salesOrderLine?: string
+  projectName?: string
+  wbsElement?: string
+  items?: RequisitionItemDTO[]
 }
 
 export interface RequisitionQuery extends PageQuery {
   requisitionNo?: string
   workOrderNo?: string
-  materialCode?: string
+  workOrderId?: number
+  productCode?: string
   status?: string
+}
+
+export interface RequisitionItemVO {
+  id?: number
+  requisitionId?: number
+  materialId?: number
+  materialCode?: string
+  materialName?: string
+  demandQty?: number
+  pendingQty?: number
+  issueQty?: number
+  unit?: string
+  issueLocation?: string
+  demandTime?: string
+  description?: string
+  isFinal?: number
+}
+
+export interface RequisitionItemDTO {
+  materialId?: number
+  materialCode?: string
+  materialName?: string
+  demandQty?: number
+  issueQty?: number
+  unit?: string
+  issueLocation?: string
+  demandTime?: string
+  description?: string
 }
 
 export interface RequisitionOrderVO extends BaseEntity {
@@ -185,59 +235,73 @@ export interface MaterialReturnVO extends BaseEntity {
   returnNo?: string
   workOrderId?: number
   workOrderNo?: string
-  materialId?: number
-  materialCode?: string
-  materialName?: string
-  returnQty?: number
-  qtyUnit?: string
-  returnReason?: string
+  orderNo?: string
+  productCode?: string
+  productName?: string
+  projectName?: string
+  newOrRepairType?: string
+  businessType?: string
+  workType?: string
+  flowCode?: string
+  planQty?: number
+  completedQty?: number
   status?: string
-  remark?: string
+  flowStatus?: string
 }
 
 export interface MaterialReturnDTO {
+  returnNo?: string
   workOrderId?: number
-  materialId?: number
-  returnQty?: number
-  qtyUnit?: string
-  returnReason?: string
-  remark?: string
+  workOrderNo?: string
+  orderNo?: string
+  productCode?: string
+  productName?: string
+  projectName?: string
+  wbsElement?: string
+  newOrRepairType?: string
+  businessType?: string
+  flowCode?: string
+  planQty?: number
+  completedQty?: number
 }
 
 export interface MaterialReturnQuery extends PageQuery {
   returnNo?: string
   workOrderNo?: string
-  materialCode?: string
+  workOrderId?: number
   status?: string
 }
 
 export interface DeliverySignVO extends BaseEntity {
-  deliveryNo?: string
-  orderNo?: string
-  productCode?: string
-  productName?: string
-  deliveryQty?: number
-  qtyUnit?: string
-  deliveryDate?: string
-  signDate?: string
-  signPerson?: string
-  status?: string
-  remark?: string
+  lineNo?: string
+  workOrderId?: number
+  workOrderNo?: string
+  materialCode?: string
+  materialName?: string
+  planDeliveryQty?: number
+  pendingSignQty?: number
+  unit?: string
+  deliveryWarehouse?: string
+  deliverer?: string
+  deliveryTime?: string
 }
 
 export interface DeliverySignDTO {
-  orderNo?: string
-  productCode?: string
-  productName?: string
-  deliveryQty?: number
-  qtyUnit?: string
-  deliveryDate?: string
-  remark?: string
+  lineNo?: string
+  workOrderId?: number
+  workOrderNo?: string
+  materialId?: number
+  materialCode?: string
+  materialName?: string
+  planDeliveryQty?: number
+  pendingSignQty?: number
+  unit?: string
+  deliveryWarehouse?: string
+  deliveryLocation?: string
 }
 
 export interface DeliverySignQuery extends PageQuery {
-  deliveryNo?: string
-  orderNo?: string
-  productCode?: string
-  status?: string
+  workOrderNo?: string
+  workOrderId?: number
+  materialCode?: string
 }

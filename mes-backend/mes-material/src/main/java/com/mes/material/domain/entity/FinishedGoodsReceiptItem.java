@@ -1,22 +1,19 @@
 package com.mes.material.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mes.common.core.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
  * 完工入库明细表实体
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("mes_finished_goods_receipt_item")
-public class FinishedGoodsReceiptItem implements Serializable {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class FinishedGoodsReceiptItem extends BaseEntity {
     private Long receiptId;
     private String itemCode;
     private Long workOrderId;

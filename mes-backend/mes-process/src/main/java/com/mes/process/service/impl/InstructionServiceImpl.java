@@ -3,6 +3,10 @@ package com.mes.process.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mes.common.core.PageQuery;
 import com.mes.common.core.PageResult;
 import com.mes.common.exception.BusinessException;
@@ -32,7 +36,9 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 指示书 Service 实现
@@ -43,9 +49,13 @@ import java.util.List;
 public class InstructionServiceImpl extends ServiceImpl<InstructionMapper, Instruction>
         implements IInstructionService {
 
+    private static final String EXT_KEY_GT_TYPE = "gtType";
+    private static final String EXT_KEY_REPAIR_GUIDE_DRAWING = "repairGuideDrawing";
+
     private final InstructionStageMapper stageMapper;
     private final InstructionSerialMapper serialMapper;
     private final InstructionFlowLogMapper flowLogMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Override
     public PageResult<InstructionVO> page(InstructionQuery query) {
@@ -101,7 +111,7 @@ public class InstructionServiceImpl extends ServiceImpl<InstructionMapper, Instr
     public Long create(InstructionDTO dto) {
         // 新建指示书，版本为 V1，状态为 DRAFT
         Instruction entity = new Instruction();
-        BeanUtils.copyProperties(dto, entity);
+        applyDto(dto, entity);
         entity.setVersion("V1");
         entity.setStatus(InstructionStatus.DRAFT.getCode());
         save(entity);
@@ -113,7 +123,7 @@ public class InstructionServiceImpl extends ServiceImpl<InstructionMapper, Instr
         // 记录流程日志
         saveFlowLog(entity.getId(), "创建", "创建指示书 " + entity.getInstructionNo() + " V1");
 
-        log.info("新增指示书: {} V{}", entity.getInstructionNo(), entity.getVersion());
+        log.info("新增指示书: {} {}", entity.getInstructionNo(), entity.getVersion());
         return entity.getId();
     }
 
@@ -127,7 +137,7 @@ public class InstructionServiceImpl extends ServiceImpl<InstructionMapper, Instr
         String version = existing.getVersion();
         String status = existing.getStatus();
 
-        BeanUtils.copyProperties(dto, existing);
+        applyDto(dto, existing);
         existing.setId(id);
         existing.setVersion(version);
         existing.setStatus(status);
@@ -302,7 +312,57 @@ public class InstructionServiceImpl extends ServiceImpl<InstructionMapper, Instr
     private InstructionVO toVO(Instruction entity) {
         InstructionVO vo = new InstructionVO();
         BeanUtils.copyProperties(entity, vo);
+        Map<String, Object> extensionData = parseExtensionData(entity.getExtensionDataJson());
+        vo.setExtensionData(extensionData);
+        vo.setGtType(readText(extensionData, EXT_KEY_GT_TYPE));
+        vo.setRepairGuideDrawing(readText(extensionData, EXT_KEY_REPAIR_GUIDE_DRAWING));
         return vo;
+    }
+
+    private void applyDto(InstructionDTO dto, Instruction entity) {
+        BeanUtils.copyProperties(dto, entity, "extensionData", "gtType", "repairGuideDrawing");
+        entity.setExtensionDataJson(writeExtensionData(dto));
+    }
+
+    private String writeExtensionData(InstructionDTO dto) {
+        Map<String, Object> extensionData = new LinkedHashMap<>();
+        if (dto.getExtensionData() != null) {
+            extensionData.putAll(dto.getExtensionData());
+        }
+        if (dto.getGtType() != null) {
+            extensionData.put(EXT_KEY_GT_TYPE, dto.getGtType());
+        }
+        if (dto.getRepairGuideDrawing() != null) {
+            extensionData.put(EXT_KEY_REPAIR_GUIDE_DRAWING, dto.getRepairGuideDrawing());
+        }
+        if (extensionData.isEmpty()) {
+            return null;
+        }
+        return writeJson(extensionData);
+    }
+
+    private Map<String, Object> parseExtensionData(String json) {
+        if (!StringUtils.hasText(json)) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() { });
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ResultCode.FAIL, "指示书扩展属性JSON解析失败");
+        }
+    }
+
+    private String readText(Map<String, Object> extensionData, String key) {
+        Object value = extensionData.get(key);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private String writeJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ResultCode.FAIL, "指示书扩展属性JSON序列化失败");
+        }
     }
 
     private InstructionStageVO toStageVO(InstructionStage entity) {

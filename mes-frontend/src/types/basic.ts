@@ -57,60 +57,61 @@ export interface MaterialPriceVO extends BaseEntity {
   materialId: number
   materialCode?: string
   materialName?: string
-  priceType?: string
-  price?: number
-  currency?: string
-  effectiveDate?: string
-  expirationDate?: string
-  supplier?: string
-  remark?: string
+  unitPrice?: number
+  unit?: string
 }
 
 export interface MaterialPriceDTO {
   materialId: number
-  priceType?: string
-  price?: number
-  currency?: string
-  effectiveDate?: string
-  expirationDate?: string
-  supplier?: string
-  remark?: string
+  unitPrice?: number
+  unit?: string
 }
 
 export interface MaterialPriceQuery extends PageQuery {
   materialCode?: string
   materialName?: string
-  priceType?: string
-  supplier?: string
 }
 
 export interface WorkCenterVO extends BaseEntity {
   workCenterCode: string
   workCenterName: string
-  workCenterType?: string
-  factory?: string
-  planOrg?: string
-  capacity?: number
-  capacityUnit?: string
-  enabled?: number
-  remark?: string
+  workCenterCategory?: string
+  businessUnit?: string
+  workCalendar?: string
+  resourceOrder?: number
+  usageQty?: number
+  usageUnit?: string
+  batchQty?: number
+  efficiency?: number
+  resourceType?: string
+  resourceSubtype?: string
+  resourceCapacity?: number
+  processNoInterrupt?: number
+  processNoCrossDay?: number
+  fixedTaktProduction?: number
 }
 
 export interface WorkCenterDTO {
   workCenterCode: string
   workCenterName: string
-  workCenterType?: string
-  factory?: string
-  planOrg?: string
-  capacity?: number
-  capacityUnit?: string
-  enabled?: number
-  remark?: string
+  workCenterCategory?: string
+  businessUnit?: string
+  workCalendar?: string
+  resourceOrder?: number
+  usageQty?: number
+  usageUnit?: string
+  batchQty?: number
+  efficiency?: number
+  resourceType?: string
+  resourceSubtype?: string
+  resourceCapacity?: number
+  processNoInterrupt?: number
+  processNoCrossDay?: number
+  fixedTaktProduction?: number
 }
 
 export interface WorkCenterQuery extends PageQuery {
   workCenterCode?: string
   workCenterName?: string
-  workCenterType?: string
-  factory?: string
+  workCenterCategory?: string
 }

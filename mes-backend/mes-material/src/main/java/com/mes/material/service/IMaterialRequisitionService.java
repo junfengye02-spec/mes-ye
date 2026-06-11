@@ -11,6 +11,7 @@ public interface IMaterialRequisitionService extends IService<MaterialRequisitio
     PageResult<MaterialRequisitionVO> page(MaterialRequisitionQuery query);
     MaterialRequisitionVO getDetail(Long id);
     Long create(MaterialRequisitionDTO dto);
+    Long createFromMrp(MaterialRequisitionDTO dto);
     void update(Long id, MaterialRequisitionDTO dto);
     void delete(Long id);
 }

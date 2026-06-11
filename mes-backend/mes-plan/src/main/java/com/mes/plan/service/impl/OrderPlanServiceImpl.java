@@ -7,6 +7,7 @@ import com.mes.common.core.PageResult;
 import com.mes.common.result.ResultCode;
 import com.mes.common.utils.AssertUtil;
 import com.mes.plan.domain.dto.OrderPlanDTO;
+import com.mes.plan.domain.dto.ProductionPlanDTO;
 import com.mes.plan.domain.entity.OrderPlan;
 import com.mes.plan.domain.query.OrderPlanQuery;
 import com.mes.plan.domain.vo.OrderPlanVO;
@@ -18,7 +19,7 @@ import com.mes.plan.service.IProductionPlanService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -35,9 +36,11 @@ public class OrderPlanServiceImpl extends ServiceImpl<OrderPlanMapper, OrderPlan
         implements IOrderPlanService {
 
     private final IPlanStatusLogService planStatusLogService;
+    private final ObjectProvider<IProductionPlanService> productionPlanServiceProvider;
 
     @Override
     public PageResult<OrderPlanVO> page(OrderPlanQuery query) {
+        String businessType = resolveBusinessType(query.getBusinessType(), query.getWorkType());
         LambdaQueryWrapper<OrderPlan> wrapper = new LambdaQueryWrapper<OrderPlan>()
                 .like(StringUtils.hasText(query.getOrderNo()),
                         OrderPlan::getOrderNo, query.getOrderNo())
@@ -51,8 +54,8 @@ public class OrderPlanServiceImpl extends ServiceImpl<OrderPlanMapper, OrderPlan
                         OrderPlan::getFlowStatus, query.getFlowStatus())
                 .eq(StringUtils.hasText(query.getExpandStatus()),
                         OrderPlan::getExpandStatus, query.getExpandStatus())
-                .eq(StringUtils.hasText(query.getWorkType()),
-                        OrderPlan::getWorkType, query.getWorkType())
+                .eq(StringUtils.hasText(businessType),
+                        OrderPlan::getBusinessType, businessType)
                 .eq(StringUtils.hasText(query.getMachineModel()),
                         OrderPlan::getMachineModel, query.getMachineModel())
                 .eq(StringUtils.hasText(query.getProductCategory()),
@@ -217,20 +220,47 @@ public class OrderPlanServiceImpl extends ServiceImpl<OrderPlanMapper, OrderPlan
         AssertUtil.isTrue(OrderPlanStatus.RELEASED.getCode().equals(entity.getStatus()),
                 "仅已下达状态的订单计划可以展开");
 
-        // 更新展开状态
+        Long productionPlanId = productionPlanServiceProvider.getObject()
+                .create(buildProductionPlan(entity));
+
         entity.setExpandStatus(ExpandStatus.EXPANDED.getCode());
         updateById(entity);
 
         planStatusLogService.log(PlanType.ORDER.getCode(), id,
                 ExpandStatus.UNEXPANDED.getCode(), ExpandStatus.EXPANDED.getCode(), "展开",
-                "订单计划 " + entity.getOrderNo() + " 展开为生产计划");
+                "订单计划 " + entity.getOrderNo() + " 展开为生产计划，生产计划ID=" + productionPlanId);
 
-        log.info("订单计划展开: {}", entity.getOrderNo());
+        log.info("订单计划展开: {}, 生产计划ID={}", entity.getOrderNo(), productionPlanId);
     }
 
     private OrderPlanVO toVO(OrderPlan entity) {
         OrderPlanVO vo = new OrderPlanVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setWorkType(entity.getBusinessType());
         return vo;
+    }
+
+    private String resolveBusinessType(String businessType, String legacyWorkType) {
+        return StringUtils.hasText(businessType) ? businessType : legacyWorkType;
+    }
+
+    private ProductionPlanDTO buildProductionPlan(OrderPlan entity) {
+        ProductionPlanDTO dto = new ProductionPlanDTO();
+        dto.setOrderPlanId(entity.getId());
+        dto.setOrderNo(entity.getOrderNo());
+        dto.setProductCode(entity.getProductCode());
+        dto.setProductName(entity.getProductName());
+        dto.setNewOrRepairType(entity.getNewOrRepairType());
+        dto.setBusinessType(entity.getBusinessType());
+        dto.setMachineModel(entity.getMachineModel());
+        dto.setProductCategory(entity.getProductCategory());
+        dto.setProductType(entity.getProductType());
+        dto.setWbsElement(entity.getWbsElement());
+        dto.setPlanOrg(entity.getPlanOrg());
+        dto.setPlanQty(entity.getPlanQty());
+        dto.setQtyUnit(entity.getQtyUnit());
+        dto.setPlanStartTime(entity.getPlanStartTime());
+        dto.setPlanEndTime(entity.getPlanEndTime());
+        return dto;
     }
 }

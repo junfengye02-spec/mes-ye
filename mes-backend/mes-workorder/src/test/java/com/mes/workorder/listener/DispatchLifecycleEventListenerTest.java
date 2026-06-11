@@ -6,6 +6,7 @@ import com.mes.workorder.domain.entity.WorkOrder;
 import com.mes.workorder.enums.WorkOrderStatus;
 import com.mes.workorder.mapper.WorkOrderMapper;
 import com.mes.workorder.service.IWorkOrderService;
+import org.mockito.InOrder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +50,20 @@ class DispatchLifecycleEventListenerTest {
 
         verify(workOrderService, never()).start(10L);
         verify(workOrderService).complete(10L);
+    }
+
+    @Test
+    @DisplayName("派工全部完工但工单仍为已下发时，先自动开工再自动完工")
+    void onDispatchAllTasksCompleted_startsThenCompletesReleasedWorkOrder() {
+        when(workOrderMapper.selectById(10L))
+                .thenReturn(workOrder(10L, WorkOrderStatus.RELEASED))
+                .thenReturn(workOrder(10L, WorkOrderStatus.IN_PROGRESS));
+
+        listener.onDispatchAllTasksCompleted(new DispatchAllTasksCompletedEvent(this, 10L, "WO-001"));
+
+        InOrder inOrder = inOrder(workOrderService);
+        inOrder.verify(workOrderService).start(10L);
+        inOrder.verify(workOrderService).complete(10L);
     }
 
     private static WorkOrder workOrder(Long id, WorkOrderStatus status) {

@@ -1,22 +1,17 @@
 package com.mes.query.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mes.common.core.BaseEntity;
 import lombok.Data;
-
-import java.io.Serializable;
-import java.time.LocalDateTime;
+import lombok.EqualsAndHashCode;
 
 /**
  * 交班记录附件表实体
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("mes_shift_handover_attachment")
-public class ShiftHandoverAttachment implements Serializable {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class ShiftHandoverAttachment extends BaseEntity {
 
     /** 交班记录ID */
     private Long handoverId;
@@ -41,10 +36,4 @@ public class ShiftHandoverAttachment implements Serializable {
 
     /** 状态 */
     private String loadStatus;
-
-    /** 创建人 */
-    private String createdBy;
-
-    /** 创建时间 */
-    private LocalDateTime createdTime;
 }

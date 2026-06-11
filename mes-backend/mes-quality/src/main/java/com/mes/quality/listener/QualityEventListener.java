@@ -71,7 +71,7 @@ public class QualityEventListener {
         RecheckRequestDTO dto = new RecheckRequestDTO();
         dto.setWorkOrderId(event.getWorkOrderId());
         dto.setDispatchTaskId(event.getDispatchTaskId());
-        dto.setProductionOrderNo(event.getOrderNo());
+        dto.setProductionOrderNo(resolveProductionOrderNo(event));
         dto.setRecheckRequirement("异常联络单提交后触发质量复检");
         dto.setRecheckReason("异常联络单 " + event.getContactNo()
                 + " 已提交；分类=" + event.getEventCategory()
@@ -79,6 +79,13 @@ public class QualityEventListener {
         dto.setRecheckProposer("system");
         dto.setRecheckProposeTime(LocalDateTime.now());
         recheckRequestService.create(dto);
+    }
+
+    private String resolveProductionOrderNo(AbnormalSubmittedEvent event) {
+        if (StringUtils.hasText(event.getWorkOrderNo())) {
+            return event.getWorkOrderNo();
+        }
+        return event.getOrderNo();
     }
 
     private String buildFailureReason(String workNo, String remark) {

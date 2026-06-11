@@ -128,6 +128,7 @@ public class MaterialReturnServiceImpl extends ServiceImpl<MaterialReturnMapper,
     private MaterialReturnVO toVO(MaterialReturn entity) {
         MaterialReturnVO vo = new MaterialReturnVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setWorkType(entity.getBusinessType());
         return vo;
     }
 }

@@ -57,7 +57,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="furnaceNo" label="炉号" width="100" />
+        <el-table-column prop="resourceGroupCode" label="资源组" width="120" />
         <el-table-column prop="belongProcess" label="所属工序" min-width="120" show-overflow-tooltip />
         <el-table-column prop="factory" label="工厂" width="100" />
         <el-table-column prop="businessOrg" label="业务组织" min-width="120" show-overflow-tooltip />

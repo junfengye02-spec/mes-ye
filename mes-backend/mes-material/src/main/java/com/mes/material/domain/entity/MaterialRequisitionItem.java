@@ -1,11 +1,10 @@
 package com.mes.material.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mes.common.core.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -13,11 +12,9 @@ import java.time.LocalDateTime;
  * 生产领料明细表实体
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("mes_material_requisition_item")
-public class MaterialRequisitionItem implements Serializable {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class MaterialRequisitionItem extends BaseEntity {
     private Long requisitionId;
     private Long workOrderId;
     private Long workId;
@@ -32,6 +29,4 @@ public class MaterialRequisitionItem implements Serializable {
     private LocalDateTime demandTime;
     private String description;
     private Integer isFinal;
-    private LocalDateTime createdTime;
-    private LocalDateTime updatedTime;
 }

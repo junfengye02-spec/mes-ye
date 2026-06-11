@@ -7,12 +7,6 @@
       <el-form-item label="物料名称">
         <el-input v-model="query.materialName" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
-      <el-form-item label="价格类型">
-        <el-input v-model="query.priceType" placeholder="请输入" clearable style="width: 180px" />
-      </el-form-item>
-      <el-form-item label="供应商">
-        <el-input v-model="query.supplier" placeholder="请输入" clearable style="width: 180px" />
-      </el-form-item>
     </SearchForm>
 
     <DataTable
@@ -31,12 +25,8 @@
       </template>
       <el-table-column prop="materialCode" label="物料编码" min-width="120" />
       <el-table-column prop="materialName" label="物料名称" min-width="140" />
-      <el-table-column prop="priceType" label="价格类型" min-width="100" />
-      <el-table-column prop="price" label="价格" width="100" />
-      <el-table-column prop="currency" label="币种" width="80" />
-      <el-table-column prop="effectiveDate" label="生效日期" width="110" />
-      <el-table-column prop="expirationDate" label="失效日期" width="110" />
-      <el-table-column prop="supplier" label="供应商" min-width="120" />
+      <el-table-column prop="unitPrice" label="物料单价" width="120" />
+      <el-table-column prop="unit" label="单位" width="100" />
       <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
           <el-button v-auth="['basic:materialPrice:detail']" link type="info" @click.stop="handleView(row)">查看</el-button>
@@ -64,32 +54,17 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="价格类型" prop="priceType">
-          <el-input v-model="form.priceType" placeholder="请输入" />
-        </el-form-item>
-        <el-form-item label="价格" prop="price">
+        <el-form-item label="物料单价" prop="unitPrice">
           <el-input-number
-            :model-value="form.price ?? undefined"
-            @update:model-value="(v: number | undefined) => { form.price = v }"
+            :model-value="form.unitPrice ?? undefined"
+            @update:model-value="(v: number | undefined) => { form.unitPrice = v }"
             :precision="4"
             :min="0"
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="币种" prop="currency">
-          <el-input v-model="form.currency" placeholder="请输入" />
-        </el-form-item>
-        <el-form-item label="生效日期" prop="effectiveDate">
-          <el-date-picker v-model="form.effectiveDate" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="失效日期" prop="expirationDate">
-          <el-date-picker v-model="form.expirationDate" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="供应商" prop="supplier">
-          <el-input v-model="form.supplier" placeholder="请输入" />
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" rows="3" placeholder="请输入" />
+        <el-form-item label="单位" prop="unit">
+          <el-input v-model="form.unit" placeholder="请输入" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -119,8 +94,6 @@ import type { MaterialVO } from '@/types/basic'
 const query = reactive<MaterialPriceQuery>({
   materialCode: undefined,
   materialName: undefined,
-  priceType: undefined,
-  supplier: undefined,
   pageNum: 1,
   pageSize: 20,
 })
@@ -137,17 +110,13 @@ const materialOptions = ref<MaterialVO[]>([])
 
 const form = reactive({
   materialId: undefined as number | undefined,
-  priceType: '',
-  price: undefined as number | undefined,
-  currency: '',
-  effectiveDate: '',
-  expirationDate: '',
-  supplier: '',
-  remark: '',
+  unitPrice: undefined as number | undefined,
+  unit: '',
 } as MaterialPriceDTO & { materialId?: number })
 
 const formRules = {
   materialId: [{ required: true, message: '请选择物料', trigger: 'change' }],
+  unitPrice: [{ required: true, message: '请输入物料单价', trigger: 'blur' }],
 }
 
 async function loadMaterials() {
@@ -188,13 +157,8 @@ function handleEdit(row: MaterialPriceVO) {
   editId.value = row.id
   Object.assign(form, {
     materialId: row.materialId,
-    priceType: row.priceType,
-    price: row.price,
-    currency: row.currency,
-    effectiveDate: row.effectiveDate,
-    expirationDate: row.expirationDate,
-    supplier: row.supplier,
-    remark: row.remark,
+    unitPrice: row.unitPrice,
+    unit: row.unit,
   })
   dialogVisible.value = true
 }
@@ -202,13 +166,8 @@ function handleEdit(row: MaterialPriceVO) {
 function resetForm() {
   Object.assign(form, {
     materialId: undefined,
-    priceType: '',
-    price: undefined,
-    currency: '',
-    effectiveDate: '',
-    expirationDate: '',
-    supplier: '',
-    remark: '',
+    unitPrice: undefined,
+    unit: '',
   })
   formRef.value?.clearValidate()
 }
@@ -219,13 +178,8 @@ async function handleSave() {
   try {
     const dto: MaterialPriceDTO = {
       materialId: form.materialId!,
-      priceType: form.priceType,
-      price: form.price,
-      currency: form.currency,
-      effectiveDate: form.effectiveDate,
-      expirationDate: form.expirationDate,
-      supplier: form.supplier,
-      remark: form.remark,
+      unitPrice: form.unitPrice,
+      unit: form.unit,
     }
     if (isEdit.value && editId.value) {
       await materialPriceApi.update(editId.value, dto)
@@ -245,11 +199,8 @@ function handleView(row: MaterialPriceVO) {
   const lines = [
     `物料编码：${row.materialCode ?? '-'}`,
     `物料名称：${row.materialName ?? '-'}`,
-    `价格类型：${row.priceType ?? '-'}`,
-    `价格：${row.price ?? '-'} ${row.currency ?? ''}`,
-    `生效日期：${row.effectiveDate ?? '-'}`,
-    `失效日期：${row.expirationDate ?? '-'}`,
-    `供应商：${row.supplier ?? '-'}`,
+    `物料单价：${row.unitPrice ?? '-'}`,
+    `单位：${row.unit ?? '-'}`,
   ].join('\n')
   ElMessageBox.alert(lines, '物料价格详情', { confirmButtonText: '关闭' }).catch(() => {})
 }

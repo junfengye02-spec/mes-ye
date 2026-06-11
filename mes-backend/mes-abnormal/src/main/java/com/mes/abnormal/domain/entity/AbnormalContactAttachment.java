@@ -1,22 +1,19 @@
 package com.mes.abnormal.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mes.common.core.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
  * 异常联络单附件表实体
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("mes_abnormal_contact_attachment")
-public class AbnormalContactAttachment implements Serializable {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class AbnormalContactAttachment extends BaseEntity {
 
     /** 异常联络单ID */
     private Long contactId;
@@ -45,15 +42,15 @@ public class AbnormalContactAttachment implements Serializable {
     /** 提交时间 */
     private LocalDateTime submitTime;
 
+    /** 签章供应商 */
+    private String signatureProvider;
+
+    /** 签章状态 */
+    private String signatureStatus;
+
     /** 法大大标识 */
     private String fadadaFlag;
 
     /** 已签 */
     private Integer signed;
-
-    /** 创建时间 */
-    private LocalDateTime createdTime;
-
-    /** 修改时间 */
-    private LocalDateTime updatedTime;
 }

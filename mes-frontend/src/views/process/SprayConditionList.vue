@@ -2,10 +2,13 @@
   <div class="page-container">
     <SearchForm v-model="query" @search="loadData">
       <el-form-item label="条件编码">
-        <el-input v-model="query.conditionCode" placeholder="请输入" clearable style="width: 180px" />
+        <el-input v-model="query.conditionNo" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
-      <el-form-item label="条件名称">
-        <el-input v-model="query.conditionName" placeholder="请输入" clearable style="width: 180px" />
+      <el-form-item label="喷枪型号">
+        <el-input v-model="query.sprayGunModel" placeholder="请输入" clearable style="width: 180px" />
+      </el-form-item>
+      <el-form-item label="设备">
+        <el-input v-model="query.equipment" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
     </SearchForm>
 
@@ -23,12 +26,12 @@
           <el-icon><Plus /></el-icon> 新增
         </el-button>
       </template>
-      <el-table-column prop="conditionCode" label="条件编码" min-width="120" />
-      <el-table-column prop="conditionName" label="条件名称" min-width="140" />
-      <el-table-column prop="temperature" label="温度" width="100" />
-      <el-table-column prop="humidity" label="湿度" width="100" />
-      <el-table-column prop="paintType" label="涂料类型" min-width="100" />
-      <el-table-column prop="thickness" label="厚度" width="100" />
+      <el-table-column prop="conditionNo" label="条件号" min-width="120" />
+      <el-table-column prop="sprayGunModel" label="喷枪型号" min-width="120" />
+      <el-table-column prop="equipment" label="设备" min-width="120" />
+      <el-table-column prop="powderFeedRate" label="送粉量(g/min)" width="120" />
+      <el-table-column prop="sprayDistance" label="喷涂距离(mm)" width="120" />
+      <el-table-column prop="powderType" label="对应粉末" min-width="120" />
       <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="handleEdit(row)">编辑</el-button>
@@ -39,26 +42,32 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑喷涂条件' : '新增喷涂条件'" width="560px" destroy-on-close @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="formRules" :label-width="100">
-        <el-form-item label="条件编码" prop="conditionCode">
-          <el-input v-model="form.conditionCode" placeholder="请输入" :disabled="isEdit" />
+        <el-form-item label="条件号" prop="conditionNo">
+          <el-input v-model="form.conditionNo" placeholder="请输入" :disabled="isEdit" />
         </el-form-item>
-        <el-form-item label="条件名称" prop="conditionName">
-          <el-input v-model="form.conditionName" placeholder="请输入" />
+        <el-form-item label="部长审批人" prop="ministerApprover">
+          <el-input v-model="form.ministerApprover" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="温度" prop="temperature">
-          <el-input v-model="form.temperature" placeholder="请输入" />
+        <el-form-item label="工段审批人" prop="sectionApprover">
+          <el-input v-model="form.sectionApprover" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="湿度" prop="humidity">
-          <el-input v-model="form.humidity" placeholder="请输入" />
+        <el-form-item label="系长审批人" prop="leaderApprover">
+          <el-input v-model="form.leaderApprover" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="涂料类型" prop="paintType">
-          <el-input v-model="form.paintType" placeholder="请输入" />
+        <el-form-item label="送粉量(g/min)" prop="powderFeedRate">
+          <el-input-number v-model="form.powderFeedRate" :min="0" :precision="4" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="厚度" prop="thickness">
-          <el-input v-model="form.thickness" placeholder="请输入" />
+        <el-form-item label="喷涂距离(mm)" prop="sprayDistance">
+          <el-input-number v-model="form.sprayDistance" :min="0" :precision="4" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" rows="3" placeholder="请输入" />
+        <el-form-item label="喷枪型号" prop="sprayGunModel">
+          <el-input v-model="form.sprayGunModel" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="设备" prop="equipment">
+          <el-input v-model="form.equipment" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="对应粉末" prop="powderType">
+          <el-input v-model="form.powderType" placeholder="请输入" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -79,8 +88,9 @@ import { sprayConditionApi } from '@/api/process/sprayCondition'
 import type { SprayConditionVO, SprayConditionDTO, SprayConditionQuery } from '@/types/process'
 
 const query = reactive<SprayConditionQuery>({
-  conditionCode: undefined,
-  conditionName: undefined,
+  conditionNo: undefined,
+  sprayGunModel: undefined,
+  equipment: undefined,
   pageNum: 1,
   pageSize: 20,
 })
@@ -95,18 +105,19 @@ const formRef = ref()
 const editId = ref<number | null>(null)
 
 const form = reactive<SprayConditionDTO>({
-  conditionCode: '',
-  conditionName: '',
-  temperature: '',
-  humidity: '',
-  paintType: '',
-  thickness: '',
-  remark: '',
+  conditionNo: '',
+  ministerApprover: '',
+  sectionApprover: '',
+  leaderApprover: '',
+  powderFeedRate: undefined,
+  sprayDistance: undefined,
+  sprayGunModel: '',
+  equipment: '',
+  powderType: '',
 })
 
 const formRules = {
-  conditionCode: [{ required: true, message: '请输入条件编码', trigger: 'blur' }],
-  conditionName: [{ required: true, message: '请输入条件名称', trigger: 'blur' }],
+  conditionNo: [{ required: true, message: '请输入条件号', trigger: 'blur' }],
 }
 
 async function loadData() {
@@ -137,26 +148,30 @@ function handleEdit(row: SprayConditionVO) {
   isEdit.value = true
   editId.value = row.id
   Object.assign(form, {
-    conditionCode: row.conditionCode,
-    conditionName: row.conditionName,
-    temperature: row.temperature,
-    humidity: row.humidity,
-    paintType: row.paintType,
-    thickness: row.thickness,
-    remark: row.remark,
+    conditionNo: row.conditionNo,
+    ministerApprover: row.ministerApprover,
+    sectionApprover: row.sectionApprover,
+    leaderApprover: row.leaderApprover,
+    powderFeedRate: row.powderFeedRate,
+    sprayDistance: row.sprayDistance,
+    sprayGunModel: row.sprayGunModel,
+    equipment: row.equipment,
+    powderType: row.powderType,
   })
   dialogVisible.value = true
 }
 
 function resetForm() {
   Object.assign(form, {
-    conditionCode: '',
-    conditionName: '',
-    temperature: '',
-    humidity: '',
-    paintType: '',
-    thickness: '',
-    remark: '',
+    conditionNo: '',
+    ministerApprover: '',
+    sectionApprover: '',
+    leaderApprover: '',
+    powderFeedRate: undefined,
+    sprayDistance: undefined,
+    sprayGunModel: '',
+    equipment: '',
+    powderType: '',
   })
   formRef.value?.clearValidate()
 }

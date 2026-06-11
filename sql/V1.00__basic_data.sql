@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS mes_work_center (
   batch_qty DECIMAL(10,2) COMMENT '处理批量',
   efficiency DECIMAL(5,2) COMMENT '效率',
   resource_type VARCHAR(50) COMMENT '资源种类',
-  furnace_resource_type VARCHAR(50) COMMENT '炉资源类型',
+  resource_subtype VARCHAR(50) COMMENT '资源子类型',
   resource_capacity DECIMAL(10,2) COMMENT '资源能力',
   process_no_interrupt TINYINT(1) DEFAULT 0 COMMENT '工序不中断',
   process_no_cross_day TINYINT(1) DEFAULT 0 COMMENT '工序不跨天',

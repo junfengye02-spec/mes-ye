@@ -34,7 +34,10 @@ public class OrderPlanVO {
     @Schema(description = "新制维修类型")
     private String newOrRepairType;
 
-    @Schema(description = "类型")
+    @Schema(description = "业务类型")
+    private String businessType;
+
+    @Schema(description = "业务类型（兼容字段）")
     private String workType;
 
     @Schema(description = "机型")
@@ -79,8 +82,8 @@ public class OrderPlanVO {
     @Schema(description = "是否订单")
     private Boolean isOrder;
 
-    @Schema(description = "PCCL流程")
-    private String pcclFlow;
+    @Schema(description = "流程编码")
+    private String flowCode;
 
     @Schema(description = "计划开始时间")
     private LocalDateTime planStartTime;

@@ -2,13 +2,10 @@
   <div class="page-container">
     <SearchForm v-model="query" @search="loadData">
       <el-form-item label="程序编码">
-        <el-input v-model="query.programCode" placeholder="请输入" clearable style="width: 180px" />
+        <el-input v-model="query.gCode" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
-      <el-form-item label="程序名称">
-        <el-input v-model="query.programName" placeholder="请输入" clearable style="width: 180px" />
-      </el-form-item>
-      <el-form-item label="机床类型">
-        <el-input v-model="query.machineType" placeholder="请输入" clearable style="width: 180px" />
+      <el-form-item label="产品名称">
+        <el-input v-model="query.productName" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
     </SearchForm>
 
@@ -26,10 +23,9 @@
           <el-icon><Plus /></el-icon> 新增
         </el-button>
       </template>
-      <el-table-column prop="programCode" label="程序编码" min-width="120" />
-      <el-table-column prop="programName" label="程序名称" min-width="140" />
-      <el-table-column prop="machineType" label="机床类型" min-width="100" />
-      <el-table-column prop="version" label="版本" width="80" />
+      <el-table-column prop="gCode" label="G-code" min-width="120" />
+      <el-table-column prop="programTable" label="程序表" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="productName" label="产品名称" min-width="140" />
       <el-table-column prop="createdTime" label="创建时间" width="170" />
       <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
@@ -41,23 +37,14 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑加工程序' : '新增加工程序'" width="640px" destroy-on-close @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="formRules" :label-width="100">
-        <el-form-item label="程序编码" prop="programCode">
-          <el-input v-model="form.programCode" placeholder="请输入" :disabled="isEdit" />
+        <el-form-item label="G-code" prop="gCode">
+          <el-input v-model="form.gCode" placeholder="请输入" :disabled="isEdit" />
         </el-form-item>
-        <el-form-item label="程序名称" prop="programName">
-          <el-input v-model="form.programName" placeholder="请输入" />
+        <el-form-item label="程序表" prop="programTable">
+          <el-input v-model="form.programTable" type="textarea" :rows="6" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="机床类型" prop="machineType">
-          <el-input v-model="form.machineType" placeholder="请输入" />
-        </el-form-item>
-        <el-form-item label="版本" prop="version">
-          <el-input v-model="form.version" placeholder="请输入" />
-        </el-form-item>
-        <el-form-item label="程序内容" prop="programContent">
-          <el-input v-model="form.programContent" type="textarea" :rows="6" placeholder="请输入" />
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" rows="3" placeholder="请输入" />
+        <el-form-item label="产品名称" prop="productName">
+          <el-input v-model="form.productName" placeholder="请输入" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -78,9 +65,8 @@ import { machiningProgramApi } from '@/api/process/machiningProgram'
 import type { MachiningProgramVO, MachiningProgramDTO, MachiningProgramQuery } from '@/types/process'
 
 const query = reactive<MachiningProgramQuery>({
-  programCode: undefined,
-  programName: undefined,
-  machineType: undefined,
+  gCode: undefined,
+  productName: undefined,
   pageNum: 1,
   pageSize: 20,
 })
@@ -95,17 +81,13 @@ const formRef = ref()
 const editId = ref<number | null>(null)
 
 const form = reactive<MachiningProgramDTO>({
-  programCode: '',
-  programName: '',
-  machineType: '',
-  version: '',
-  programContent: '',
-  remark: '',
+  gCode: '',
+  programTable: '',
+  productName: '',
 })
 
 const formRules = {
-  programCode: [{ required: true, message: '请输入程序编码', trigger: 'blur' }],
-  programName: [{ required: true, message: '请输入程序名称', trigger: 'blur' }],
+  gCode: [{ required: true, message: '请输入G-code', trigger: 'blur' }],
 }
 
 async function loadData() {
@@ -136,24 +118,18 @@ function handleEdit(row: MachiningProgramVO) {
   isEdit.value = true
   editId.value = row.id
   Object.assign(form, {
-    programCode: row.programCode,
-    programName: row.programName,
-    machineType: row.machineType,
-    version: row.version,
-    programContent: row.programContent,
-    remark: row.remark,
+    gCode: row.gCode,
+    programTable: row.programTable,
+    productName: row.productName,
   })
   dialogVisible.value = true
 }
 
 function resetForm() {
   Object.assign(form, {
-    programCode: '',
-    programName: '',
-    machineType: '',
-    version: '',
-    programContent: '',
-    remark: '',
+    gCode: '',
+    programTable: '',
+    productName: '',
   })
   formRef.value?.clearValidate()
 }

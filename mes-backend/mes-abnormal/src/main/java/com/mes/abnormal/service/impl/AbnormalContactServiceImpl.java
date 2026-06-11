@@ -23,6 +23,8 @@ import com.mes.common.result.ResultCode;
 import com.mes.common.utils.AssertUtil;
 import com.mes.common.event.ApsSyncEvent;
 import com.mes.common.utils.NumberGenerator;
+import com.mes.workorder.domain.entity.WorkOrder;
+import com.mes.workorder.mapper.WorkOrderMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -47,6 +49,7 @@ public class AbnormalContactServiceImpl extends ServiceImpl<AbnormalContactMappe
     private final AbnormalContactAttachmentMapper attachmentMapper;
     private final AbnormalContactLogMapper logMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final WorkOrderMapper workOrderMapper;
 
     /** APS 重排防抖：key=eventCategory, value=上次触发时间戳 */
     private final ConcurrentHashMap<String, Long> lastTriggerTime = new ConcurrentHashMap<>();
@@ -106,6 +109,7 @@ public class AbnormalContactServiceImpl extends ServiceImpl<AbnormalContactMappe
     public Long create(AbnormalContactDTO dto) {
         AbnormalContact entity = new AbnormalContact();
         BeanUtils.copyProperties(dto, entity);
+        normalizeWorkOrderReference(entity);
 
         // 自动生成单号（如果未手工填写）
         if (!StringUtils.hasText(entity.getContactNo())) {
@@ -138,6 +142,7 @@ public class AbnormalContactServiceImpl extends ServiceImpl<AbnormalContactMappe
         String status = existing.getStatus();
         String contactNo = existing.getContactNo();
         BeanUtils.copyProperties(dto, existing);
+        normalizeWorkOrderReference(existing);
         existing.setId(id);
         existing.setStatus(status);
         existing.setContactNo(contactNo); // 单号不允许修改
@@ -189,6 +194,7 @@ public class AbnormalContactServiceImpl extends ServiceImpl<AbnormalContactMappe
                 entity.getWorkOrderId(),
                 entity.getDispatchTaskId(),
                 entity.getOrderNo(),
+                resolveWorkOrderNo(entity),
                 entity.getEventCategory(),
                 entity.getAbnormalDesc()
         ));
@@ -247,6 +253,8 @@ public class AbnormalContactServiceImpl extends ServiceImpl<AbnormalContactMappe
         BeanUtils.copyProperties(dto, attachment);
         attachment.setContactId(contactId);
         attachment.setSigned(0);
+        attachment.setSignatureProvider(dto.getSignatureProvider());
+        attachment.setSignatureStatus("UNSIGNED");
         attachment.setCreatedTime(LocalDateTime.now());
         attachment.setUpdatedTime(LocalDateTime.now());
         attachmentMapper.insert(attachment);
@@ -284,6 +292,10 @@ public class AbnormalContactServiceImpl extends ServiceImpl<AbnormalContactMappe
         AssertUtil.isFalse(Integer.valueOf(1).equals(attachment.getSigned()), "附件已签署，不可重复签署");
 
         attachment.setSigned(1);
+        if (!StringUtils.hasText(attachment.getSignatureStatus())) {
+            attachment.setSignatureStatus("UNSIGNED");
+        }
+        attachment.setSignatureStatus("SIGNED");
         attachment.setSubmitTime(LocalDateTime.now());
         attachment.setUpdatedTime(LocalDateTime.now());
         attachmentMapper.updateById(attachment);
@@ -336,6 +348,29 @@ public class AbnormalContactServiceImpl extends ServiceImpl<AbnormalContactMappe
         logMapper.insert(logEntity);
     }
 
+    private String resolveWorkOrderNo(AbnormalContact entity) {
+        if (entity.getWorkOrderId() == null) {
+            return null;
+        }
+        WorkOrder workOrder = workOrderMapper.selectById(entity.getWorkOrderId());
+        return workOrder == null ? null : workOrder.getWorkOrderNo();
+    }
+
+    private void normalizeWorkOrderReference(AbnormalContact entity) {
+        if (entity.getWorkOrderId() == null) {
+            return;
+        }
+        WorkOrder workOrder = workOrderMapper.selectById(entity.getWorkOrderId());
+        AssertUtil.notNull(workOrder, "关联工单不存在");
+        if (StringUtils.hasText(workOrder.getOrderNo())) {
+            if (StringUtils.hasText(entity.getOrderNo())) {
+                AssertUtil.isTrue(workOrder.getOrderNo().equals(entity.getOrderNo()),
+                        "订单号与关联工单不一致");
+            }
+            entity.setOrderNo(workOrder.getOrderNo());
+        }
+    }
+
     // ==================== 转换方法 ====================
 
     private AbnormalContactVO toVO(AbnormalContact entity) {
@@ -347,6 +382,12 @@ public class AbnormalContactServiceImpl extends ServiceImpl<AbnormalContactMappe
     private AbnormalContactAttachmentVO toAttachmentVO(AbnormalContactAttachment entity) {
         AbnormalContactAttachmentVO vo = new AbnormalContactAttachmentVO();
         BeanUtils.copyProperties(entity, vo);
+        if (!StringUtils.hasText(vo.getSignatureProvider())) {
+            vo.setSignatureProvider(entity.getFadadaFlag());
+        }
+        if (!StringUtils.hasText(vo.getSignatureStatus())) {
+            vo.setSignatureStatus(Integer.valueOf(1).equals(entity.getSigned()) ? "SIGNED" : "UNSIGNED");
+        }
         return vo;
     }
 

@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 指示书 Controller
  */
-@Tag(name = "指示书", description = "指示书管理接口")
+@Tag(name = "指示书", description = "随工单执行指示/流转卡管理接口，可引用标准作业指导书模板")
 @RestController
 @RequestMapping("/process/instruction")
 @RequiredArgsConstructor
@@ -27,14 +27,14 @@ public class InstructionController {
 
     private final IInstructionService instructionService;
 
-    @Operation(summary = "分页查询指示书")
+    @Operation(summary = "分页查询指示书（执行指示/流转卡）")
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('process:instruction:list')")
     public R<PageResult<InstructionVO>> page(InstructionQuery query) {
         return R.ok(instructionService.page(query));
     }
 
-    @Operation(summary = "获取指示书详情（含阶段+序列号）")
+    @Operation(summary = "获取指示书详情（含阶段、序列号、引用指导书）")
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('process:instruction:detail')")
     public R<InstructionVO> getDetail(
@@ -42,14 +42,14 @@ public class InstructionController {
         return R.ok(instructionService.getDetail(id));
     }
 
-    @Operation(summary = "新增指示书")
+    @Operation(summary = "新增指示书（可关联标准作业指导书）")
     @PostMapping
     @PreAuthorize("hasAuthority('process:instruction:create')")
     public R<Long> create(@Valid @RequestBody InstructionDTO dto) {
         return R.ok("新增成功", instructionService.create(dto));
     }
 
-    @Operation(summary = "修改指示书")
+    @Operation(summary = "修改指示书（可调整引用指导书）")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('process:instruction:update')")
     public R<Void> update(

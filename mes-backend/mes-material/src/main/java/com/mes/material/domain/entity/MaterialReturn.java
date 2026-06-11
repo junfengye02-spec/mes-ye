@@ -25,7 +25,7 @@ public class MaterialReturn extends BaseEntity {
     private String projectName;
     private String wbsElement;
     private String newOrRepairType;
-    private String workType;
+    private String businessType;
     private String machineModel;
     private String productCategory;
     private String productType;
@@ -39,7 +39,7 @@ public class MaterialReturn extends BaseEntity {
     private String flowStatus;
     private String expandStatus;
     private Integer isOrder;
-    private String pcclFlow;
+    private String flowCode;
     private LocalDateTime planStartTime;
     private LocalDateTime planEndTime;
     private LocalDateTime actualStartTime;

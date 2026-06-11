@@ -1,5 +1,6 @@
 package com.mes.basic.domain.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -52,8 +53,9 @@ public class WorkCenterDTO {
     @Schema(description = "资源种类")
     private String resourceType;
 
-    @Schema(description = "炉资源类型")
-    private String furnaceResourceType;
+    @JsonAlias("furnaceResourceType")
+    @Schema(description = "资源子类型")
+    private String resourceSubtype;
 
     @DecimalMin(value = "0", message = "资源能力不能为负数")
     @Schema(description = "资源能力")

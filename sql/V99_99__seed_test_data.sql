@@ -214,13 +214,15 @@ ON DUPLICATE KEY UPDATE
   created_by=VALUES(created_by), created_time=VALUES(created_time);
 
 -- 指导书
-INSERT INTO mes_work_instruction (instruction_code, level, status, created_by, created_time) VALUES
-('WI-CAST-001',  'A', 'ACTIVE',   'admin', @now),
-('WI-MACH-001',  'A', 'ACTIVE',   'admin', @now),
-('WI-SPRAY-001', 'B', 'ACTIVE',   'admin', @now),
-('WI-QC-001',    'A', 'ACTIVE',   'admin', @now),
-('WI-ASSY-001',  'B', 'DRAFT',    'admin', @now)
+INSERT INTO mes_work_instruction (instruction_code, instruction_name, process_id, version, content, remark, level, status, created_by, created_time) VALUES
+('WI-CAST-001',  '铸造作业指导书',   (SELECT id FROM mes_process_info WHERE process_no='PI-CAST-001' LIMIT 1),   'A.0', '浇注前确认模具与温度记录。', '首件需工艺确认', 'A', 'ACTIVE', 'admin', @now),
+('WI-MACH-001',  '机加作业指导书',   (SELECT id FROM mes_process_info WHERE process_no='PI-MACH-001' LIMIT 1),   'A.1', '按程序表完成首件试切并记录。', '换刀后重新首检', 'A', 'ACTIVE', 'admin', @now),
+('WI-SPRAY-001', '喷涂作业指导书',   (SELECT id FROM mes_process_info WHERE process_no='PI-SPRAY-001' LIMIT 1), 'B.0', '喷涂前检查送粉与燃气参数。', '完工后提交厚度检测', 'B', 'ACTIVE', 'admin', @now),
+('WI-QC-001',    '质量检验指导书',   (SELECT id FROM mes_process_info WHERE process_no='PI-QC-001' LIMIT 1),    'A.0', '按抽检频次记录关键尺寸。', '异常需升级通知质量工程师', 'A', 'ACTIVE', 'admin', @now),
+('WI-ASSY-001',  '装配准备指导书',   NULL,                                                                     'B.0', '按清单完成装配前准备工作。', '缺料时禁止开工', 'B', 'DRAFT',  'admin', @now)
 ON DUPLICATE KEY UPDATE
+  instruction_name=VALUES(instruction_name), process_id=VALUES(process_id),
+  version=VALUES(version), content=VALUES(content), remark=VALUES(remark),
   level=VALUES(level), status=VALUES(status),
   created_by=VALUES(created_by), created_time=VALUES(created_time);
 
@@ -295,7 +297,7 @@ ON DUPLICATE KEY UPDATE
 
 -- ==================== 5. 计划管理 ====================
 
-INSERT INTO mes_order_plan (order_no, product_code, product_name, project_name, wbs_element, new_or_repair_type, work_type, machine_model, product_category, product_type, plan_qty, qty_unit, factory_org, plan_org, main_org, status, flow_status, plan_start_time, plan_end_time, data_source, created_by, created_time) VALUES
+INSERT INTO mes_order_plan (order_no, product_code, product_name, project_name, wbs_element, new_or_repair_type, business_type, machine_model, product_category, product_type, plan_qty, qty_unit, factory_org, plan_org, main_org, status, flow_status, plan_start_time, plan_end_time, data_source, created_by, created_time) VALUES
 ('OP-2026-001', 'MAT-007', '涡轮叶片成品', 'GT-F5燃机项目',   'WBS-F5-001',  '新制', '主机', 'GT-F5',  '涡轮部件', '叶片', 50.0000, 'PC', '上海工厂', '上海计划部', '涡轮事业部', 'RELEASED', 'RUNNING',    '2026-03-01 08:00:00', '2026-06-30 17:00:00', 'MANUAL', 'admin', @now),
 ('OP-2026-002', 'MAT-008', '压气机盘成品', 'GT-H25燃机项目',  'WBS-H25-001', '新制', '主机', 'GT-H25', '结构件',   '盘件', 20.0000, 'PC', '苏州工厂', '苏州计划部', '结构事业部', 'RELEASED', 'RUNNING',    '2026-03-10 08:00:00', '2026-07-31 17:00:00', 'MANUAL', 'admin', @now),
 ('OP-2026-003', 'MAT-007', '涡轮叶片成品', 'GT-F5维修项目',   'WBS-F5-R01',  '维修', '维修', 'GT-F5',  '涡轮部件', '叶片', 10.0000, 'PC', '上海工厂', '上海计划部', '涡轮事业部', 'CREATED',  NULL,         '2026-04-01 08:00:00', '2026-05-15 17:00:00', 'MANUAL', 'admin', @now),
@@ -303,7 +305,7 @@ INSERT INTO mes_order_plan (order_no, product_code, product_name, project_name, 
 ON DUPLICATE KEY UPDATE
   product_code=VALUES(product_code), product_name=VALUES(product_name),
   project_name=VALUES(project_name), wbs_element=VALUES(wbs_element),
-  new_or_repair_type=VALUES(new_or_repair_type), work_type=VALUES(work_type),
+  new_or_repair_type=VALUES(new_or_repair_type), business_type=VALUES(business_type),
   machine_model=VALUES(machine_model), product_category=VALUES(product_category),
   product_type=VALUES(product_type), plan_qty=VALUES(plan_qty),
   qty_unit=VALUES(qty_unit), factory_org=VALUES(factory_org),
@@ -315,8 +317,8 @@ ON DUPLICATE KEY UPDATE
 
 -- 生产计划（无唯一索引，清理重跑保证幂等）
 DELETE FROM mes_production_plan WHERE order_no IN ('OP-2026-001','OP-2026-002','OP-2026-004');
-INSERT INTO mes_production_plan (order_plan_id, order_no, product_code, product_name, new_or_repair_type, work_type, machine_model, product_category, product_type, wbs_element, plan_org, plan_qty, qty_unit, status, plan_start_time, plan_end_time, created_by, created_time)
-SELECT op.id, op.order_no, op.product_code, op.product_name, op.new_or_repair_type, op.work_type, op.machine_model, op.product_category, op.product_type, op.wbs_element, op.plan_org,
+INSERT INTO mes_production_plan (order_plan_id, order_no, product_code, product_name, new_or_repair_type, business_type, machine_model, product_category, product_type, wbs_element, plan_org, plan_qty, qty_unit, status, plan_start_time, plan_end_time, created_by, created_time)
+SELECT op.id, op.order_no, op.product_code, op.product_name, op.new_or_repair_type, op.business_type, op.machine_model, op.product_category, op.product_type, op.wbs_element, op.plan_org,
   CASE WHEN op.order_no='OP-2026-001' THEN 25.0000 ELSE op.plan_qty END,
   op.qty_unit, 'RELEASED',
   op.plan_start_time, DATE_ADD(op.plan_start_time, INTERVAL 45 DAY),
@@ -324,7 +326,7 @@ SELECT op.id, op.order_no, op.product_code, op.product_name, op.new_or_repair_ty
 FROM mes_order_plan op WHERE op.order_no IN ('OP-2026-001','OP-2026-002','OP-2026-004') AND op.deleted=0
 ON DUPLICATE KEY UPDATE
   product_code=VALUES(product_code), product_name=VALUES(product_name),
-  new_or_repair_type=VALUES(new_or_repair_type), work_type=VALUES(work_type),
+  new_or_repair_type=VALUES(new_or_repair_type), business_type=VALUES(business_type),
   machine_model=VALUES(machine_model), product_category=VALUES(product_category),
   product_type=VALUES(product_type), wbs_element=VALUES(wbs_element),
   plan_org=VALUES(plan_org), plan_qty=VALUES(plan_qty),
@@ -333,15 +335,15 @@ ON DUPLICATE KEY UPDATE
   created_by=VALUES(created_by), created_time=VALUES(created_time);
 
 -- 第二批次 OP-2026-001
-INSERT INTO mes_production_plan (order_plan_id, order_no, product_code, product_name, new_or_repair_type, work_type, machine_model, product_category, product_type, wbs_element, plan_org, plan_qty, qty_unit, status, plan_start_time, plan_end_time, created_by, created_time)
-SELECT op.id, op.order_no, op.product_code, op.product_name, op.new_or_repair_type, op.work_type, op.machine_model, op.product_category, op.product_type, op.wbs_element, op.plan_org,
+INSERT INTO mes_production_plan (order_plan_id, order_no, product_code, product_name, new_or_repair_type, business_type, machine_model, product_category, product_type, wbs_element, plan_org, plan_qty, qty_unit, status, plan_start_time, plan_end_time, created_by, created_time)
+SELECT op.id, op.order_no, op.product_code, op.product_name, op.new_or_repair_type, op.business_type, op.machine_model, op.product_category, op.product_type, op.wbs_element, op.plan_org,
   25.0000, op.qty_unit, 'CREATED',
   DATE_ADD(op.plan_start_time, INTERVAL 46 DAY), op.plan_end_time,
   'admin', @now
 FROM mes_order_plan op WHERE op.order_no='OP-2026-001' AND op.deleted=0
 ON DUPLICATE KEY UPDATE
   product_code=VALUES(product_code), product_name=VALUES(product_name),
-  new_or_repair_type=VALUES(new_or_repair_type), work_type=VALUES(work_type),
+  new_or_repair_type=VALUES(new_or_repair_type), business_type=VALUES(business_type),
   machine_model=VALUES(machine_model), product_category=VALUES(product_category),
   product_type=VALUES(product_type), wbs_element=VALUES(wbs_element),
   plan_org=VALUES(plan_org), plan_qty=VALUES(plan_qty),
@@ -351,7 +353,7 @@ ON DUPLICATE KEY UPDATE
 
 -- ==================== 6. 生产工单 ====================
 
-INSERT INTO mes_work_order (work_order_no, work_order_type, order_plan_no, product_code, product_name, main_product, machine_model, product_category, product_type, bom_code, project_name, wbs_element, new_or_repair_type, work_type, plan_qty, qty_unit, factory_org, plan_org, main_org, status, plan_start_time, plan_end_time, created_by, created_time) VALUES
+INSERT INTO mes_work_order (work_order_no, work_order_type, order_plan_no, product_code, product_name, main_product, machine_model, product_category, product_type, bom_code, project_name, wbs_element, new_or_repair_type, business_type, plan_qty, qty_unit, factory_org, plan_org, main_org, status, plan_start_time, plan_end_time, created_by, created_time) VALUES
 ('WO-2026-001', '标准生产', 'OP-2026-001', 'MAT-007', '涡轮叶片成品', '涡轮叶片成品', 'GT-F5',  '涡轮部件', '叶片', 'BOM-TB-001', 'GT-F5燃机项目',   'WBS-F5-001',  '新制', '主机', 25.0000, 'PC', '上海工厂', '上海计划部', '涡轮事业部', 'IN_PROGRESS', '2026-03-01 08:00:00', '2026-04-15 17:00:00', 'admin', @now),
 ('WO-2026-002', '标准生产', 'OP-2026-001', 'MAT-007', '涡轮叶片成品', '涡轮叶片成品', 'GT-F5',  '涡轮部件', '叶片', 'BOM-TB-001', 'GT-F5燃机项目',   'WBS-F5-001',  '新制', '主机', 25.0000, 'PC', '上海工厂', '上海计划部', '涡轮事业部', 'RELEASED',    '2026-04-16 08:00:00', '2026-06-30 17:00:00', 'admin', @now),
 ('WO-2026-003', '标准生产', 'OP-2026-002', 'MAT-008', '压气机盘成品', '压气机盘成品', 'GT-H25', '结构件',   '盘件', 'BOM-CD-001', 'GT-H25燃机项目',  'WBS-H25-001', '新制', '主机', 20.0000, 'PC', '苏州工厂', '苏州计划部', '结构事业部', 'RELEASED',    '2026-03-10 08:00:00', '2026-07-31 17:00:00', 'admin', @now),
@@ -363,7 +365,7 @@ ON DUPLICATE KEY UPDATE
   product_category=VALUES(product_category), product_type=VALUES(product_type),
   bom_code=VALUES(bom_code), project_name=VALUES(project_name),
   wbs_element=VALUES(wbs_element), new_or_repair_type=VALUES(new_or_repair_type),
-  work_type=VALUES(work_type), plan_qty=VALUES(plan_qty),
+  business_type=VALUES(business_type), plan_qty=VALUES(plan_qty),
   qty_unit=VALUES(qty_unit), factory_org=VALUES(factory_org),
   plan_org=VALUES(plan_org), main_org=VALUES(main_org),
   status=VALUES(status), plan_start_time=VALUES(plan_start_time),
@@ -682,13 +684,13 @@ ON DUPLICATE KEY UPDATE
   stock_status=VALUES(stock_status), wbs_element=VALUES(wbs_element);
 
 -- 生产退料
-INSERT INTO mes_material_return (return_no, work_order_no, order_no, product_code, product_name, project_name, wbs_element, new_or_repair_type, work_type, machine_model, product_category, product_type, plan_qty, factory_org, plan_org, main_org, status, created_by, created_time) VALUES
+INSERT INTO mes_material_return (return_no, work_order_no, order_no, product_code, product_name, project_name, wbs_element, new_or_repair_type, business_type, machine_model, product_category, product_type, plan_qty, factory_org, plan_org, main_org, status, created_by, created_time) VALUES
 ('RT-2026-001', 'WO-2026-001', 'OP-2026-001', 'MAT-007', '涡轮叶片成品', 'GT-F5燃机项目', 'WBS-F5-001', '新制', '主机', 'GT-F5', '涡轮部件', '叶片', 3.0000, '上海工厂', '上海计划部', '涡轮事业部', 'CREATED', 'zhangsan', @now)
 ON DUPLICATE KEY UPDATE
   work_order_no=VALUES(work_order_no), order_no=VALUES(order_no),
   product_code=VALUES(product_code), product_name=VALUES(product_name),
   project_name=VALUES(project_name), wbs_element=VALUES(wbs_element),
-  new_or_repair_type=VALUES(new_or_repair_type), work_type=VALUES(work_type),
+  new_or_repair_type=VALUES(new_or_repair_type), business_type=VALUES(business_type),
   machine_model=VALUES(machine_model), product_category=VALUES(product_category),
   product_type=VALUES(product_type), plan_qty=VALUES(plan_qty),
   factory_org=VALUES(factory_org), plan_org=VALUES(plan_org),

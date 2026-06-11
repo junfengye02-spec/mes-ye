@@ -79,6 +79,7 @@ class WorkOrderServiceTest {
     @DisplayName("创建工单 - 正常（含子表保存）")
     void create_success_withSubTables() {
         WorkOrderDTO dto = baseDto("WO-001", new BigDecimal("10"));
+        dto.setBusinessType("MAIN_ENGINE");
         dto.setTasks(List.of(taskDto("T1", "工序1", 1)));
         dto.setInputMaterials(List.of(inputMaterialDto("M1", new BigDecimal("5"))));
         dto.setOutputMaterials(List.of(outputMaterialDto("OUT1")));
@@ -97,7 +98,8 @@ class WorkOrderServiceTest {
 
         assertEquals(100L, id);
         verify(workOrderMapper).insert(argThat(wo ->
-                WorkOrderStatus.CREATED.getCode().equals(wo.getStatus())));
+                WorkOrderStatus.CREATED.getCode().equals(wo.getStatus())
+                        && "MAIN_ENGINE".equals(wo.getBusinessType())));
         verify(taskMapper).insert(any(WorkOrderTask.class));
         verify(inputMaterialMapper).insert(any(WorkOrderInputMaterial.class));
         verify(outputMaterialMapper).insert(any(WorkOrderOutputMaterial.class));

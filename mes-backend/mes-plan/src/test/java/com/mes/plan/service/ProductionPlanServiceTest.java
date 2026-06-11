@@ -1,6 +1,7 @@
 package com.mes.plan.service;
 
 import com.mes.common.exception.BusinessException;
+import com.mes.common.id.DistributedIdGenerator;
 import com.mes.plan.domain.entity.OrderPlan;
 import com.mes.plan.domain.entity.ProductionPlan;
 import com.mes.plan.enums.ProductionPlanStatus;
@@ -24,6 +25,8 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,6 +53,8 @@ class ProductionPlanServiceTest {
     private IWorkOrderService workOrderService;
     @Mock
     private IRouteService routeService;
+    @Mock
+    private DistributedIdGenerator distributedIdGenerator;
 
     @InjectMocks
     private ProductionPlanServiceImpl productionPlanService;
@@ -63,12 +68,14 @@ class ProductionPlanServiceTest {
     @DisplayName("下达生产计划 - 根据工艺路线生成工单工作清单")
     void release_generatesWorkOrderTasksFromRoute() {
         ProductionPlan plan = productionPlan(100L, "P1", "CAT-A", "M1");
+        plan.setBusinessType("INSPECTION");
         when(productionPlanMapper.selectById(100L)).thenReturn(plan);
         when(orderPlanService.getById(10L)).thenReturn(orderPlan("ORD-1"));
         when(routeService.findActiveRouteWithSteps("P1", "CAT-A", "M1", "TYPE-A"))
                 .thenReturn(routeWithSteps());
         when(productionPlanMapper.updateById(any(ProductionPlan.class))).thenReturn(1);
         when(workOrderService.create(any(WorkOrderDTO.class))).thenReturn(200L);
+        when(distributedIdGenerator.nextIdStr()).thenReturn("9876543210");
 
         productionPlanService.release(100L);
 
@@ -76,6 +83,9 @@ class ProductionPlanServiceTest {
         verify(workOrderService).create(captor.capture());
 
         WorkOrderDTO dto = captor.getValue();
+        assertEquals("INSPECTION", dto.getBusinessType());
+        assertEquals("WO-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "-9876543210",
+                dto.getWorkOrderNo());
         assertEquals(2, dto.getTasks().size());
         assertEquals("OP-010", dto.getTasks().get(0).getTaskNo());
         assertEquals("首道工序", dto.getTasks().get(0).getTaskName());

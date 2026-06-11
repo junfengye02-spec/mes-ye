@@ -5,6 +5,7 @@ import com.mes.abnormal.domain.dto.AbnormalContactAttachmentDTO;
 import com.mes.abnormal.domain.dto.AbnormalContactDTO;
 import com.mes.abnormal.domain.entity.AbnormalContact;
 import com.mes.abnormal.domain.entity.AbnormalContactAttachment;
+import com.mes.abnormal.domain.vo.AbnormalContactAttachmentVO;
 import com.mes.abnormal.enums.AbnormalContactStatus;
 import com.mes.common.event.AbnormalSubmittedEvent;
 import com.mes.abnormal.mapper.AbnormalContactAttachmentMapper;
@@ -13,6 +14,8 @@ import com.mes.abnormal.mapper.AbnormalContactMapper;
 import com.mes.abnormal.service.impl.AbnormalContactServiceImpl;
 import com.mes.common.event.ApsSyncEvent;
 import com.mes.common.exception.BusinessException;
+import com.mes.workorder.domain.entity.WorkOrder;
+import com.mes.workorder.mapper.WorkOrderMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -55,12 +60,14 @@ class AbnormalContactServiceTest {
     private AbnormalContactLogMapper logMapper;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private WorkOrderMapper workOrderMapper;
 
     private AbnormalContactServiceImpl contactService;
 
     @BeforeEach
     void injectBaseMapper() {
-        contactService = spy(new AbnormalContactServiceImpl(attachmentMapper, logMapper, eventPublisher));
+        contactService = spy(new AbnormalContactServiceImpl(attachmentMapper, logMapper, eventPublisher, workOrderMapper));
         ReflectionTestUtils.setField(contactService, "baseMapper", contactMapper);
         lenient().doReturn(true).when(contactService).removeById(any(Serializable.class));
     }
@@ -85,6 +92,39 @@ class AbnormalContactServiceTest {
             assertEquals(AbnormalContactStatus.DRAFT.getCode(), c.getStatus());
             return true;
         }));
+    }
+
+    @Test
+    @DisplayName("1.1 创建联络单 - 带工单ID时自动回填标准订单号")
+    void create_normalizesOrderNoFromWorkOrder() {
+        AbnormalContactDTO dto = dto(null, "主题A");
+        dto.setWorkOrderId(10L);
+        when(workOrderMapper.selectById(10L)).thenReturn(workOrderWithOrderNo(10L, "WO-001", "ORD-001"));
+        when(contactMapper.insert(any(AbnormalContact.class))).thenAnswer(inv -> {
+            AbnormalContact e = inv.getArgument(0);
+            e.setId(101L);
+            return 1;
+        });
+        when(logMapper.insert(any())).thenReturn(1);
+
+        contactService.create(dto);
+
+        verify(contactMapper).insert(argThat(c ->
+                Long.valueOf(10L).equals(c.getWorkOrderId())
+                        && "ORD-001".equals(c.getOrderNo())));
+    }
+
+    @Test
+    @DisplayName("1.2 创建联络单 - 工单关联的订单号与手输值不一致时拒绝")
+    void create_rejectsMismatchedOrderNoAgainstWorkOrder() {
+        AbnormalContactDTO dto = dto(null, "主题A");
+        dto.setWorkOrderId(10L);
+        dto.setOrderNo("ORD-WRONG");
+        when(workOrderMapper.selectById(10L)).thenReturn(workOrderWithOrderNo(10L, "WO-001", "ORD-001"));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> contactService.create(dto));
+        assertTrue(ex.getMessage().contains("订单号"));
+        verify(contactMapper, never()).insert(any());
     }
 
     @Test
@@ -120,6 +160,23 @@ class AbnormalContactServiceTest {
                 "YC-KEEP".equals(c.getContactNo())
                         && "新主题".equals(c.getSubject())
                         && AbnormalContactStatus.DRAFT.getCode().equals(c.getStatus())));
+    }
+
+    @Test
+    @DisplayName("4.1 更新联络单 - 带工单ID时同步规范化订单号")
+    void update_normalizesOrderNoFromWorkOrder() {
+        AbnormalContact draft = contact(1L, "YC-KEEP", AbnormalContactStatus.DRAFT);
+        AbnormalContactDTO dto = dto("YC-KEEP", "新主题");
+        dto.setWorkOrderId(10L);
+        when(contactMapper.selectById(1L)).thenReturn(draft);
+        when(workOrderMapper.selectById(10L)).thenReturn(workOrderWithOrderNo(10L, "WO-001", "ORD-001"));
+        when(contactMapper.updateById(any(AbnormalContact.class))).thenReturn(1);
+
+        contactService.update(1L, dto);
+
+        verify(contactMapper).updateById(argThat(c ->
+                Long.valueOf(10L).equals(c.getWorkOrderId())
+                        && "ORD-001".equals(c.getOrderNo())));
     }
 
     @Test
@@ -212,7 +269,8 @@ class AbnormalContactServiceTest {
         draft.setAffectSchedule(0);
         draft.setWorkOrderId(10L);
         draft.setDispatchTaskId(20L);
-        draft.setOrderNo("WO-001");
+        draft.setOrderNo("ORD-001");
+        when(workOrderMapper.selectById(10L)).thenReturn(workOrder(10L, "WO-001"));
         when(contactMapper.selectById(1L)).thenReturn(draft);
         when(contactMapper.updateById(any(AbnormalContact.class))).thenReturn(1);
         when(logMapper.insert(any())).thenReturn(1);
@@ -225,7 +283,8 @@ class AbnormalContactServiceTest {
         AbnormalSubmittedEvent event = (AbnormalSubmittedEvent) captor.getValue();
         assertEquals(10L, event.getWorkOrderId());
         assertEquals(20L, event.getDispatchTaskId());
-        assertEquals("WO-001", event.getOrderNo());
+        assertEquals("ORD-001", event.getOrderNo());
+        assertEquals("WO-001", event.getWorkOrderNo());
     }
 
     @Test
@@ -288,10 +347,14 @@ class AbnormalContactServiceTest {
         AbnormalContactAttachmentDTO addDto = new AbnormalContactAttachmentDTO();
         addDto.setFileName("a.pdf");
         addDto.setFileUrl("/files/a.pdf");
+        addDto.setSignatureProvider("FADADA");
         Long attId = contactService.addAttachment(1L, addDto);
         assertEquals(700L, attId);
         verify(attachmentMapper, atLeastOnce()).insert(argThat(a ->
-                Integer.valueOf(0).equals(a.getSigned())));
+                Integer.valueOf(0).equals(a.getSigned())
+                        && "UNSIGNED".equals(a.getSignatureStatus())
+                        && "FADADA".equals(a.getSignatureProvider())
+                        && a.getFadadaFlag() == null));
 
         AbnormalContactAttachment unsigned = new AbnormalContactAttachment();
         unsigned.setId(700L);
@@ -304,10 +367,55 @@ class AbnormalContactServiceTest {
         AbnormalContactAttachment toSign = new AbnormalContactAttachment();
         toSign.setId(701L);
         toSign.setSigned(0);
+        toSign.setSignatureProvider("FADADA");
         when(attachmentMapper.selectById(701L)).thenReturn(toSign);
         when(attachmentMapper.updateById(any())).thenReturn(1);
         contactService.signAttachment(701L);
-        verify(attachmentMapper).updateById(argThat(a -> a.getSigned() == 1));
+        verify(attachmentMapper).updateById(argThat(a ->
+                a.getSigned() == 1
+                        && "SIGNED".equals(a.getSignatureStatus())
+                        && "FADADA".equals(a.getSignatureProvider())));
+    }
+
+    @Test
+    @DisplayName("12.1 附件列表 - 返回通用签章字段")
+    void listAttachments_exposesGenericSignatureFields() {
+        AbnormalContactAttachment attachment = new AbnormalContactAttachment();
+        attachment.setId(801L);
+        attachment.setContactId(1L);
+        attachment.setFileName("signed.pdf");
+        attachment.setSignatureProvider("FADADA");
+        attachment.setSignatureStatus("SIGNED");
+        when(attachmentMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(attachment));
+
+        AbnormalContactAttachmentVO vo = contactService.listAttachments(1L).get(0);
+
+        assertEquals("FADADA", vo.getSignatureProvider());
+        assertEquals("SIGNED", vo.getSignatureStatus());
+    }
+
+    @Test
+    @DisplayName("12.2 附件返回模型 - 不再暴露 vendor 专属字段")
+    void attachmentVo_doesNotExposeVendorSpecificFlag() {
+        assertTrue(Arrays.stream(AbnormalContactAttachmentVO.class.getDeclaredFields())
+                .noneMatch(field -> "fadadaFlag".equals(field.getName())));
+    }
+
+    @Test
+    @DisplayName("12.3 附件列表 - 兼容旧字段回填通用签章信息")
+    void listAttachments_backfillsGenericSignatureFieldsFromLegacyVendorFlag() {
+        AbnormalContactAttachment attachment = new AbnormalContactAttachment();
+        attachment.setId(802L);
+        attachment.setContactId(1L);
+        attachment.setFileName("legacy-signed.pdf");
+        attachment.setFadadaFlag("FADADA");
+        attachment.setSigned(1);
+        when(attachmentMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(attachment));
+
+        AbnormalContactAttachmentVO vo = contactService.listAttachments(1L).get(0);
+
+        assertEquals("FADADA", vo.getSignatureProvider());
+        assertEquals("SIGNED", vo.getSignatureStatus());
     }
 
     @Test
@@ -344,6 +452,22 @@ class AbnormalContactServiceTest {
         c.setId(id);
         c.setContactNo(no);
         c.setStatus(status.getCode());
+        c.setOrderNo("WO-001");
         return c;
+    }
+
+    private static WorkOrder workOrder(Long id, String workOrderNo) {
+        WorkOrder workOrder = new WorkOrder();
+        workOrder.setId(id);
+        workOrder.setWorkOrderNo(workOrderNo);
+        return workOrder;
+    }
+
+    private static WorkOrder workOrderWithOrderNo(Long id, String workOrderNo, String orderNo) {
+        WorkOrder workOrder = new WorkOrder();
+        workOrder.setId(id);
+        workOrder.setWorkOrderNo(workOrderNo);
+        workOrder.setOrderNo(orderNo);
+        return workOrder;
     }
 }

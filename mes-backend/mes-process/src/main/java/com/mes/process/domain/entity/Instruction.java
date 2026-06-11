@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 
 /**
  * 指示书主表实体
+ * <p>用于承载具体工单/批次执行过程中的随工单指示、流转卡与交付约束。</p>
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -40,8 +41,8 @@ public class Instruction extends BaseEntity {
     /** 类型（如主机） */
     private String mainType;
 
-    /** G/T类型 */
-    private String gtType;
+    /** 扩展属性 JSON */
+    private String extensionDataJson;
 
     /** 产品类别 */
     private String productCategory;
@@ -54,6 +55,9 @@ public class Instruction extends BaseEntity {
 
     /** 生产订单编号 */
     private String workOrderNo;
+
+    /** 关联作业指导书ID（引用可复用SOP模板） */
+    private Long workInstructionId;
 
     /** 生产完工日期 */
     private LocalDate finishDate;
@@ -72,9 +76,6 @@ public class Instruction extends BaseEntity {
 
     /** 项目·图纸号 */
     private String drawingNo;
-
-    /** 维修指导图 */
-    private String repairGuideDrawing;
 
     /** 担当 */
     private String assignee;

@@ -1,5 +1,6 @@
 package com.mes.material.domain.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -18,7 +19,10 @@ public class MaterialReturnDTO {
     @Schema(description = "项目") private String projectName;
     @Schema(description = "WBS元素") private String wbsElement;
     @Schema(description = "新制维修类型") private String newOrRepairType;
-    @Schema(description = "类型") private String workType;
+    @JsonAlias("workType")
+    @Schema(description = "业务类型") private String businessType;
+    @JsonAlias("pcclFlow")
+    @Schema(description = "流程编码") private String flowCode;
     @Schema(description = "计划数量") private BigDecimal planQty;
     @Schema(description = "完工数量") private BigDecimal completedQty;
 }

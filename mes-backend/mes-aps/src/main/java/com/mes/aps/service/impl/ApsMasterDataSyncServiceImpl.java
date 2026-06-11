@@ -1,5 +1,6 @@
 package com.mes.aps.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mes.aps.client.ApsClient;
 import com.mes.aps.domain.entity.ApsSyncLog;
@@ -17,15 +18,23 @@ import com.mes.basic.mapper.WorkCenterMapper;
 import com.mes.process.domain.entity.ManufacturingBom;
 import com.mes.process.domain.entity.ManufacturingBomItem;
 import com.mes.process.domain.entity.ProcessInfo;
+import com.mes.process.domain.entity.Route;
+import com.mes.process.domain.entity.RouteStep;
+import com.mes.process.enums.RouteStatus;
 import com.mes.process.mapper.ManufacturingBomItemMapper;
 import com.mes.process.mapper.ManufacturingBomMapper;
 import com.mes.process.mapper.ProcessInfoMapper;
+import com.mes.process.mapper.RouteMapper;
+import com.mes.process.mapper.RouteStepMapper;
 import com.mes.team.domain.entity.ProductionTeam;
 import com.mes.team.mapper.ProductionTeamMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 
 @Slf4j
@@ -39,6 +48,8 @@ public class ApsMasterDataSyncServiceImpl implements IApsMasterDataSyncService {
     private final ObjectMapper objectMapper;
     private final WorkCenterMapper workCenterMapper;
     private final ProcessInfoMapper processInfoMapper;
+    private final RouteMapper routeMapper;
+    private final RouteStepMapper routeStepMapper;
     private final ManufacturingBomMapper bomMapper;
     private final ManufacturingBomItemMapper bomItemMapper;
     private final MaterialMapper materialMapper;
@@ -64,7 +75,7 @@ public class ApsMasterDataSyncServiceImpl implements IApsMasterDataSyncService {
                 map.put("resourceCapacity", wc.getResourceCapacity());
                 map.put("batchQty", wc.getBatchQty());
                 map.put("resourceType", wc.getResourceType());
-                map.put("furnaceResourceType", wc.getFurnaceResourceType());
+                map.put("resourceSubtype", wc.getResourceSubtype());
                 map.put("processNoInterrupt", wc.getProcessNoInterrupt());
                 map.put("processNoCrossDay", wc.getProcessNoCrossDay());
                 map.put("fixedTaktProduction", wc.getFixedTaktProduction());
@@ -89,25 +100,25 @@ public class ApsMasterDataSyncServiceImpl implements IApsMasterDataSyncService {
                 batchId, SyncDirection.UPSTREAM.getCode(), SyncType.PROCESS_ROUTE.getCode());
 
         try {
-            List<ProcessInfo> processes = processInfoMapper.selectList(null);
-            List<Map<String, Object>> payload = processes.stream().map(p -> {
-                Map<String, Object> map = new LinkedHashMap<>();
-                map.put("processNo", p.getProcessNo());
-                map.put("processName", p.getProcessName());
-                map.put("processCode", p.getProcessCode());
-                map.put("processType", p.getProcessType());
-                map.put("product", p.getProduct());
-                map.put("productCategory", p.getProductCategory());
-                map.put("machineModel", p.getMachineModel());
-                map.put("workCenterId", p.getWorkCenterId());
-                map.put("workshopArea", p.getWorkshopArea());
-                map.put("teamId", p.getTeamId());
-                map.put("handleTime", p.getHandleTime());
-                map.put("disassembleTime", p.getDisassembleTime());
-                map.put("installTime", p.getInstallTime());
-                map.put("needStrip", p.getNeedStrip());
-                return map;
-            }).toList();
+            List<Route> routes = queryActiveRoutes();
+            List<Map<String, Object>> payload = new ArrayList<>();
+            Map<Long, ProcessInfo> processInfoCache = new HashMap<>();
+            Map<Long, WorkCenter> workCenterCache = new HashMap<>();
+
+            for (Route route : routes) {
+                List<RouteStep> steps = queryRouteSteps(route.getId());
+                if (steps.isEmpty()) {
+                    log.warn("工艺路线未配置工序步骤，跳过同步: routeId={}, routeCode={}",
+                            route.getId(), route.getRouteCode());
+                    continue;
+                }
+
+                Map<Long, Integer> stepSequenceMap = buildStepSequenceMap(steps);
+                for (RouteStep step : steps) {
+                    payload.add(toProcessRoutePayload(route, step, stepSequenceMap,
+                            processInfoCache, workCenterCache));
+                }
+            }
 
             apsClient.post("/api/mes/master-data/process-routes", Map.of("data", payload), Map.class);
             syncLogService.completeLog(syncLog.getId(), payload.size(), payload.size(), 0, null);
@@ -269,5 +280,136 @@ public class ApsMasterDataSyncServiceImpl implements IApsMasterDataSyncService {
                 .batchId(batchId).status(status)
                 .totalCount(totalCount).successCount(successCount).failCount(failCount)
                 .build();
+    }
+
+    private List<Route> queryActiveRoutes() {
+        LocalDate today = LocalDate.now();
+        List<Route> routes = routeMapper.selectList(new LambdaQueryWrapper<Route>()
+                .eq(Route::getStatus, RouteStatus.ACTIVE.getCode())
+                .and(w -> w.isNull(Route::getEffectiveDate).or().le(Route::getEffectiveDate, today))
+                .and(w -> w.isNull(Route::getExpiryDate).or().ge(Route::getExpiryDate, today))
+                .orderByDesc(Route::getUpdatedTime)
+                .orderByDesc(Route::getCreatedTime)
+                .orderByAsc(Route::getId));
+        return routes == null ? List.of() : routes;
+    }
+
+    private List<RouteStep> queryRouteSteps(Long routeId) {
+        List<RouteStep> steps = routeStepMapper.selectList(new LambdaQueryWrapper<RouteStep>()
+                .eq(RouteStep::getRouteId, routeId)
+                .orderByAsc(RouteStep::getSequenceNo)
+                .orderByAsc(RouteStep::getId));
+        if (steps == null) {
+            return List.of();
+        }
+        return steps.stream()
+                .sorted(Comparator
+                        .comparing(RouteStep::getSequenceNo, Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(RouteStep::getId, Comparator.nullsLast(Long::compareTo)))
+                .toList();
+    }
+
+    private Map<Long, Integer> buildStepSequenceMap(List<RouteStep> steps) {
+        Map<Long, Integer> sequenceMap = new HashMap<>();
+        for (RouteStep step : steps) {
+            if (step.getId() != null && step.getSequenceNo() != null) {
+                sequenceMap.put(step.getId(), step.getSequenceNo());
+            }
+        }
+        return sequenceMap;
+    }
+
+    private Map<String, Object> toProcessRoutePayload(Route route, RouteStep step,
+                                                      Map<Long, Integer> stepSequenceMap,
+                                                      Map<Long, ProcessInfo> processInfoCache,
+                                                      Map<Long, WorkCenter> workCenterCache) {
+        ProcessInfo processInfo = resolveProcessInfo(step.getProcessId(), processInfoCache);
+
+        Long resolvedWorkCenterId = step.getWorkCenterId();
+        if (resolvedWorkCenterId == null && processInfo != null) {
+            resolvedWorkCenterId = processInfo.getWorkCenterId();
+        }
+        WorkCenter workCenter = resolveWorkCenter(resolvedWorkCenterId, workCenterCache);
+
+        String processNo = firstNonBlank(step.getProcessNo(), processInfo == null ? null : processInfo.getProcessNo());
+        String processName = firstNonBlank(step.getProcessName(), processInfo == null ? null : processInfo.getProcessName());
+        Integer predecessorSequenceNo = step.getPredecessorStepId() == null
+                ? null
+                : stepSequenceMap.get(step.getPredecessorStepId());
+        BigDecimal cycleTime = step.getHandleTime() != null
+                ? step.getHandleTime()
+                : (processInfo == null ? null : processInfo.getHandleTime());
+
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("routeId", route.getId());
+        map.put("routeCode", route.getRouteCode());
+        map.put("routeName", route.getRouteName());
+        map.put("productCode", route.getProductCode());
+        map.put("productCategory", route.getProductCategory());
+        map.put("machineModel", route.getMachineModel());
+        map.put("productType", route.getProductType());
+        map.put("routeStatus", route.getStatus());
+        map.put("effectiveDate", route.getEffectiveDate());
+        map.put("expiryDate", route.getExpiryDate());
+        map.put("stepId", step.getId());
+        map.put("sequenceNo", step.getSequenceNo());
+        map.put("processSequence", step.getSequenceNo());
+        map.put("processId", step.getProcessId());
+        map.put("processNo", processNo);
+        map.put("processName", processName);
+        map.put("processCode", processInfo == null ? null : processInfo.getProcessCode());
+        map.put("processType", processInfo == null ? null : processInfo.getProcessType());
+        map.put("workCenterId", resolvedWorkCenterId);
+        map.put("workCenterCode", workCenter == null ? null : workCenter.getWorkCenterCode());
+        map.put("workCenterName", workCenter == null ? null : workCenter.getWorkCenterName());
+        map.put("resourceCode", workCenter == null ? null : workCenter.getWorkCenterCode());
+        map.put("resourceId", resolvedWorkCenterId);
+        map.put("cycleTime", toDouble(cycleTime));
+        map.put("handleTime", toDouble(cycleTime));
+        map.put("setupTime", 0D);
+        map.put("yieldRate", 1D);
+        map.put("predecessorStepId", step.getPredecessorStepId());
+        map.put("predecessorSequenceNo", predecessorSequenceNo);
+        map.put("dependencySequenceNos", predecessorSequenceNo == null
+                ? List.of()
+                : List.of(predecessorSequenceNo));
+        map.put("parallelFlag", step.getParallelFlag());
+        map.put("optionalFlag", step.getOptionalFlag());
+        map.put("remark", firstNonBlank(step.getRemark(), route.getRemark()));
+        return map;
+    }
+
+    private ProcessInfo resolveProcessInfo(Long processId, Map<Long, ProcessInfo> cache) {
+        if (processId == null) {
+            return null;
+        }
+        if (cache.containsKey(processId)) {
+            return cache.get(processId);
+        }
+
+        ProcessInfo processInfo = processInfoMapper.selectById(processId);
+        cache.put(processId, processInfo);
+        return processInfo;
+    }
+
+    private WorkCenter resolveWorkCenter(Long workCenterId, Map<Long, WorkCenter> cache) {
+        if (workCenterId == null) {
+            return null;
+        }
+        if (cache.containsKey(workCenterId)) {
+            return cache.get(workCenterId);
+        }
+
+        WorkCenter workCenter = workCenterMapper.selectById(workCenterId);
+        cache.put(workCenterId, workCenter);
+        return workCenter;
+    }
+
+    private String firstNonBlank(String primary, String fallback) {
+        return StringUtils.hasText(primary) ? primary : fallback;
+    }
+
+    private Double toDouble(BigDecimal value) {
+        return value == null ? null : value.doubleValue();
     }
 }

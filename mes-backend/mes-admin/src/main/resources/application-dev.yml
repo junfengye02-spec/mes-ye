@@ -54,6 +54,16 @@ spring:
       database: 0
       timeout: 5000ms
 
+# 本地桌面启动脚本只拉起 MySQL/Redis/MinIO；RabbitMQ 属于微服务/HA 部署依赖。
+# dev readiness 不把未启动的 RabbitMQ 计入 /actuator/health，避免本地反代健康检查误报 503。
+management:
+  health:
+    rabbit:
+      enabled: ${MES_MANAGEMENT_HEALTH_RABBIT_ENABLED:false}
+  endpoint:
+    health:
+      show-details: always
+
 # 开发环境开启 SQL 日志
 logging:
   level:

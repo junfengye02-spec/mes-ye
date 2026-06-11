@@ -2,9 +2,11 @@ package com.mes.plan;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mes.plan.domain.dto.OrderPlanDTO;
+import com.mes.plan.domain.dto.ProductionPlanDTO;
 import com.mes.plan.domain.entity.OrderPlan;
 import com.mes.plan.enums.*;
 import com.mes.plan.mapper.OrderPlanMapper;
+import com.mes.plan.service.IProductionPlanService;
 import com.mes.plan.service.IPlanStatusLogService;
 import com.mes.plan.service.impl.OrderPlanServiceImpl;
 import org.junit.jupiter.api.*;
@@ -13,6 +15,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -32,6 +35,8 @@ class PlanModuleTest {
 
     @Mock private OrderPlanMapper orderPlanMapper;
     @Mock private IPlanStatusLogService planStatusLogService;
+    @Mock private ObjectProvider<IProductionPlanService> productionPlanServiceProvider;
+    @Mock private IProductionPlanService productionPlanService;
 
     @Spy
     @InjectMocks
@@ -245,6 +250,8 @@ class PlanModuleTest {
         existing.setExpandStatus(ExpandStatus.UNEXPANDED.getCode());
 
         when(orderPlanMapper.selectById(1L)).thenReturn(existing);
+        when(productionPlanServiceProvider.getObject()).thenReturn(productionPlanService);
+        when(productionPlanService.create(any(ProductionPlanDTO.class))).thenReturn(300L);
         when(orderPlanMapper.updateById(any(OrderPlan.class))).thenReturn(1);
 
         orderPlanService.expand(1L);

@@ -14,6 +14,11 @@ export interface DispatchTaskVO extends BaseEntity {
   dispatchStatus?: string
   planStartTime?: string
   planEndTime?: string
+  actualStartTime?: string
+  actualEndTime?: string
+  actualQty?: number
+  qualityResult?: string
+  cancelReason?: string
   assignments?: DispatchAssignmentVO[]
 }
 
@@ -45,4 +50,51 @@ export interface DispatchAssignDTO {
   assigneeName?: string
   assignedQty?: number
   qtyUnit?: string
+}
+
+export interface DispatchTaskCreateDTO {
+  workOrderId: number
+  workOrderTaskId?: number
+  orderNo: string
+  processNo: string
+  workName: string
+  planWorkCenterId?: number
+  serialNo?: string
+  projectName?: string
+  planQty: number
+  qtyUnit: string
+  planStartTime?: string
+  planEndTime?: string
+}
+
+export interface DispatchTaskUpdateDTO {
+  id: number
+  orderNo?: string
+  processNo?: string
+  workName?: string
+  planWorkCenterId?: number
+  serialNo?: string
+  projectName?: string
+  planQty?: number
+  qtyUnit?: string
+  planStartTime?: string
+  planEndTime?: string
+}
+
+export interface DispatchTaskAssignBatchDTO {
+  taskId: number
+  assignType: 'PERSON' | 'EQUIPMENT' | 'DEVICE' | 'TEAM'
+  assigneeIds: number[]
+  assigneeCodes?: string[]
+  assigneeNames?: string[]
+  assignedQty?: number
+  qtyUnit?: string
+}
+
+export interface DispatchTaskCompleteDTO {
+  actualStartTime?: string
+  actualEndTime: string
+  actualQty: number
+  qualityResult: 'PASS' | 'FAIL' | 'NA'
+  remark?: string
 }

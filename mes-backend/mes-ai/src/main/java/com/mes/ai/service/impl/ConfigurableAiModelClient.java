@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -33,7 +34,7 @@ public class ConfigurableAiModelClient implements AiModelClient {
             return fallback(prompt);
         }
         try {
-            RestTemplate restTemplate = new RestTemplate();
+            RestTemplate restTemplate = new RestTemplate(requestFactory());
             String endpoint = properties.getBaseUrl().replaceAll("/+$", "") + "/chat/completions";
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -50,15 +51,20 @@ public class ConfigurableAiModelClient implements AiModelClient {
             ResponseEntity<String> response = restTemplate.postForEntity(endpoint, new HttpEntity<>(body, headers), String.class);
             JsonNode root = objectMapper.readTree(response.getBody());
             String answer = root.path("choices").path(0).path("message").path("content").asText("");
+            if (!StringUtils.hasText(answer)) {
+                throw new AiModelUnavailableException("模型调用失败：模型服务没有返回可用内容", null);
+            }
             if (answer.length() > properties.getMaxAnswerChars()) {
                 return answer.substring(0, properties.getMaxAnswerChars());
             }
             return answer;
+        } catch (AiModelUnavailableException e) {
+            throw e;
         } catch (Exception e) {
-            log.warn("[AI] 模型调用失败，降级为项目内回答: provider={}, model={}, timeout={}s, err={}",
+            log.warn("[AI] 模型调用失败: provider={}, model={}, timeout={}s, err={}",
                     properties.getProvider(), properties.getModel(), Duration.ofSeconds(properties.getTimeoutSeconds()).toSeconds(),
                     e.getMessage());
-            return fallback(prompt);
+            throw new AiModelUnavailableException("模型调用失败，请检查AI助手模型服务配置或稍后重试", e);
         }
     }
 
@@ -85,6 +91,14 @@ public class ConfigurableAiModelClient implements AiModelClient {
                 + "\n意图：" + prompt.intent()
                 + "\n项目上下文：" + prompt.projectContext()
                 + "\n查询证据：" + String.join("；", prompt.toolEvidence());
+    }
+
+    private SimpleClientHttpRequestFactory requestFactory() {
+        int timeoutMillis = (int) Duration.ofSeconds(Math.max(1, properties.getTimeoutSeconds())).toMillis();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(timeoutMillis);
+        factory.setReadTimeout(timeoutMillis);
+        return factory;
     }
 
     private String fallback(AiModelPrompt prompt) {

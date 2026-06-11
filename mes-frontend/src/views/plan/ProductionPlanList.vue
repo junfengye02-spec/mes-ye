@@ -43,7 +43,7 @@
         <el-table-column prop="orderNo" label="订单号" min-width="120" />
         <el-table-column prop="productCode" label="产品编码" min-width="100" />
         <el-table-column prop="productName" label="产品名称" min-width="120" />
-        <el-table-column prop="workType" label="类型" width="80" />
+        <el-table-column prop="businessType" label="业务类型" width="100" />
         <el-table-column prop="planQty" label="计划数量" width="90" align="right" />
         <el-table-column prop="planStartTime" label="计划开始" width="160" />
         <el-table-column prop="planEndTime" label="计划结束" width="160" />

@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +70,28 @@ class ProductionPlanEventListenerTest {
                 eq(ProductionPlanStatus.RELEASED.getCode()),
                 eq(ProductionPlanStatus.COMPLETED.getCode()), eq("完成"), any());
         verify(orderPlanService).complete(10L);
+    }
+
+    @Test
+    @DisplayName("同一订单仍有未完工生产计划时，不提前自动完成订单计划")
+    void onWorkOrderCompleted_keepsOrderPlanReleasedWhenSiblingPlansRemain() {
+        ProductionPlan plan = new ProductionPlan();
+        plan.setId(100L);
+        plan.setOrderPlanId(10L);
+        plan.setPlanQty(new BigDecimal("5"));
+        plan.setCompletedQty(BigDecimal.ZERO);
+        plan.setStatus(ProductionPlanStatus.RELEASED.getCode());
+
+        when(productionPlanMapper.selectById(100L)).thenReturn(plan);
+        when(productionPlanMapper.updateById(any(ProductionPlan.class))).thenReturn(1);
+        when(productionPlanMapper.selectCount(any())).thenReturn(1L);
+
+        listener.onWorkOrderCompleted(new WorkOrderCompletedEvent(
+                this, 1L, "WO-001", "100", "ORDPLAN-001",
+                new BigDecimal("5"), LocalDateTime.of(2026, 5, 27, 13, 0)));
+
+        verify(productionPlanMapper).updateById(any(ProductionPlan.class));
+        verify(orderPlanService, never()).complete(10L);
     }
 
     private static OrderPlan orderPlan(Long id, OrderPlanStatus status) {

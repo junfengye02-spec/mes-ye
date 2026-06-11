@@ -98,7 +98,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import type { WorkStartCheckVO, WorkStartCheckQuery } from '@/types/quality'
-import { workStartCheckApi } from '@/api/quality/workStartCheck'
+import { workQueryApi } from '@/api/query/workQuery'
 
 const loading = ref(false)
 const tableData = ref<WorkStartCheckVO[]>([])
@@ -116,7 +116,7 @@ const detailData = ref<WorkStartCheckVO | null>(null)
 async function fetchList() {
   loading.value = true
   try {
-    const res = await workStartCheckApi.page(query)
+    const res = await workQueryApi.workStartCheckPage(query)
     tableData.value = res?.list || []
     total.value = res?.total || 0
   } finally {
@@ -137,7 +137,7 @@ function handleReset() {
 }
 
 async function handleRowClick(row: WorkStartCheckVO) {
-  const res = await workStartCheckApi.getDetail(Number(row.id))
+  const res = await workQueryApi.workStartCheckDetail(Number(row.id))
   detailData.value = res
   drawerVisible.value = true
 }

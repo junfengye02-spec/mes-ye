@@ -98,7 +98,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import type { OrderStartCheckVO, OrderStartCheckQuery } from '@/types/quality'
-import { orderStartCheckApi } from '@/api/quality/orderStartCheck'
+import { workQueryApi } from '@/api/query/workQuery'
 
 const loading = ref(false)
 const tableData = ref<OrderStartCheckVO[]>([])
@@ -116,7 +116,7 @@ const detailData = ref<OrderStartCheckVO | null>(null)
 async function fetchList() {
   loading.value = true
   try {
-    const res = await orderStartCheckApi.page(query)
+    const res = await workQueryApi.orderStartCheckPage(query)
     tableData.value = res?.list || []
     total.value = res?.total || 0
   } finally {
@@ -137,7 +137,7 @@ function handleReset() {
 }
 
 async function handleRowClick(row: OrderStartCheckVO) {
-  const res = await orderStartCheckApi.getDetail(Number(row.id))
+  const res = await workQueryApi.orderStartCheckDetail(Number(row.id))
   detailData.value = res
   drawerVisible.value = true
 }

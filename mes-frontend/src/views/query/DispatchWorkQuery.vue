@@ -97,7 +97,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { getDictList, getDictLabel, getDictType } from '@/utils/dict'
 import type { DispatchTaskVO, DispatchTaskQuery } from '@/types/dispatch'
-import { dispatchTaskApi } from '@/api/dispatch/dispatchTask'
+import { workQueryApi } from '@/api/query/workQuery'
 
 const loading = ref(false)
 const tableData = ref<DispatchTaskVO[]>([])
@@ -116,7 +116,7 @@ const detailData = ref<DispatchTaskVO | null>(null)
 async function fetchList() {
   loading.value = true
   try {
-    const res = await dispatchTaskApi.page(query)
+    const res = await workQueryApi.dispatchWorkPage(query)
     tableData.value = res?.list || []
     total.value = res?.total || 0
   } finally {
@@ -138,7 +138,7 @@ function handleReset() {
 }
 
 async function handleRowClick(row: DispatchTaskVO) {
-  const res = await dispatchTaskApi.getDetail(Number(row.id))
+  const res = await workQueryApi.dispatchWorkDetail(Number(row.id))
   detailData.value = res
   drawerVisible.value = true
 }

@@ -1,6 +1,7 @@
 package com.mes.process.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mes.common.core.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,6 +15,7 @@ import lombok.EqualsAndHashCode;
 public class MachiningProgram extends BaseEntity {
 
     /** G-code */
+    @JsonProperty("gCode")
     private String gCode;
 
     /** 程序表 */

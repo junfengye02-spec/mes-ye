@@ -323,7 +323,7 @@ class ProductionPlanServiceTest {
 
 - [ ] **Step 2: Run production-plan tests and verify RED**
 
-Run: `mvn -pl mes-plan -Dtest=ProductionPlanServiceTest test`
+Run: `mvn -pl mes-process,mes-plan -Dtest=ProductionPlanServiceTest test`
 
 Expected: compilation fails because `mes-plan` does not depend on `mes-process` and `ProductionPlanServiceImpl` does not inject `IRouteService`.
 
@@ -368,7 +368,7 @@ Call `List<WorkOrderTaskDTO> tasks = buildWorkOrderTasks(entity);` before settin
 
 - [ ] **Step 5: Run production-plan tests and verify GREEN**
 
-Run: `mvn -pl mes-plan -Dtest=ProductionPlanServiceTest test`
+Run: `mvn -pl mes-process,mes-plan -Dtest=ProductionPlanServiceTest test`
 
 Expected: PASS.
 
@@ -560,3 +560,37 @@ If no fixes were needed, do not create an empty commit.
 - Spec coverage: Task 1 covers route model and active lookup. Task 2 covers plan release task generation. Task 3 covers APS sync guard. Task 4 covers verification.
 - Placeholder scan: no placeholder tasks are allowed; each code step names exact files and concrete behavior.
 - Type consistency: route service returns `RouteVO` with `List<RouteStepVO> steps`; production plan maps `RouteStepVO` to `WorkOrderTaskDTO`; APS guard uses existing `SyncStatus.FAILED`.
+
+## 2026-05-28 Follow-up: 3.1 BOM Route-Step Reference Completion
+
+- [x] `3.1` 的剩余兼容缺口已在当前代码上补齐：
+  - `ManufacturingBomItem` / `ManufacturingBomItemDTO` / `ManufacturingBomItemVO` 现已显式增加 `routeStepId`。
+  - `ManufacturingBomServiceImpl` 在保存时以 `routeStepId` 为主，若缺省则从兼容字段 `processId` 回填；持久化与 VO 回显都会把 `processId` 镜像为最终 `routeStepId`，避免新旧字段分叉。
+  - 新增迁移 `sql/V2.22__phase1_bom_route_step_reference.sql`，为 `mes_manufacturing_bom_item` 增加 `route_step_id` 并从历史 `process_id` 回填。
+- [x] 当前态验证已经 fresh 通过：
+  - `ManufacturingBomRouteStepCompatibilityTest` 证明：
+    - 仅提供旧字段 `processId` 时，实体会回填 `routeStepId`
+    - 同时提供两个字段时，以 `routeStepId` 为主并同步回显 `processId`
+    - 读取 BOM 明细树时，VO 会同时返回 `routeStepId` 与兼容字段 `processId`
+  - 前端类型契约继续保留 `ManufacturingBomItemVO.routeStepId` 与 `ManufacturingBomItemVO.processId`，构建通过。
+
+Verification run for this follow-up:
+
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-process -am -Dtest=ManufacturingBomRouteStepCompatibilityTest,RouteServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `npm -C /Users/jf/Desktop/mesYe/mes-frontend run build`
+
+## 2026-05-28 Follow-up: Fresh Proof for 1.1 Plan -> WorkOrder -> Dispatch Chain
+
+- [x] `1.1` 在当前代码上的真实闭环语义已补充 fresh evidence：
+  - `ProductionPlanServiceTest` 证明 `ProductionPlanServiceImpl.release()` 会在下达生产计划时，先按 Route 有序展开 `WorkOrderTaskDTO`，再把非空 `tasks` 一起传入自动创建的工单。
+  - `WorkOrderServiceTest` 证明工单下发仍然坚持“必须已有工作清单”这一闸门，同时成功下发时会发布 `WorkOrderReleasedEvent`，把后续自动派工链路显式接上。
+  - `WorkOrderEventListenerTest` + `DispatchServiceTest` 共同证明派工侧会消费 `WorkOrderReleasedEvent`，并从工单工作清单生成 `DispatchTask`；若工单没有工作清单，则失败会抛出而不是被静默吞掉。
+- [x] 本次复验后的结论是：
+  - `1.1` 当前不再是“自动创建的工单缺工作清单”这一实现缺口；
+  - 现状语义是“生产计划下达自动生成带工作清单的工单，工单下发再自动生成派工任务”，因此剩余关注点主要是证据清晰度，而不是该编号下的业务修复缺失。
+
+Verification run for this follow-up:
+
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-plan -am -Dtest=ProductionPlanServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-workorder -am -Dtest=WorkOrderServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-dispatch -am -Dtest=WorkOrderEventListenerTest,DispatchServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`

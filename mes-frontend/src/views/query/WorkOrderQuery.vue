@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import type { WorkOrderVO, WorkOrderQuery } from '@/types/workorder'
-import { workOrderApi } from '@/api/workorder/workOrder'
+import { workQueryApi } from '@/api/query/workQuery'
 
 const statusMap: Record<string, { label: string; type: string }> = {
   CREATED: { label: '创建', type: 'info' },
@@ -148,7 +148,7 @@ const detailData = ref<WorkOrderVO | null>(null)
 async function fetchList() {
   loading.value = true
   try {
-    const res = await workOrderApi.page(query)
+    const res = await workQueryApi.workOrderPage(query)
     tableData.value = res?.list || []
     total.value = res?.total || 0
   } finally {
@@ -170,7 +170,7 @@ function handleReset() {
 }
 
 async function handleRowClick(row: WorkOrderVO) {
-  const res = await workOrderApi.getDetail(Number(row.id))
+  const res = await workQueryApi.workOrderDetail(Number(row.id))
   detailData.value = res
   drawerVisible.value = true
 }

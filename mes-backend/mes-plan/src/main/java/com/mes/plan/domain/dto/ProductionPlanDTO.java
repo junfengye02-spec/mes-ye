@@ -1,5 +1,6 @@
 package com.mes.plan.domain.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -31,8 +32,9 @@ public class ProductionPlanDTO {
     @Schema(description = "新制维修类型")
     private String newOrRepairType;
 
-    @Schema(description = "类型")
-    private String workType;
+    @JsonAlias("workType")
+    @Schema(description = "业务类型")
+    private String businessType;
 
     @Schema(description = "机型")
     private String machineModel;

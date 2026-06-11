@@ -62,7 +62,10 @@ public class WorkOrderVO {
     @Schema(description = "新制维修类型")
     private String newOrRepairType;
 
-    @Schema(description = "类型")
+    @Schema(description = "业务类型")
+    private String businessType;
+
+    @Schema(description = "业务类型（兼容字段）")
     private String workType;
 
     @Schema(description = "计划数量")

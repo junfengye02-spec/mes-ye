@@ -2,8 +2,11 @@ package com.mes.aps.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mes.aps.enums.SyncType;
+import com.mes.aps.domain.entity.ApsSyncLog;
+import com.mes.aps.enums.ApsExecutionFeedbackType;
+import com.mes.aps.enums.SyncDirection;
 import com.mes.aps.service.IApsExecutionFeedbackService;
+import com.mes.aps.service.IApsSyncLogService;
 import com.mes.aps.service.IApsUpstreamSyncService;
 import com.mes.dispatch.domain.entity.DispatchAssignment;
 import com.mes.dispatch.domain.entity.DispatchTask;
@@ -27,6 +30,7 @@ import java.util.*;
 public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackService {
 
     private final IApsUpstreamSyncService upstreamSyncService;
+    private final IApsSyncLogService syncLogService;
     private final ObjectMapper objectMapper;
     private final DispatchTaskMapper dispatchTaskMapper;
     private final DispatchAssignmentMapper dispatchAssignmentMapper;
@@ -57,7 +61,7 @@ public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackSer
             payload.put("status", assignment.getStatus());
             payload.put("assignedTime", assignment.getAssignedTime());
 
-            enqueue(SyncType.DISPATCH, "DISPATCH_ASSIGNMENT", assignmentId,
+            enqueue(ApsExecutionFeedbackType.DISPATCH, "DISPATCH_ASSIGNMENT", assignmentId,
                     task.getOrderNo(), 3, payload);
         } catch (Exception e) {
             log.error("派工分配反馈失败: dispatchTaskId={}, error={}", dispatchTaskId, e.getMessage());
@@ -72,7 +76,7 @@ public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackSer
             payload.put("checkStatus", checkStatus);
             payload.put("checkTime", System.currentTimeMillis());
 
-            enqueue(SyncType.START_CHECK, "WORK_START_CHECK", workOrderTaskId,
+            enqueue(ApsExecutionFeedbackType.START_CHECK, "WORK_START_CHECK", workOrderTaskId,
                     null, "FAILED".equals(checkStatus) ? 2 : 5, payload);
         } catch (Exception e) {
             log.error("开工检查反馈失败: workOrderTaskId={}, error={}", workOrderTaskId, e.getMessage());
@@ -101,7 +105,7 @@ public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackSer
             payload.put("workOrderNo", wo != null ? wo.getWorkOrderNo() : null);
             payload.put("constraints", constraintList);
 
-            enqueue(SyncType.CONSTRAINT, "WORK_ORDER_CONSTRAINT", workOrderId,
+            enqueue(ApsExecutionFeedbackType.CONSTRAINT, "WORK_ORDER_CONSTRAINT", workOrderId,
                     wo != null ? wo.getWorkOrderNo() : null, 4, payload);
         } catch (Exception e) {
             log.error("工单约束反馈失败: workOrderId={}, error={}", workOrderId, e.getMessage());
@@ -125,7 +129,7 @@ public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackSer
             payload.put("actualQty", handover.getActualQty());
             payload.put("gapAnalysis", handover.getGapAnalysis());
 
-            enqueue(SyncType.SHIFT_OUTPUT, "SHIFT_HANDOVER", shiftHandoverId,
+            enqueue(ApsExecutionFeedbackType.SHIFT_OUTPUT, "SHIFT_HANDOVER", shiftHandoverId,
                     handover.getProductSerialNo(), 3, payload);
         } catch (Exception e) {
             log.error("交班产出反馈失败: shiftHandoverId={}, error={}", shiftHandoverId, e.getMessage());
@@ -164,7 +168,7 @@ public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackSer
             payload.put("workOrderNo", wo.getWorkOrderNo());
             payload.put("shortageItems", shortageList);
 
-            enqueue(SyncType.MATERIAL_SHORTAGE, "MATERIAL_SHORTAGE", workOrderId,
+            enqueue(ApsExecutionFeedbackType.MATERIAL_SHORTAGE, "MATERIAL_SHORTAGE", workOrderId,
                     wo.getWorkOrderNo(), 2, payload);
         } catch (Exception e) {
             log.error("物料短缺反馈失败: workOrderId={}, error={}", workOrderId, e.getMessage());
@@ -186,7 +190,7 @@ public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackSer
             payload.put("qualifiedQty", req.getQualifiedQty());
             payload.put("status", req.getStatus());
 
-            enqueue(SyncType.REQUISITION, "MATERIAL_REQUISITION", requisitionId,
+            enqueue(ApsExecutionFeedbackType.REQUISITION, "MATERIAL_REQUISITION", requisitionId,
                     req.getRequisitionNo(), 4, payload);
         } catch (Exception e) {
             log.error("领料进度反馈失败: requisitionId={}, error={}", requisitionId, e.getMessage());
@@ -208,7 +212,7 @@ public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackSer
             payload.put("supplyQty", plan.getSupplyQty());
             payload.put("completedQty", plan.getCompletedQty());
 
-            enqueue(SyncType.SUPPLY_PROGRESS, "SUPPLY_PLAN", supplyPlanId,
+            enqueue(ApsExecutionFeedbackType.SUPPLY_PROGRESS, "SUPPLY_PLAN", supplyPlanId,
                     plan.getSupplyPlanNo(), 4, payload);
         } catch (Exception e) {
             log.error("供应计划反馈失败: supplyPlanId={}, error={}", supplyPlanId, e.getMessage());
@@ -234,7 +238,7 @@ public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackSer
             payload.put("actualEndTime", wo.getActualEndTime());
             payload.put("changeTime", System.currentTimeMillis());
 
-            enqueue(SyncType.STATUS_CHANGE, "WORK_ORDER", workOrderId,
+            enqueue(ApsExecutionFeedbackType.STATUS_CHANGE, "WORK_ORDER", workOrderId,
                     wo.getWorkOrderNo(), 2, payload);
         } catch (Exception e) {
             log.error("工单状态变更反馈失败: workOrderId={}, error={}", workOrderId, e.getMessage());
@@ -250,20 +254,35 @@ public class ApsExecutionFeedbackServiceImpl implements IApsExecutionFeedbackSer
             payload.put("entityCode", entityCode);
             payload.put("changeTime", System.currentTimeMillis());
 
-            enqueue(SyncType.PROCESS_CHANGE, changeType, entityId,
+            enqueue(ApsExecutionFeedbackType.PROCESS_CHANGE, changeType, entityId,
                     entityCode, 3, payload);
         } catch (Exception e) {
             log.error("工艺变更反馈失败: changeType={}, entityId={}, error={}", changeType, entityId, e.getMessage());
         }
     }
 
-    private void enqueue(SyncType syncType, String dataType, Long dataId,
-                          String dataNo, int priority, Map<String, Object> payload) {
+    private void enqueue(ApsExecutionFeedbackType feedbackType, String dataType, Long dataId,
+                         String dataNo, int priority, Map<String, Object> payload) {
+        recordUnsupportedFeedback(feedbackType, dataType, dataId, dataNo);
+    }
+
+    private void recordUnsupportedFeedback(ApsExecutionFeedbackType syncType, String dataType, Long dataId, String dataNo) {
+        String batchId = UUID.randomUUID().toString();
+        String errorMessage = String.format(
+                "APS 当前合同不支持该执行反馈类型: %s (dataType=%s, dataId=%s, dataNo=%s)",
+                syncType.getCode(), dataType, dataId, dataNo);
         try {
-            String json = objectMapper.writeValueAsString(payload);
-            upstreamSyncService.enqueue(syncType.getCode(), dataType, dataId, dataNo, priority, json);
+            ApsSyncLog syncLog = syncLogService.createLog(
+                    batchId,
+                    SyncDirection.UPSTREAM.getCode(),
+                    syncType.getCode());
+            if (syncLog != null && syncLog.getId() != null) {
+                syncLogService.completeLog(syncLog.getId(), 0, 0, 1, errorMessage);
+            }
+            log.warn("APS 执行反馈未入队，已记本地失败审计: {}", errorMessage);
         } catch (Exception e) {
-            log.error("写入APS同步队列失败: syncType={}, error={}", syncType.getCode(), e.getMessage());
+            log.error("记录APS执行反馈失败审计失败: syncType={}, dataType={}, dataId={}, error={}",
+                    syncType.getCode(), dataType, dataId, e.getMessage(), e);
         }
     }
 }

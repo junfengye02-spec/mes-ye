@@ -30,4 +30,7 @@ public class AbnormalContactAttachmentDTO {
 
     @Schema(description = "团队")
     private String team;
+
+    @Schema(description = "签章供应商")
+    private String signatureProvider;
 }

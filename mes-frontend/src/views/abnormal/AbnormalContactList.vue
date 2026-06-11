@@ -158,6 +158,12 @@
         <el-form-item label="产品事业部" prop="productDivision">
           <el-input v-model="form.productDivision" placeholder="产品事业部" />
         </el-form-item>
+        <el-form-item label="关联工单ID" prop="workOrderId">
+          <el-input-number v-model="form.workOrderId" :min="1" placeholder="关联工单ID" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="关联派工任务ID" prop="dispatchTaskId">
+          <el-input-number v-model="form.dispatchTaskId" :min="1" placeholder="关联派工任务ID" style="width: 100%" />
+        </el-form-item>
         <el-form-item label="订单号" prop="orderNo">
           <el-input v-model="form.orderNo" placeholder="订单号" />
         </el-form-item>
@@ -223,6 +229,8 @@
           <el-descriptions-item label="主题">{{ detailData.subject }}</el-descriptions-item>
           <el-descriptions-item label="发生阶段">{{ detailData.occurStage }}</el-descriptions-item>
           <el-descriptions-item label="事件类别">{{ detailData.eventCategory }}</el-descriptions-item>
+          <el-descriptions-item label="关联工单ID">{{ detailData.workOrderId }}</el-descriptions-item>
+          <el-descriptions-item label="关联派工任务ID">{{ detailData.dispatchTaskId }}</el-descriptions-item>
           <el-descriptions-item label="产品名称">{{ detailData.productName }}</el-descriptions-item>
           <el-descriptions-item label="数量">{{ detailData.qty }}</el-descriptions-item>
           <el-descriptions-item label="状态">
@@ -298,6 +306,8 @@ const isEdit = ref(false)
 const editId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
 const form = reactive<AbnormalContactDTO & { affectSchedule?: number }>({
+  workOrderId: undefined,
+  dispatchTaskId: undefined,
   subject: '',
   occurStage: '',
   eventCategory: '',
@@ -360,6 +370,8 @@ function handleEdit(row: AbnormalContactVO) {
   isEdit.value = true
   editId.value = row.id
   Object.assign(form, {
+    workOrderId: row.workOrderId,
+    dispatchTaskId: row.dispatchTaskId,
     subject: row.subject,
     occurStage: row.occurStage,
     eventCategory: row.eventCategory,
@@ -382,6 +394,8 @@ function handleEdit(row: AbnormalContactVO) {
 
 function resetForm() {
   Object.assign(form, {
+    workOrderId: undefined,
+    dispatchTaskId: undefined,
     subject: '',
     occurStage: '',
     eventCategory: '',

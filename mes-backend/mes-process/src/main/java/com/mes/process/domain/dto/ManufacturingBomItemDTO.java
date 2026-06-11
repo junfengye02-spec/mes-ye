@@ -40,7 +40,10 @@ public class ManufacturingBomItemDTO {
     @Schema(description = "供应类型")
     private String supplyType;
 
-    @Schema(description = "关联工序ID")
+    @Schema(description = "关联工艺路线步骤ID")
+    private Long routeStepId;
+
+    @Schema(description = "关联工序ID（兼容字段）")
     private Long processId;
 
     @Schema(description = "关联工序号")

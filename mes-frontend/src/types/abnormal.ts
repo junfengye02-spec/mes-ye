@@ -2,6 +2,8 @@ import type { BaseEntity, PageQuery } from './common'
 
 export interface AbnormalContactVO extends BaseEntity {
   contactNo: string
+  workOrderId?: number
+  dispatchTaskId?: number
   subject?: string
   occurStage?: string
   eventCategory?: string
@@ -34,7 +36,8 @@ export interface AbnormalContactAttachmentVO extends BaseEntity {
   team?: string
   publishTime?: string
   submitTime?: string
-  fadadaFlag?: number
+  signatureProvider?: string
+  signatureStatus?: string
   signed?: number
 }
 
@@ -49,6 +52,8 @@ export interface AbnormalContactLogVO extends BaseEntity {
 }
 
 export interface AbnormalContactDTO {
+  workOrderId?: number
+  dispatchTaskId?: number
   subject?: string
   occurStage?: string
   eventCategory?: string

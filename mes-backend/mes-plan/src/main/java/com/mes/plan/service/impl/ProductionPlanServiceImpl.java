@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mes.common.core.PageResult;
+import com.mes.common.id.DistributedIdGenerator;
 import com.mes.common.result.ResultCode;
 import com.mes.common.utils.AssertUtil;
 import com.mes.plan.domain.dto.ProductionPlanDTO;
@@ -32,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 
@@ -44,13 +47,17 @@ import java.util.List;
 public class ProductionPlanServiceImpl extends ServiceImpl<ProductionPlanMapper, ProductionPlan>
         implements IProductionPlanService {
 
+    private static final DateTimeFormatter WORK_ORDER_DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
+
     private final IOrderPlanService orderPlanService;
     private final IPlanStatusLogService planStatusLogService;
     private final IWorkOrderService workOrderService;
     private final IRouteService routeService;
+    private final DistributedIdGenerator distributedIdGenerator;
 
     @Override
     public PageResult<ProductionPlanVO> page(ProductionPlanQuery query) {
+        String businessType = resolveBusinessType(query.getBusinessType(), query.getWorkType());
         LambdaQueryWrapper<ProductionPlan> wrapper = new LambdaQueryWrapper<ProductionPlan>()
                 .like(StringUtils.hasText(query.getOrderNo()),
                         ProductionPlan::getOrderNo, query.getOrderNo())
@@ -60,8 +67,8 @@ public class ProductionPlanServiceImpl extends ServiceImpl<ProductionPlanMapper,
                         ProductionPlan::getProductName, query.getProductName())
                 .eq(StringUtils.hasText(query.getStatus()),
                         ProductionPlan::getStatus, query.getStatus())
-                .eq(StringUtils.hasText(query.getWorkType()),
-                        ProductionPlan::getWorkType, query.getWorkType())
+                .eq(StringUtils.hasText(businessType),
+                        ProductionPlan::getBusinessType, businessType)
                 .eq(StringUtils.hasText(query.getMachineModel()),
                         ProductionPlan::getMachineModel, query.getMachineModel())
                 .eq(StringUtils.hasText(query.getProductCategory()),
@@ -186,7 +193,7 @@ public class ProductionPlanServiceImpl extends ServiceImpl<ProductionPlanMapper,
         workOrderDTO.setProductCategory(entity.getProductCategory());
         workOrderDTO.setProductType(entity.getProductType());
         workOrderDTO.setNewOrRepairType(entity.getNewOrRepairType());
-        workOrderDTO.setWorkType(entity.getWorkType());
+        workOrderDTO.setBusinessType(entity.getBusinessType());
         workOrderDTO.setPlanQty(entity.getPlanQty());
         workOrderDTO.setQtyUnit(entity.getQtyUnit());
         workOrderDTO.setPlanOrg(entity.getPlanOrg());
@@ -227,17 +234,21 @@ public class ProductionPlanServiceImpl extends ServiceImpl<ProductionPlanMapper,
     }
 
     /**
-     * 生成工单号：WO-yyyyMMdd-XXXX
+     * 生成工单号：WO-yyyyMMdd-{distributedId}
      */
     private String generateWorkOrderNo() {
-        String dateStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String seq = String.format("%04d", (int) (Math.random() * 9999) + 1);
-        return "WO-" + dateStr + "-" + seq;
+        String dateStr = LocalDate.now().format(WORK_ORDER_DATE_FMT);
+        return "WO-" + dateStr + "-" + distributedIdGenerator.nextIdStr();
     }
 
     private ProductionPlanVO toVO(ProductionPlan entity) {
         ProductionPlanVO vo = new ProductionPlanVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setWorkType(entity.getBusinessType());
         return vo;
+    }
+
+    private String resolveBusinessType(String businessType, String legacyWorkType) {
+        return StringUtils.hasText(businessType) ? businessType : legacyWorkType;
     }
 }

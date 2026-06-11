@@ -11,8 +11,74 @@ const toLocalDateTime = (value: Date) => value.toISOString().replace('T', ' ').r
  *     C2. 撤销后，第二条应能重新占用
  */
 test.describe('派工 / Dispatch (UI smoke)', () => {
+  let uiSeed: E2ESeed | null = null
+  let uiData: SeedData | null = null
+  let uiSkipReason: string | null = null
+
+  test.beforeAll(async () => {
+    try {
+      uiSeed = await E2ESeed.create()
+      uiData = await uiSeed.setup({ workOrderCount: 1, materialCount: 1, workCenterCount: 1 })
+
+      const workOrder = uiData.workOrders[0]
+      const device = uiData.workCenters[0]
+      const start = toLocalDateTime(new Date(Date.now() + 3600_000))
+      const end = toLocalDateTime(new Date(Date.now() + 3 * 3600_000))
+
+      const assignedTaskId = await uiSeed.client.post<number>('/dispatch/task/create', {
+        workOrderId: workOrder.id,
+        orderNo: workOrder.orderNo,
+        processNo: `${uiData.prefix}_UI10`,
+        workName: 'E2E界面已派工任务',
+        planWorkCenterId: device.id,
+        planQty: 5,
+        qtyUnit: 'PCS',
+        planStartTime: start,
+        planEndTime: end,
+      })
+      await uiSeed.client.post('/dispatch/task/assign', {
+        taskId: assignedTaskId,
+        assignType: 'DEVICE',
+        assigneeIds: [device.id],
+        assigneeCodes: [device.code],
+        assigneeNames: [device.name],
+        assignedQty: 5,
+        qtyUnit: 'PCS',
+      })
+
+      const progressingTaskId = await uiSeed.client.post<number>('/dispatch/task/create', {
+        workOrderId: workOrder.id,
+        orderNo: workOrder.orderNo,
+        processNo: `${uiData.prefix}_UI20`,
+        workName: 'E2E界面开工中任务',
+        planWorkCenterId: device.id,
+        planQty: 6,
+        qtyUnit: 'PCS',
+        planStartTime: start,
+        planEndTime: end,
+      })
+      await uiSeed.client.post('/dispatch/task/assign', {
+        taskId: progressingTaskId,
+        assignType: 'PERSON',
+        assigneeIds: [900001 + (uiData.createdAt % 100000)],
+        assigneeCodes: [`${uiData.prefix}_PERSON`],
+        assigneeNames: ['E2E测试人员'],
+        assignedQty: 6,
+        qtyUnit: 'PCS',
+      })
+      await uiSeed.client.post(`/dispatch/task/start/${progressingTaskId}`)
+    } catch (e: any) {
+      uiSkipReason = e instanceof SeedUnavailableError ? e.message : e?.message || String(e)
+    }
+  })
+
+  test.afterAll(async () => {
+    await uiSeed?.teardown()
+  })
+
   test.beforeEach(async ({ page, backendAlive }) => {
     test.skip(!backendAlive, 'MES 后端不可达，无法登录进入业务页面')
+    test.skip(!!uiSkipReason, `seed skip: ${uiSkipReason || ''}`)
     await loginAsAdmin(page)
   })
 
@@ -47,6 +113,24 @@ test.describe('派工 / Dispatch (UI smoke)', () => {
       (await page.getByText('No Data', { exact: true }).first().isVisible().catch(() => false)) ||
       (await page.getByText('暂无数据', { exact: true }).first().isVisible().catch(() => false))
     expect(hasAction || hasEmpty).toBeTruthy()
+  })
+
+  test('派工任务列表具备生命周期动作入口', async ({ page }) => {
+    test.skip(!uiData || !!uiSkipReason, `seed skip: ${uiSkipReason || ''}`)
+    await page.goto('/dispatch/task')
+    if (page.url().includes('/login')) {
+      await loginAsAdmin(page)
+      await page.goto('/dispatch/task')
+    }
+    await expect(page).not.toHaveURL(/\/login/)
+    await expect(page.locator('.dispatch-task')).toBeVisible({ timeout: 15000 })
+
+    await page.getByLabel('订单编号').fill(uiData!.workOrders[0].orderNo)
+    await page.getByRole('button', { name: /查询/ }).click()
+
+    await expect(page.locator('button:has-text("开工")').first()).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('button:has-text("完工")').first()).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('button:has-text("撤销任务")').first()).toBeVisible({ timeout: 15000 })
   })
 })
 

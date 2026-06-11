@@ -19,8 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 发货签收 Service 实现
@@ -77,10 +80,7 @@ public class DeliverySignServiceImpl implements IDeliverySignService {
 
         // 库存联动：签收确认后扣减库存（从仓库发出）
         if (entity.getMaterialId() != null && entity.getPendingSignQty() != null) {
-            StorageInventory inventory = storageInventoryService.getOne(
-                    new LambdaQueryWrapper<StorageInventory>()
-                            .eq(StorageInventory::getMaterialId, entity.getMaterialId())
-                            .last("LIMIT 1"));
+            StorageInventory inventory = findInventoryForSign(entity);
             if (inventory != null) {
                 storageInventoryService.deductStock(inventory.getId(), entity.getPendingSignQty());
                 log.info("签收扣减库存: materialId={}, qty={}", entity.getMaterialId(), entity.getPendingSignQty());
@@ -96,5 +96,37 @@ public class DeliverySignServiceImpl implements IDeliverySignService {
         DeliverySignVO vo = new DeliverySignVO();
         BeanUtils.copyProperties(entity, vo);
         return vo;
+    }
+
+    private StorageInventory findInventoryForSign(DeliverySign entity) {
+        List<StorageInventory> inventories = storageInventoryService.list(
+                new LambdaQueryWrapper<StorageInventory>()
+                        .eq(StorageInventory::getMaterialId, entity.getMaterialId()));
+        if (inventories.isEmpty()) {
+            return null;
+        }
+
+        return inventories.stream()
+                .filter(Objects::nonNull)
+                .max(Comparator
+                        .comparing((StorageInventory inventory) ->
+                                        warehouseMatched(entity.getDeliveryWarehouse(), inventory.getWarehouse()))
+                                .thenComparing(inventory ->
+                                        locationMatched(entity.getDeliveryLocation(), inventory.getStorageLocation()))
+                                .thenComparing(inventory -> defaultQty(inventory.getUnrestrictedStock()))
+                                .thenComparing(StorageInventory::getId, Comparator.nullsLast(Long::compareTo)))
+                .orElse(null);
+    }
+
+    private boolean warehouseMatched(String expectedWarehouse, String actualWarehouse) {
+        return StringUtils.hasText(expectedWarehouse) && expectedWarehouse.equals(actualWarehouse);
+    }
+
+    private boolean locationMatched(String expectedLocation, String actualLocation) {
+        return StringUtils.hasText(expectedLocation) && expectedLocation.equals(actualLocation);
+    }
+
+    private BigDecimal defaultQty(BigDecimal qty) {
+        return qty != null ? qty : BigDecimal.ZERO;
     }
 }

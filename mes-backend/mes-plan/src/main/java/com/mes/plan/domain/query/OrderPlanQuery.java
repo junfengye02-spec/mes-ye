@@ -31,7 +31,10 @@ public class OrderPlanQuery extends PageQuery {
     @Schema(description = "展开状态")
     private String expandStatus;
 
-    @Schema(description = "类型")
+    @Schema(description = "业务类型")
+    private String businessType;
+
+    @Schema(description = "业务类型（兼容字段）")
     private String workType;
 
     @Schema(description = "机型")

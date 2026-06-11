@@ -35,6 +35,59 @@ test.describe('异常联络 / Abnormal (UI smoke)', () => {
     }
   })
 
+  test('新增异常对话框展示关联工单和派工字段', async ({ page }) => {
+    await page.goto('/abnormal/contact')
+    const addBtn = page
+      .locator('button:has-text("新增"), button:has-text("新 增"), button:has-text("上报")')
+      .first()
+    await addBtn.click()
+    const dialog = page.locator('.el-dialog').first()
+    await expect(dialog).toBeVisible({ timeout: 10000 })
+    await expect(dialog.getByText('关联工单ID')).toBeVisible()
+    await expect(dialog.getByText('关联派工任务ID')).toBeVisible()
+  })
+
+  test('新增异常对话框会把关联工单和派工字段提交到请求体', async ({ page }) => {
+    let capturedPayload: any = null
+
+    await page.route('**/api/abnormal/contact/page**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 200, data: { list: [], total: 0 } }),
+      })
+    })
+
+    await page.route('**/api/abnormal/contact', async route => {
+      if (route.request().method() === 'POST') {
+        capturedPayload = route.request().postDataJSON()
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 200, data: 1001 }),
+        })
+        return
+      }
+      await route.continue()
+    })
+
+    await page.goto('/abnormal/contact')
+    const addBtn = page
+      .locator('button:has-text("新增"), button:has-text("新 增"), button:has-text("上报")')
+      .first()
+    await addBtn.click()
+    const dialog = page.locator('.el-dialog').first()
+
+    await dialog.getByLabel('主题').last().fill('UI abnormal payload test')
+    await dialog.getByLabel('关联工单ID').fill('101')
+    await dialog.getByLabel('关联派工任务ID').fill('202')
+    await page.locator('.el-dialog__footer .el-button--primary').click()
+
+    await expect.poll(() => capturedPayload).not.toBeNull()
+    expect(capturedPayload.workOrderId).toBe(101)
+    expect(capturedPayload.dispatchTaskId).toBe(202)
+  })
+
   test('状态筛选或处理按钮可见', async ({ page }) => {
     await page.goto('/abnormal/contact')
     await expect(page.locator('.abnormal-contact-list .search-card')).toBeVisible({ timeout: 15000 })

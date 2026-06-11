@@ -26,7 +26,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -37,9 +36,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
-
-    private static final Set<String> SUPPORTED_UPSTREAM_SYNC_TYPES = Set.of(
-            "WORKORDER", "INVENTORY", "QUALITY", "OUTSOURCE", "TRANSFER", "ABNORMAL");
 
     private final ApsSyncQueueMapper syncQueueMapper;
     private final ApsClient apsClient;
@@ -125,6 +121,11 @@ public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void enqueue(String syncType, String dataType, Long dataId, String dataNo, int priority, String payload) {
+        if (!SyncType.isUpstreamQueueSupported(syncType)) {
+            log.info("APS暂不支持该上行同步类型，跳过入队: type={}, dataNo={}", syncType, dataNo);
+            return;
+        }
+
         ApsSyncQueue queue = new ApsSyncQueue();
         queue.setSyncDirection(SyncDirection.UPSTREAM.getCode());
         queue.setSyncType(syncType);
@@ -153,7 +154,7 @@ public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
     // ==================== 私有方法 ====================
 
     private boolean isUnsupportedUpstreamType(ApsSyncQueue item) {
-        return !SUPPORTED_UPSTREAM_SYNC_TYPES.contains(item.getSyncType());
+        return !SyncType.isUpstreamQueueSupported(item.getSyncType());
     }
 
     private void markUnsupportedTypeFailed(ApsSyncQueue item) {
@@ -164,59 +165,14 @@ public class ApsUpstreamSyncServiceImpl implements IApsUpstreamSyncService {
     }
 
     private void pushToAps(ApsSyncQueue item) {
-        String syncType = item.getSyncType();
+        SyncType syncType = SyncType.fromCode(item.getSyncType())
+                .orElseThrow(() -> new RuntimeException("未知的同步类型: " + item.getSyncType()));
+        Map<String, Object> payload = buildPayload(item);
 
-        switch (syncType) {
-            // ===== 原有类型 =====
-            case "WORKORDER" ->
-                apsClient.post("/api/mes/status/sync", buildPayload(item), Map.class);
-            case "INVENTORY" ->
-                apsClient.post("/api/mes/inventory/sync", buildPayload(item), Map.class);
-            case "QUALITY" ->
-                apsClient.post("/api/mes/quality/sync", buildPayload(item), Map.class);
-            case "OUTSOURCE" ->
-                apsClient.post("/api/mes/outsource/status", buildPayload(item), Map.class);
-            case "TRANSFER" ->
-                apsClient.post("/api/mes/transfer/status", buildPayload(item), Map.class);
-            case "ABNORMAL" ->
-                apsClient.postAsync("/api/mes/reschedule", buildPayload(item));
-
-            // ===== 主数据同步 =====
-            case "WORK_CENTER" ->
-                apsClient.post("/api/mes/master-data/work-center", buildPayload(item), Map.class);
-            case "PROCESS_ROUTE" ->
-                apsClient.post("/api/mes/master-data/process-route", buildPayload(item), Map.class);
-            case "BOM" ->
-                apsClient.post("/api/mes/master-data/bom", buildPayload(item), Map.class);
-            case "MATERIAL_MASTER" ->
-                apsClient.post("/api/mes/master-data/material", buildPayload(item), Map.class);
-            case "TEAM" ->
-                apsClient.post("/api/mes/master-data/team", buildPayload(item), Map.class);
-
-            // ===== 执行反馈 =====
-            case "DISPATCH" ->
-                apsClient.post("/api/mes/feedback/dispatch", buildPayload(item), Map.class);
-            case "START_CHECK" ->
-                apsClient.post("/api/mes/feedback/start-check", buildPayload(item), Map.class);
-            case "CONSTRAINT" ->
-                apsClient.post("/api/mes/feedback/constraint", buildPayload(item), Map.class);
-            case "SHIFT_OUTPUT" ->
-                apsClient.post("/api/mes/feedback/shift-output", buildPayload(item), Map.class);
-            case "MATERIAL_SHORTAGE" ->
-                apsClient.post("/api/mes/feedback/material-shortage", buildPayload(item), Map.class);
-            case "REQUISITION" ->
-                apsClient.post("/api/mes/feedback/requisition", buildPayload(item), Map.class);
-            case "SUPPLY_PROGRESS" ->
-                apsClient.post("/api/mes/feedback/supply-progress", buildPayload(item), Map.class);
-            case "STATUS_CHANGE" ->
-                apsClient.post("/api/mes/feedback/status-change", buildPayload(item), Map.class);
-            case "PROCESS_CHANGE" ->
-                apsClient.post("/api/mes/feedback/process-change", buildPayload(item), Map.class);
-
-            default -> {
-                log.warn("未知的同步类型: {}", syncType);
-                throw new RuntimeException("未知的同步类型: " + syncType);
-            }
+        if (syncType.isAsyncUpstreamContractCall()) {
+            apsClient.postAsync(syncType.requireUpstreamContractEndpoint(), payload);
+        } else {
+            apsClient.post(syncType.requireUpstreamContractEndpoint(), payload, Map.class);
         }
     }
 

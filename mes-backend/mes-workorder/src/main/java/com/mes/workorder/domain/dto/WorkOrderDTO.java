@@ -1,5 +1,6 @@
 package com.mes.workorder.domain.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -61,8 +62,9 @@ public class WorkOrderDTO {
     @Schema(description = "新制维修类型")
     private String newOrRepairType;
 
-    @Schema(description = "类型")
-    private String workType;
+    @JsonAlias("workType")
+    @Schema(description = "业务类型")
+    private String businessType;
 
     @Schema(description = "计划数量")
     private BigDecimal planQty;

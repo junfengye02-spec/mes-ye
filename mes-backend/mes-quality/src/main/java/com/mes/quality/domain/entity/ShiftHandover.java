@@ -1,11 +1,10 @@
 package com.mes.quality.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mes.common.core.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,11 +14,9 @@ import java.time.LocalTime;
  * 交班记录表实体
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("mes_shift_handover")
-public class ShiftHandover implements Serializable {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class ShiftHandover extends BaseEntity {
 
     /** 项目名称 */
     private String projectName;
@@ -83,16 +80,4 @@ public class ShiftHandover implements Serializable {
 
     /** 其它需要交付事宜 */
     private String otherMatters;
-
-    /** 创建人 */
-    private String createdBy;
-
-    /** 创建时间 */
-    private LocalDateTime createdTime;
-
-    /** 修改人 */
-    private String updatedBy;
-
-    /** 修改时间 */
-    private LocalDateTime updatedTime;
 }

@@ -61,8 +61,8 @@ public class WorkOrder extends BaseEntity {
     /** 新制维修类型 */
     private String newOrRepairType;
 
-    /** 类型 */
-    private String workType;
+    /** 业务类型 */
+    private String businessType;
 
     /** 计划数量 */
     private BigDecimal planQty;

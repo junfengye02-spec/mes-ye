@@ -16,6 +16,10 @@ public class MaterialReturnVO {
     @Schema(description = "产品编码") private String productCode;
     @Schema(description = "产品名称") private String productName;
     @Schema(description = "项目") private String projectName;
+    @Schema(description = "新制维修类型") private String newOrRepairType;
+    @Schema(description = "业务类型") private String businessType;
+    @Schema(description = "业务类型（兼容字段）") private String workType;
+    @Schema(description = "流程编码") private String flowCode;
     @Schema(description = "计划数量") private BigDecimal planQty;
     @Schema(description = "完工数量") private BigDecimal completedQty;
     @Schema(description = "状态") private String status;

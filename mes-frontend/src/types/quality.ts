@@ -19,6 +19,8 @@ export interface RecheckRequestVO extends BaseEntity {
 }
 
 export interface RecheckRequestDTO {
+  workOrderId?: number
+  dispatchTaskId?: number
   projectCode?: string
   projectName?: string
   materialCode?: string
@@ -29,6 +31,16 @@ export interface RecheckRequestDTO {
   recheckProposer?: string
   recheckProposeTime?: string
   requiredDeliveryTime?: string
+}
+
+export interface RecheckReviewDTO {
+  reviewer?: string
+  reviewDate?: string
+  isReasonable?: number
+}
+
+export interface RecheckApproveDTO {
+  approved: boolean
 }
 
 export interface RecheckRequestQuery extends PageQuery {

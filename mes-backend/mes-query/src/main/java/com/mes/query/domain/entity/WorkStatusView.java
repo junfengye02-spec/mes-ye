@@ -1,22 +1,19 @@
 package com.mes.query.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mes.common.core.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
  * 工作状态查看表实体
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("mes_work_status_view")
-public class WorkStatusView implements Serializable {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class WorkStatusView extends BaseEntity {
 
     /** 编号 */
     private String workNo;
@@ -45,8 +42,8 @@ public class WorkStatusView implements Serializable {
     /** 说明 */
     private String description;
 
-    /** 组炉号 */
-    private String furnaceNo;
+    /** 资源组编码 */
+    private String resourceGroupCode;
 
     /** 所属工序 */
     private String belongProcess;
@@ -89,10 +86,6 @@ public class WorkStatusView implements Serializable {
 
     /** 时间单位 */
     private String timeUnit;
-
-    /** 创建时间 */
-    private LocalDateTime createdTime;
-
     /** 计划开始时间 */
     private LocalDateTime planStartTime;
 

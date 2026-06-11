@@ -42,8 +42,11 @@ public class AbnormalContactAttachmentVO {
     @Schema(description = "提交时间")
     private LocalDateTime submitTime;
 
-    @Schema(description = "法大大标识")
-    private String fadadaFlag;
+    @Schema(description = "签章供应商")
+    private String signatureProvider;
+
+    @Schema(description = "签章状态")
+    private String signatureStatus;
 
     @Schema(description = "已签")
     private Integer signed;

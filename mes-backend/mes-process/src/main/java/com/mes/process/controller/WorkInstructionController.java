@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 指导书 Controller
  */
-@Tag(name = "指导书", description = "指导书管理接口")
+@Tag(name = "指导书", description = "可复用作业指导书模板管理接口，可被多个指示书引用")
 @RestController
 @RequestMapping("/process/work-instruction")
 @RequiredArgsConstructor
@@ -25,14 +25,14 @@ public class WorkInstructionController {
 
     private final IWorkInstructionService workInstructionService;
 
-    @Operation(summary = "分页查询指导书")
+    @Operation(summary = "分页查询指导书模板")
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('process:workInstruction:list')")
     public R<PageResult<WorkInstructionVO>> page(WorkInstructionQuery query) {
         return R.ok(workInstructionService.page(query));
     }
 
-    @Operation(summary = "获取指导书详情（含人员列表）")
+    @Operation(summary = "获取指导书模板详情（含适用人员列表）")
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('process:workInstruction:detail')")
     public R<WorkInstructionVO> getDetail(
@@ -40,14 +40,14 @@ public class WorkInstructionController {
         return R.ok(workInstructionService.getDetail(id));
     }
 
-    @Operation(summary = "新增指导书（含人员列表）")
+    @Operation(summary = "新增指导书模板（含人员列表）")
     @PostMapping
     @PreAuthorize("hasAuthority('process:workInstruction:create')")
     public R<Long> create(@Valid @RequestBody WorkInstructionDTO dto) {
         return R.ok("新增成功", workInstructionService.create(dto));
     }
 
-    @Operation(summary = "修改指导书（含人员列表）")
+    @Operation(summary = "修改指导书模板（含人员列表）")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('process:workInstruction:update')")
     public R<Void> update(

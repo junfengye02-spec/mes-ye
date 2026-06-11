@@ -54,10 +54,15 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right" align="center">
+        <el-table-column label="操作" width="320" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="row.status === 'CREATED'" link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'CREATED'" link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="row.status === 'CREATED'" link type="primary" size="small" @click="handleSubmit(row)">提交</el-button>
+            <el-button v-if="row.status === 'SUBMITTED'" link type="primary" size="small" @click="handleOpenReview(row)">审核</el-button>
+            <el-button v-if="row.status === 'IN_REVIEW'" link type="success" size="small" @click="handleApprove(row, true)">批准</el-button>
+            <el-button v-if="row.status === 'IN_REVIEW'" link type="danger" size="small" @click="handleApprove(row, false)">驳回</el-button>
+            <el-button v-if="row.status === 'APPROVED'" link type="success" size="small" @click="handleComplete(row)">完结</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -117,6 +122,39 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="reviewDialogVisible"
+      title="审核复检申请"
+      width="480px"
+      destroy-on-close
+      @close="resetReviewForm"
+    >
+      <el-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" label-width="100px">
+        <el-form-item label="审核人" prop="reviewer">
+          <el-input v-model="reviewForm.reviewer" placeholder="请输入审核人" />
+        </el-form-item>
+        <el-form-item label="审核日期" prop="reviewDate">
+          <el-date-picker
+            v-model="reviewForm.reviewDate"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择审核日期"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="是否合理" prop="isReasonable">
+          <el-select v-model="reviewForm.isReasonable" placeholder="请选择" style="width: 100%">
+            <el-option label="合理" :value="1" />
+            <el-option label="不合理" :value="0" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reviewDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="reviewSubmitting" @click="handleSubmitReview">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -125,7 +163,12 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getDictLabel, getDictType, getDictList } from '@/utils/dict'
-import type { RecheckRequestVO, RecheckRequestDTO, RecheckRequestQuery } from '@/types/quality'
+import type {
+  RecheckRequestVO,
+  RecheckRequestDTO,
+  RecheckRequestQuery,
+  RecheckReviewDTO,
+} from '@/types/quality'
 import { recheckRequestApi } from '@/api/quality/recheckRequest'
 
 const loading = ref(false)
@@ -144,6 +187,10 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const editId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
+const reviewDialogVisible = ref(false)
+const reviewSubmitting = ref(false)
+const reviewingId = ref<number | null>(null)
+const reviewFormRef = ref<FormInstance>()
 const form = reactive<RecheckRequestDTO>({
   projectCode: '',
   projectName: '',
@@ -154,8 +201,18 @@ const form = reactive<RecheckRequestDTO>({
   recheckReason: '',
   recheckProposer: '',
 })
+const reviewForm = reactive<RecheckReviewDTO>({
+  reviewer: '',
+  reviewDate: '',
+  isReasonable: 1,
+})
 const formRules: FormRules = {
   productionOrderNo: [{ required: true, message: '请输入生产订单号', trigger: 'blur' }],
+}
+const reviewRules: FormRules = {
+  reviewer: [{ required: true, message: '请输入审核人', trigger: 'blur' }],
+  reviewDate: [{ required: true, message: '请选择审核日期', trigger: 'change' }],
+  isReasonable: [{ required: true, message: '请选择是否合理', trigger: 'change' }],
 }
 
 async function fetchList() {
@@ -207,6 +264,8 @@ function handleEdit(row: RecheckRequestVO) {
 
 function resetForm() {
   Object.assign(form, {
+    workOrderId: undefined,
+    dispatchTaskId: undefined,
     projectCode: '',
     projectName: '',
     materialCode: '',
@@ -216,6 +275,15 @@ function resetForm() {
     recheckReason: '',
     recheckProposer: '',
   })
+}
+
+function resetReviewForm() {
+  Object.assign(reviewForm, {
+    reviewer: '',
+    reviewDate: '',
+    isReasonable: 1,
+  })
+  reviewingId.value = null
 }
 
 async function handleSubmitForm() {
@@ -245,6 +313,67 @@ async function handleDelete(row: RecheckRequestVO) {
     })
     await recheckRequestApi.delete(row.id)
     ElMessage.success('删除成功')
+    fetchList()
+  } catch { /* user cancelled */ }
+}
+
+async function handleSubmit(row: RecheckRequestVO) {
+  try {
+    await ElMessageBox.confirm('确定要提交该复检申请吗？', '提示', { type: 'info' })
+    await recheckRequestApi.submit(row.id)
+    ElMessage.success('提交成功')
+    fetchList()
+  } catch { /* user cancelled */ }
+}
+
+function handleOpenReview(row: RecheckRequestVO) {
+  reviewingId.value = row.id
+  Object.assign(reviewForm, {
+    reviewer: row.reviewer || '',
+    reviewDate: row.reviewDate || '',
+    isReasonable: row.isReasonable ?? 1,
+  })
+  reviewDialogVisible.value = true
+}
+
+async function handleSubmitReview() {
+  if (!reviewFormRef.value || reviewingId.value == null) return
+  const valid = await reviewFormRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  reviewSubmitting.value = true
+  try {
+    await recheckRequestApi.review(reviewingId.value, {
+      reviewer: reviewForm.reviewer,
+      reviewDate: reviewForm.reviewDate,
+      isReasonable: reviewForm.isReasonable,
+    })
+    ElMessage.success('审核成功')
+    reviewDialogVisible.value = false
+    resetReviewForm()
+    fetchList()
+  } finally {
+    reviewSubmitting.value = false
+  }
+}
+
+async function handleApprove(row: RecheckRequestVO, approved: boolean) {
+  const action = approved ? '批准' : '驳回'
+  try {
+    await ElMessageBox.confirm(`确定要${action}该复检申请吗？`, '提示', {
+      type: approved ? 'success' : 'warning',
+    })
+    await recheckRequestApi.approve(row.id, { approved })
+    ElMessage.success(`${action}成功`)
+    fetchList()
+  } catch { /* user cancelled */ }
+}
+
+async function handleComplete(row: RecheckRequestVO) {
+  try {
+    await ElMessageBox.confirm('确定要完结该复检申请吗？', '提示', { type: 'success' })
+    await recheckRequestApi.complete(row.id)
+    ElMessage.success('完结成功')
     fetchList()
   } catch { /* user cancelled */ }
 }

@@ -51,6 +51,7 @@ public class WorkOrderServiceImpl extends ServiceImpl<WorkOrderMapper, WorkOrder
 
     @Override
     public PageResult<WorkOrderVO> page(WorkOrderQuery query) {
+        String businessType = resolveBusinessType(query.getBusinessType(), query.getWorkType());
         LambdaQueryWrapper<WorkOrder> wrapper = new LambdaQueryWrapper<WorkOrder>()
                 .like(StringUtils.hasText(query.getWorkOrderNo()),
                         WorkOrder::getWorkOrderNo, query.getWorkOrderNo())
@@ -62,8 +63,8 @@ public class WorkOrderServiceImpl extends ServiceImpl<WorkOrderMapper, WorkOrder
                         WorkOrder::getProductName, query.getProductName())
                 .eq(StringUtils.hasText(query.getStatus()),
                         WorkOrder::getStatus, query.getStatus())
-                .eq(StringUtils.hasText(query.getWorkType()),
-                        WorkOrder::getWorkType, query.getWorkType())
+                .eq(StringUtils.hasText(businessType),
+                        WorkOrder::getBusinessType, businessType)
                 .eq(StringUtils.hasText(query.getMachineModel()),
                         WorkOrder::getMachineModel, query.getMachineModel())
                 .eq(StringUtils.hasText(query.getProductCategory()),
@@ -410,7 +411,12 @@ public class WorkOrderServiceImpl extends ServiceImpl<WorkOrderMapper, WorkOrder
     private WorkOrderVO toVO(WorkOrder entity) {
         WorkOrderVO vo = new WorkOrderVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setWorkType(entity.getBusinessType());
         return vo;
+    }
+
+    private String resolveBusinessType(String businessType, String legacyWorkType) {
+        return StringUtils.hasText(businessType) ? businessType : legacyWorkType;
     }
 
     // ==================== APS 同步事件发布 ====================

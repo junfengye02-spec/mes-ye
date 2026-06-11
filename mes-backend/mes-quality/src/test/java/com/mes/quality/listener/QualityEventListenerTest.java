@@ -70,7 +70,8 @@ class QualityEventListenerTest {
     @DisplayName("异常联络单提交事件触发质量复检")
     void onAbnormalSubmitted_createsRecheckRequest() {
         listener.onAbnormalSubmitted(new AbnormalSubmittedEvent(
-                this, 99L, "YC-001", 10L, 1L, "WO-001", "PROCESS_ABNORMAL", "发现异常"));
+                this, 99L, "YC-001", 10L, 1L, "ORD-001", "WO-001",
+                "PROCESS_ABNORMAL", "发现异常"));
 
         ArgumentCaptor<RecheckRequestDTO> captor = ArgumentCaptor.forClass(RecheckRequestDTO.class);
         verify(recheckRequestService).create(captor.capture());
@@ -79,5 +80,18 @@ class QualityEventListenerTest {
         assertEquals(1L, dto.getDispatchTaskId());
         assertEquals("WO-001", dto.getProductionOrderNo());
         assertTrue(dto.getRecheckReason().contains("YC-001"));
+    }
+
+    @Test
+    @DisplayName("异常联络单仅提供订单号时仍兼容回填复检生产单号")
+    void onAbnormalSubmitted_fallsBackToOrderNoWhenWorkOrderNoMissing() {
+        listener.onAbnormalSubmitted(new AbnormalSubmittedEvent(
+                this, 100L, "YC-002", 10L, 1L, "ORD-002", null,
+                "PROCESS_ABNORMAL", "发现异常"));
+
+        ArgumentCaptor<RecheckRequestDTO> captor = ArgumentCaptor.forClass(RecheckRequestDTO.class);
+        verify(recheckRequestService, org.mockito.Mockito.times(1)).create(captor.capture());
+        RecheckRequestDTO dto = captor.getValue();
+        assertEquals("ORD-002", dto.getProductionOrderNo());
     }
 }

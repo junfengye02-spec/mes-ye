@@ -179,8 +179,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="业务类型" prop="workType">
-              <el-input v-model="form.workType" placeholder="主机 / 维修 / 检查" />
+            <el-form-item label="业务类型" prop="businessType">
+              <el-input v-model="form.businessType" placeholder="主机 / 维修 / 检查" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -409,7 +409,7 @@ const form = reactive<WorkOrderDTO>({
   projectName: '',
   wbsElement: '',
   newOrRepairType: '',
-  workType: '',
+  businessType: '',
   planQty: 1,
   qtyUnit: '',
   factoryOrg: '',
@@ -496,7 +496,7 @@ function resetForm() {
     projectName: '',
     wbsElement: '',
     newOrRepairType: '',
-    workType: '',
+    businessType: '',
     planQty: 1,
     qtyUnit: '',
     factoryOrg: '',
@@ -546,7 +546,7 @@ function handleEdit(row: WorkOrderVO) {
     projectName: row.projectName ?? '',
     wbsElement: row.wbsElement ?? '',
     newOrRepairType: row.newOrRepairType ?? '',
-    workType: row.workType ?? '',
+    businessType: row.businessType ?? row.workType ?? '',
     planQty: row.planQty ?? 1,
     qtyUnit: row.qtyUnit ?? '',
     factoryOrg: row.factoryOrg ?? '',

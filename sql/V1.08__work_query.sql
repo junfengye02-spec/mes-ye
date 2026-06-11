@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS mes_work_status_view (
   process_drawing VARCHAR(200) COMMENT '加工图纸',
   status VARCHAR(20) COMMENT '状态（CREATED/RELEASED/ISSUED/IN_PROGRESS/COMPLETED/PAUSED）',
   description VARCHAR(500) COMMENT '说明',
-  furnace_no VARCHAR(100) COMMENT '组炉号',
+  resource_group_code VARCHAR(100) COMMENT '资源组编码',
   belong_process VARCHAR(100) COMMENT '所属工序',
   factory VARCHAR(100) COMMENT '工厂',
   business_org VARCHAR(100) COMMENT '业务组织',

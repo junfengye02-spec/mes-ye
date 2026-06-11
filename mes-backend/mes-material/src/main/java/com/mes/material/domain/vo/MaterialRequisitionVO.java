@@ -22,7 +22,11 @@ public class MaterialRequisitionVO {
     @Schema(description = "主制组织") private String mainOrg;
     @Schema(description = "计划开始时间") private LocalDateTime planStartTime;
     @Schema(description = "计划结束时间") private LocalDateTime planEndTime;
+    @Schema(description = "实际开始时间") private LocalDateTime actualStartTime;
+    @Schema(description = "实际结束时间") private LocalDateTime actualEndTime;
+    @Schema(description = "销售订单行") private String salesOrderLine;
     @Schema(description = "项目") private String projectName;
+    @Schema(description = "WBS元素") private String wbsElement;
     @Schema(description = "状态") private String status;
     @Schema(description = "领料明细") private List<MaterialRequisitionItemVO> items;
     @Schema(description = "创建人") private String createdBy;

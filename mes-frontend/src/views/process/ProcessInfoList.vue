@@ -2,10 +2,13 @@
   <div class="page-container">
     <SearchForm v-model="query" @search="loadData">
       <el-form-item label="工序编码">
-        <el-input v-model="query.processCode" placeholder="请输入" clearable style="width: 180px" />
+        <el-input v-model="query.processNo" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
       <el-form-item label="工序名称">
         <el-input v-model="query.processName" placeholder="请输入" clearable style="width: 180px" />
+      </el-form-item>
+      <el-form-item label="产品类别">
+        <el-input v-model="query.productCategory" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
       <el-form-item label="工序类型">
         <el-input v-model="query.processType" placeholder="请输入" clearable style="width: 180px" />
@@ -31,12 +34,13 @@
           <el-icon><Edit /></el-icon> 批量编辑
         </el-button>
       </template>
-      <el-table-column prop="processCode" label="工序编码" min-width="120" />
-      <el-table-column prop="processName" label="工序名称" min-width="140" />
+      <el-table-column prop="processNo" label="工序号" min-width="120" />
+      <el-table-column prop="processName" label="工序名" min-width="140" />
+      <el-table-column prop="processCode" label="工艺编码" min-width="120" />
+      <el-table-column prop="productCategory" label="产品类别" min-width="120" />
       <el-table-column prop="processType" label="工序类型" min-width="100" />
-      <el-table-column prop="workCenterName" label="工作中心" min-width="120" />
-      <el-table-column prop="standardTime" label="标准工时" width="100" />
-      <el-table-column prop="timeUnit" label="时间单位" width="90" />
+      <el-table-column prop="workCenterId" label="工作中心ID" width="110" />
+      <el-table-column prop="handleTime" label="处理时间" width="100" />
       <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click.stop="handleEdit(row)">编辑</el-button>
@@ -47,26 +51,47 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑工序' : '新增工序'" width="560px" destroy-on-close @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="formRules" :label-width="100">
-        <el-form-item label="工序编码" prop="processCode">
-          <el-input v-model="form.processCode" placeholder="请输入" :disabled="isEdit" />
+        <el-form-item label="工序号" prop="processNo">
+          <el-input v-model="form.processNo" placeholder="请输入" :disabled="isEdit" />
         </el-form-item>
-        <el-form-item label="工序名称" prop="processName">
+        <el-form-item label="工序名" prop="processName">
           <el-input v-model="form.processName" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="工艺编码" prop="processCode">
+          <el-input v-model="form.processCode" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="产品" prop="product">
+          <el-input v-model="form.product" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="G编码" prop="gCode">
+          <el-input v-model="form.gCode" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="产品类别" prop="productCategory">
+          <el-input v-model="form.productCategory" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="机型" prop="machineModel">
+          <el-input v-model="form.machineModel" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="产品类型" prop="productType">
+          <el-input v-model="form.productType" placeholder="请输入" />
         </el-form-item>
         <el-form-item label="工序类型" prop="processType">
           <el-input v-model="form.processType" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="工作中心" prop="workCenterId">
+        <el-form-item label="工作中心ID" prop="workCenterId">
           <el-input-number v-model="form.workCenterId" placeholder="请输入工作中心ID" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="标准工时" prop="standardTime">
-          <el-input-number v-model="form.standardTime" :min="0" :precision="2" style="width: 100%" />
+        <el-form-item label="处理时间" prop="handleTime">
+          <el-input-number v-model="form.handleTime" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="时间单位" prop="timeUnit">
-          <el-input v-model="form.timeUnit" placeholder="请输入" />
+        <el-form-item label="拆卸时间" prop="disassembleTime">
+          <el-input-number v-model="form.disassembleTime" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="form.description" type="textarea" rows="3" placeholder="请输入" />
+        <el-form-item label="安装时间" prop="installTime">
+          <el-input-number v-model="form.installTime" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="说明" prop="remark">
+          <el-input v-model="form.remark" type="textarea" rows="3" placeholder="请输入" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -76,8 +101,9 @@
     </el-dialog>
 
     <BatchEdit v-model:visible="batchEditVisible" :rows="selectedRows" @save="handleBatchSave">
-      <el-table-column prop="processCode" label="工序编码" width="120" />
-      <el-table-column prop="processName" label="工序名称" width="140" />
+      <el-table-column prop="processNo" label="工序号" width="120" />
+      <el-table-column prop="processName" label="工序名" width="140" />
+      <el-table-column prop="processCode" label="工艺编码" width="120" />
       <el-table-column prop="processType" label="工序类型" width="100" />
       <el-table-column prop="workCenterId" label="工作中心ID" width="120">
         <template #default="{ row }">
@@ -89,14 +115,9 @@
           />
         </template>
       </el-table-column>
-      <el-table-column prop="standardTime" label="标准工时" width="100">
+      <el-table-column prop="handleTime" label="处理时间" width="100">
         <template #default="{ row }">
-          <el-input-number v-model="row.standardTime" size="small" :min="0" :precision="2" />
-        </template>
-      </el-table-column>
-      <el-table-column prop="timeUnit" label="时间单位" width="90">
-        <template #default="{ row }">
-          <el-input v-model="row.timeUnit" size="small" />
+          <el-input-number v-model="row.handleTime" size="small" :min="0" :precision="2" />
         </template>
       </el-table-column>
     </BatchEdit>
@@ -114,8 +135,9 @@ import { processInfoApi } from '@/api/process/processInfo'
 import type { ProcessInfoVO, ProcessInfoDTO, ProcessInfoQuery } from '@/types/process'
 
 const query = reactive<ProcessInfoQuery>({
-  processCode: undefined,
+  processNo: undefined,
   processName: undefined,
+  productCategory: undefined,
   processType: undefined,
   pageNum: 1,
   pageSize: 20,
@@ -133,18 +155,25 @@ const editId = ref<number | null>(null)
 const selectedRows = ref<ProcessInfoVO[]>([])
 
 const form = reactive<ProcessInfoDTO>({
+  processNo: '',
   processCode: '',
   processName: '',
+  product: '',
+  gCode: '',
+  productCategory: '',
+  machineModel: '',
+  productType: '',
   processType: '',
   workCenterId: undefined,
-  standardTime: undefined,
-  timeUnit: '',
-  description: '',
+  handleTime: undefined,
+  disassembleTime: undefined,
+  installTime: undefined,
+  remark: '',
 })
 
 const formRules = {
-  processCode: [{ required: true, message: '请输入工序编码', trigger: 'blur' }],
-  processName: [{ required: true, message: '请输入工序名称', trigger: 'blur' }],
+  processNo: [{ required: true, message: '请输入工序号', trigger: 'blur' }],
+  processName: [{ required: true, message: '请输入工序名', trigger: 'blur' }],
 }
 
 async function loadData() {
@@ -179,26 +208,40 @@ function handleEdit(row: ProcessInfoVO) {
   isEdit.value = true
   editId.value = row.id
   Object.assign(form, {
+    processNo: row.processNo,
     processCode: row.processCode,
     processName: row.processName,
+    product: row.product,
+    gCode: row.gCode,
+    productCategory: row.productCategory,
+    machineModel: row.machineModel,
+    productType: row.productType,
     processType: row.processType,
     workCenterId: row.workCenterId,
-    standardTime: row.standardTime,
-    timeUnit: row.timeUnit,
-    description: row.description,
+    handleTime: row.handleTime,
+    disassembleTime: row.disassembleTime,
+    installTime: row.installTime,
+    remark: row.remark,
   })
   dialogVisible.value = true
 }
 
 function resetForm() {
   Object.assign(form, {
+    processNo: '',
     processCode: '',
     processName: '',
+    product: '',
+    gCode: '',
+    productCategory: '',
+    machineModel: '',
+    productType: '',
     processType: '',
     workCenterId: undefined,
-    standardTime: undefined,
-    timeUnit: '',
-    description: '',
+    handleTime: undefined,
+    disassembleTime: undefined,
+    installTime: undefined,
+    remark: '',
   })
   formRef.value?.clearValidate()
 }
@@ -244,13 +287,20 @@ async function handleBatchSave(rows: ProcessInfoVO[]) {
   loading.value = true
   try {
     const dtos = rows.map(r => ({
+      processNo: r.processNo,
       processCode: r.processCode,
       processName: r.processName,
+      product: r.product,
+      gCode: r.gCode,
+      productCategory: r.productCategory,
+      machineModel: r.machineModel,
+      productType: r.productType,
       processType: r.processType,
       workCenterId: r.workCenterId,
-      standardTime: r.standardTime,
-      timeUnit: r.timeUnit,
-      description: r.description,
+      handleTime: r.handleTime,
+      disassembleTime: r.disassembleTime,
+      installTime: r.installTime,
+      remark: r.remark,
     }))
     await processInfoApi.batchUpdate(dtos)
     ElMessage.success('批量保存成功')

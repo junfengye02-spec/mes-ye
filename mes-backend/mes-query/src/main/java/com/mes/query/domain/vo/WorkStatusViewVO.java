@@ -17,7 +17,7 @@ public class WorkStatusViewVO {
     @Schema(description = "加工图纸") private String processDrawing;
     @Schema(description = "状态") private String status;
     @Schema(description = "说明") private String description;
-    @Schema(description = "组炉号") private String furnaceNo;
+    @Schema(description = "资源组编码") private String resourceGroupCode;
     @Schema(description = "所属工序") private String belongProcess;
     @Schema(description = "工厂") private String factory;
     @Schema(description = "业务组织") private String businessOrg;

@@ -25,7 +25,10 @@ public class ProductionPlanQuery extends PageQuery {
     @Schema(description = "状态")
     private String status;
 
-    @Schema(description = "类型")
+    @Schema(description = "业务类型")
+    private String businessType;
+
+    @Schema(description = "业务类型（兼容字段）")
     private String workType;
 
     @Schema(description = "机型")

@@ -49,8 +49,8 @@ public class WorkCenterVO {
     @Schema(description = "资源种类")
     private String resourceType;
 
-    @Schema(description = "炉资源类型")
-    private String furnaceResourceType;
+    @Schema(description = "资源子类型")
+    private String resourceSubtype;
 
     @Schema(description = "资源能力")
     private BigDecimal resourceCapacity;

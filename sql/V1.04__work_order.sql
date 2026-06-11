@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS mes_work_order (
   project_name VARCHAR(200) COMMENT '项目',
   wbs_element VARCHAR(100) COMMENT 'WBS元素',
   new_or_repair_type VARCHAR(50) COMMENT '新制维修类型',
-  work_type VARCHAR(50) COMMENT '类型',
+  business_type VARCHAR(50) COMMENT '业务类型',
   plan_qty DECIMAL(18,4) COMMENT '计划数量',
   qty_unit VARCHAR(20) COMMENT '数量单位',
   factory_org VARCHAR(100) COMMENT '工厂组织',

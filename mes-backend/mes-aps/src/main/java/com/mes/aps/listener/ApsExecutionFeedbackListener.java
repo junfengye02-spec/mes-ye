@@ -1,5 +1,6 @@
 package com.mes.aps.listener;
 
+import com.mes.aps.enums.ApsExecutionFeedbackType;
 import com.mes.aps.service.IApsExecutionFeedbackService;
 import com.mes.common.event.ApsSyncEvent;
 import lombok.RequiredArgsConstructor;
@@ -22,52 +23,56 @@ public class ApsExecutionFeedbackListener {
     @Async
     @EventListener
     public void handleExecutionFeedback(ApsSyncEvent event) {
-        String syncType = event.getSyncType();
+        ApsExecutionFeedbackType syncType = ApsExecutionFeedbackType.fromCode(event.getSyncType())
+                .orElse(null);
+        if (syncType == null) {
+            return;
+        }
 
         switch (syncType) {
-            case "DISPATCH" -> {
+            case DISPATCH -> {
                 log.debug("收到派工反馈事件: dataNo={}", event.getDataNo());
                 feedbackService.feedbackDispatchAssignment(event.getDataId(),
                         parseLongFromPayload(event.getPayload(), "assignmentId"));
             }
-            case "START_CHECK" -> {
+            case START_CHECK -> {
                 log.debug("收到开工检查反馈事件: dataNo={}", event.getDataNo());
                 feedbackService.feedbackStartCheck(event.getDataId(), event.getDataType());
             }
-            case "CONSTRAINT" -> {
+            case CONSTRAINT -> {
                 log.debug("收到工单约束反馈事件: dataNo={}", event.getDataNo());
                 feedbackService.feedbackWorkOrderConstraint(event.getDataId());
             }
-            case "SHIFT_OUTPUT" -> {
+            case SHIFT_OUTPUT -> {
                 log.debug("收到交班产出反馈事件: dataNo={}", event.getDataNo());
                 feedbackService.feedbackShiftOutput(event.getDataId());
             }
-            case "MATERIAL_SHORTAGE" -> {
+            case MATERIAL_SHORTAGE -> {
                 log.debug("收到物料短缺反馈事件: dataNo={}", event.getDataNo());
                 feedbackService.feedbackMaterialShortage(event.getDataId());
             }
-            case "REQUISITION" -> {
+            case REQUISITION -> {
                 log.debug("收到领料进度反馈事件: dataNo={}", event.getDataNo());
                 feedbackService.feedbackRequisitionProgress(event.getDataId());
             }
-            case "SUPPLY_PROGRESS" -> {
+            case SUPPLY_PROGRESS -> {
                 log.debug("收到供应计划反馈事件: dataNo={}", event.getDataNo());
                 feedbackService.feedbackSupplyProgress(event.getDataId(),
                         parseLongFromPayload(event.getPayload(), "supplyPlanId"));
             }
-            case "STATUS_CHANGE" -> {
+            case STATUS_CHANGE -> {
                 log.debug("收到工单状态变更事件: dataNo={}", event.getDataNo());
                 feedbackService.feedbackWorkOrderStatusChange(event.getDataId(),
                         extractField(event.getPayload(), "oldStatus"),
                         extractField(event.getPayload(), "newStatus"));
             }
-            case "PROCESS_CHANGE" -> {
+            case PROCESS_CHANGE -> {
                 log.debug("收到工艺变更事件: dataNo={}", event.getDataNo());
                 feedbackService.feedbackProcessChange(event.getDataType(),
                         event.getDataId(), event.getDataNo());
             }
             default -> {
-                // 非执行反馈类型的事件由 ApsSyncEventListener 处理
+                // 已通过 ApsExecutionFeedbackType 过滤，这里仅为 switch 完整性保留
             }
         }
     }

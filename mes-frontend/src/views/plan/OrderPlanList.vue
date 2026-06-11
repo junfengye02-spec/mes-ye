@@ -47,7 +47,7 @@
         <el-table-column prop="productCode" label="产品编码" min-width="100" />
         <el-table-column prop="productName" label="产品名称" min-width="120" />
         <el-table-column prop="projectName" label="项目" min-width="100" show-overflow-tooltip />
-        <el-table-column prop="workType" label="类型" width="80" />
+        <el-table-column prop="businessType" label="业务类型" width="100" />
         <el-table-column prop="machineModel" label="机型" width="80" />
         <el-table-column prop="planQty" label="计划数量" width="90" align="right" />
         <el-table-column prop="qtyUnit" label="单位" width="60" align="center" />
@@ -102,8 +102,8 @@
         <el-form-item label="项目" prop="projectName">
           <el-input v-model="form.projectName" placeholder="请输入项目名称" />
         </el-form-item>
-        <el-form-item label="类型" prop="workType">
-          <el-input v-model="form.workType" placeholder="维修/检查/主机" />
+        <el-form-item label="业务类型" prop="businessType">
+          <el-input v-model="form.businessType" placeholder="维修/检查/主机" />
         </el-form-item>
         <el-form-item label="机型" prop="machineModel">
           <el-input v-model="form.machineModel" placeholder="请输入机型" />
@@ -160,7 +160,7 @@ const form = reactive<OrderPlanDTO>({
   productCode: '',
   productName: '',
   projectName: '',
-  workType: '',
+  businessType: '',
   machineModel: '',
   planQty: 0,
   qtyUnit: '',
@@ -200,7 +200,7 @@ function handleReset() {
 function handleAdd() {
   dialogTitle.value = '新增订单计划'
   editId.value = null
-  Object.assign(form, { orderNo: '', productCode: '', productName: '', projectName: '', workType: '', machineModel: '', planQty: 0, qtyUnit: '', planStartTime: '', planEndTime: '' })
+  Object.assign(form, { orderNo: '', productCode: '', productName: '', projectName: '', businessType: '', machineModel: '', planQty: 0, qtyUnit: '', planStartTime: '', planEndTime: '' })
   dialogVisible.value = true
 }
 
@@ -212,7 +212,7 @@ function handleEdit(row: OrderPlanVO) {
     productCode: row.productCode ?? '',
     productName: row.productName ?? '',
     projectName: row.projectName ?? '',
-    workType: row.workType ?? '',
+    businessType: row.businessType ?? row.workType ?? '',
     machineModel: row.machineModel ?? '',
     planQty: row.planQty ?? 0,
     qtyUnit: row.qtyUnit ?? '',

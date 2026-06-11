@@ -55,7 +55,10 @@ public class ManufacturingBomItem implements Serializable {
     /** 供应类型 */
     private String supplyType;
 
-    /** 关联工序ID */
+    /** 关联工艺路线步骤ID */
+    private Long routeStepId;
+
+    /** 关联工序ID（兼容字段） */
     private Long processId;
 
     /** 关联工序号 */

@@ -4,10 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mes.common.core.PageResult;
+import com.mes.common.event.ApsSyncEvent;
+import com.mes.common.event.RecheckCompletedEvent;
 import com.mes.common.result.ResultCode;
 import com.mes.common.utils.AssertUtil;
+import com.mes.quality.domain.dto.RecheckApproveDTO;
 import com.mes.quality.domain.dto.RecheckOrderPlanDTO;
 import com.mes.quality.domain.dto.RecheckRequestDTO;
+import com.mes.quality.domain.dto.RecheckReviewDTO;
 import com.mes.quality.domain.dto.RecheckSerialDTO;
 import com.mes.quality.domain.entity.RecheckOrderPlan;
 import com.mes.quality.domain.entity.RecheckRequest;
@@ -21,7 +25,6 @@ import com.mes.quality.mapper.RecheckOrderPlanMapper;
 import com.mes.quality.mapper.RecheckRequestMapper;
 import com.mes.quality.mapper.RecheckSerialMapper;
 import com.mes.quality.service.IRecheckRequestService;
-import com.mes.common.event.ApsSyncEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -117,19 +120,7 @@ public class RecheckRequestServiceImpl extends ServiceImpl<RecheckRequestMapper,
             }
         }
 
-        // 发布APS同步事件：质量数据
-        try {
-            String payload = String.format(
-                    "{\"recheckId\":%d,\"materialCode\":\"%s\",\"status\":\"%s\"}",
-                    recheckId,
-                    entity.getMaterialCode() != null ? entity.getMaterialCode() : "",
-                    entity.getStatus());
-            eventPublisher.publishEvent(new ApsSyncEvent(
-                    this, "QUALITY", "RECHECK",
-                    recheckId, entity.getMaterialCode(), 5, payload));
-        } catch (Exception e) {
-            log.warn("发布质量APS同步事件失败（不影响业务）: {}", e.getMessage());
-        }
+        publishApsSyncEvent(entity, entity.getStatus());
 
         log.info("新增复检申请: id={}", recheckId);
         return recheckId;
@@ -176,9 +167,91 @@ public class RecheckRequestServiceImpl extends ServiceImpl<RecheckRequestMapper,
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void submit(Long id) {
+        RecheckRequest entity = getExisting(id);
+        AssertUtil.isTrue(RecheckStatus.CREATED.getCode().equals(entity.getStatus()),
+                "仅已创建状态的复检申请可以提交");
+
+        entity.setStatus(RecheckStatus.SUBMITTED.getCode());
+        updateById(entity);
+        publishApsSyncEvent(entity, RecheckStatus.SUBMITTED.getCode());
+
+        log.info("复检申请提交: id={}", id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void review(Long id, RecheckReviewDTO dto) {
+        AssertUtil.notNull(dto, "审核参数不能为空");
+
+        RecheckRequest entity = getExisting(id);
+        AssertUtil.isTrue(RecheckStatus.SUBMITTED.getCode().equals(entity.getStatus()),
+                "仅已提交状态的复检申请可以审核");
+
+        entity.setStatus(RecheckStatus.IN_REVIEW.getCode());
+        if (StringUtils.hasText(dto.getReviewer())) {
+            entity.setReviewer(dto.getReviewer());
+        }
+        if (dto.getReviewDate() != null) {
+            entity.setReviewDate(dto.getReviewDate());
+        }
+        if (dto.getIsReasonable() != null) {
+            entity.setIsReasonable(dto.getIsReasonable());
+        }
+        updateById(entity);
+        publishApsSyncEvent(entity, RecheckStatus.IN_REVIEW.getCode());
+
+        log.info("复检申请审核: id={}", id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void approve(Long id, RecheckApproveDTO dto) {
+        AssertUtil.notNull(dto, "审批参数不能为空");
+
+        RecheckRequest entity = getExisting(id);
+        AssertUtil.isTrue(RecheckStatus.IN_REVIEW.getCode().equals(entity.getStatus()),
+                "仅审核中状态的复检申请可以审批");
+
+        String targetStatus = Boolean.TRUE.equals(dto.getApproved())
+                ? RecheckStatus.APPROVED.getCode()
+                : RecheckStatus.REJECTED.getCode();
+        entity.setStatus(targetStatus);
+        updateById(entity);
+        publishApsSyncEvent(entity, targetStatus);
+
+        log.info("复检申请审批: id={}, status={}", id, targetStatus);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void complete(Long id) {
+        RecheckRequest entity = getExisting(id);
+        AssertUtil.isTrue(RecheckStatus.APPROVED.getCode().equals(entity.getStatus()),
+                "仅已批准状态的复检申请可以完结");
+
+        LocalDateTime completedTime = LocalDateTime.now();
+        entity.setStatus(RecheckStatus.COMPLETED.getCode());
+        updateById(entity);
+        publishApsSyncEvent(entity, RecheckStatus.COMPLETED.getCode());
+        eventPublisher.publishEvent(new RecheckCompletedEvent(
+                this,
+                entity.getId(),
+                entity.getWorkOrderId(),
+                entity.getDispatchTaskId(),
+                entity.getProductionOrderNo(),
+                entity.getMaterialCode(),
+                entity.getMaterialName(),
+                completedTime
+        ));
+
+        log.info("复检申请完结: id={}", id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        RecheckRequest entity = getById(id);
-        AssertUtil.notNull(entity, ResultCode.DATA_NOT_EXIST);
+        RecheckRequest entity = getExisting(id);
 
         orderPlanMapper.delete(new LambdaQueryWrapper<RecheckOrderPlan>().eq(RecheckOrderPlan::getRecheckId, id));
         serialMapper.delete(new LambdaQueryWrapper<RecheckSerial>().eq(RecheckSerial::getRecheckId, id));
@@ -191,5 +264,26 @@ public class RecheckRequestServiceImpl extends ServiceImpl<RecheckRequestMapper,
         RecheckRequestVO vo = new RecheckRequestVO();
         BeanUtils.copyProperties(entity, vo);
         return vo;
+    }
+
+    private RecheckRequest getExisting(Long id) {
+        RecheckRequest entity = getById(id);
+        AssertUtil.notNull(entity, ResultCode.DATA_NOT_EXIST);
+        return entity;
+    }
+
+    private void publishApsSyncEvent(RecheckRequest entity, String status) {
+        try {
+            String payload = String.format(
+                    "{\"recheckId\":%d,\"materialCode\":\"%s\",\"status\":\"%s\"}",
+                    entity.getId(),
+                    entity.getMaterialCode() != null ? entity.getMaterialCode() : "",
+                    status);
+            eventPublisher.publishEvent(new ApsSyncEvent(
+                    this, "QUALITY", "RECHECK",
+                    entity.getId(), entity.getMaterialCode(), 5, payload));
+        } catch (Exception e) {
+            log.warn("发布质量APS同步事件失败（不影响业务）: {}", e.getMessage());
+        }
     }
 }

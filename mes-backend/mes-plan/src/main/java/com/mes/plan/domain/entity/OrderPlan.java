@@ -34,8 +34,8 @@ public class OrderPlan extends BaseEntity {
     /** 新制维修类型 */
     private String newOrRepairType;
 
-    /** 类型（维修/检查/主机） */
-    private String workType;
+    /** 业务类型（维修/检查/主机） */
+    private String businessType;
 
     /** 机型 */
     private String machineModel;
@@ -79,8 +79,8 @@ public class OrderPlan extends BaseEntity {
     /** 是否订单 */
     private Boolean isOrder;
 
-    /** PCCL流程 */
-    private String pcclFlow;
+    /** 流程编码 */
+    private String flowCode;
 
     /** 计划开始时间 */
     private LocalDateTime planStartTime;

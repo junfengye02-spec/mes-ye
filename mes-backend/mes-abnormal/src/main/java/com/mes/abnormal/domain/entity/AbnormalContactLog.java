@@ -1,22 +1,19 @@
 package com.mes.abnormal.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mes.common.core.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
  * 异常联络单状态日志表实体
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("mes_abnormal_contact_log")
-public class AbnormalContactLog implements Serializable {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class AbnormalContactLog extends BaseEntity {
 
     /** 异常联络单ID */
     private Long contactId;

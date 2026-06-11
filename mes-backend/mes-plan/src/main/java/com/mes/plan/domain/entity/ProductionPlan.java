@@ -31,8 +31,8 @@ public class ProductionPlan extends BaseEntity {
     /** 新制维修类型 */
     private String newOrRepairType;
 
-    /** 类型 */
-    private String workType;
+    /** 业务类型 */
+    private String businessType;
 
     /** 机型 */
     private String machineModel;

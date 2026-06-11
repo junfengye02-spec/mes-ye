@@ -1,22 +1,19 @@
 package com.mes.quality.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.mes.common.core.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
  * 复检申请产品序列号表实体
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("mes_recheck_serial")
-public class RecheckSerial implements Serializable {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class RecheckSerial extends BaseEntity {
 
     /** 复检申请ID */
     private Long recheckId;

@@ -292,6 +292,27 @@ public class ManufacturingBomServiceImpl extends ServiceImpl<ManufacturingBomMap
         return currentVersion + ".1";
     }
 
+    private void normalizeItemRouteCompatibility(ManufacturingBomItem item, ManufacturingBomItemDTO dto) {
+        if (item.getRouteStepId() == null) {
+            item.setRouteStepId(dto.getProcessId());
+        }
+        item.setProcessId(item.getRouteStepId());
+    }
+
+    private void normalizeItemRouteCompatibility(ManufacturingBomItem item) {
+        if (item.getRouteStepId() == null) {
+            item.setRouteStepId(item.getProcessId());
+        }
+        item.setProcessId(item.getRouteStepId());
+    }
+
+    private void normalizeItemRouteCompatibility(ManufacturingBomItemVO vo, ManufacturingBomItem entity) {
+        if (vo.getRouteStepId() == null) {
+            vo.setRouteStepId(entity.getProcessId());
+        }
+        vo.setProcessId(vo.getRouteStepId());
+    }
+
     /**
      * 递归保存明细树
      */
@@ -303,6 +324,7 @@ public class ManufacturingBomServiceImpl extends ServiceImpl<ManufacturingBomMap
         for (ManufacturingBomItemDTO dto : itemDTOs) {
             ManufacturingBomItem item = new ManufacturingBomItem();
             BeanUtils.copyProperties(dto, item);
+            normalizeItemRouteCompatibility(item, dto);
             item.setBomId(bomId);
             item.setParentItemId(parentItemId);
             item.setLevel(level);
@@ -345,6 +367,7 @@ public class ManufacturingBomServiceImpl extends ServiceImpl<ManufacturingBomMap
         for (ManufacturingBomItem source : sourceItems) {
             ManufacturingBomItem newItem = new ManufacturingBomItem();
             BeanUtils.copyProperties(source, newItem);
+            normalizeItemRouteCompatibility(newItem);
             newItem.setId(null);
             newItem.setBomId(targetBomId);
             // 映射父级 ID
@@ -412,6 +435,7 @@ public class ManufacturingBomServiceImpl extends ServiceImpl<ManufacturingBomMap
     private ManufacturingBomItemVO toItemVO(ManufacturingBomItem entity) {
         ManufacturingBomItemVO vo = new ManufacturingBomItemVO();
         BeanUtils.copyProperties(entity, vo);
+        normalizeItemRouteCompatibility(vo, entity);
         return vo;
     }
 

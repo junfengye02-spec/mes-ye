@@ -7,11 +7,8 @@
       <el-form-item label="工作中心名称">
         <el-input v-model="query.workCenterName" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
-      <el-form-item label="工作中心类型">
-        <el-input v-model="query.workCenterType" placeholder="请输入" clearable style="width: 180px" />
-      </el-form-item>
-      <el-form-item label="工厂">
-        <el-input v-model="query.factory" placeholder="请输入" clearable style="width: 180px" />
+      <el-form-item label="工作中心分类">
+        <el-input v-model="query.workCenterCategory" placeholder="请输入" clearable style="width: 180px" />
       </el-form-item>
     </SearchForm>
 
@@ -36,17 +33,11 @@
       </template>
       <el-table-column prop="workCenterCode" label="工作中心编码" min-width="120" />
       <el-table-column prop="workCenterName" label="工作中心名称" min-width="140" />
-      <el-table-column prop="workCenterType" label="工作中心类型" min-width="100" />
-      <el-table-column prop="factory" label="工厂" width="100" />
-      <el-table-column prop="capacity" label="产能" width="90" />
-      <el-table-column prop="capacityUnit" label="产能单位" width="90" />
-      <el-table-column prop="enabled" label="启用" width="80">
-        <template #default="{ row }">
-          <el-tag :type="row.enabled === 1 ? 'success' : 'info'">
-            {{ row.enabled === 1 ? '是' : '否' }}
-          </el-tag>
-        </template>
-      </el-table-column>
+      <el-table-column prop="workCenterCategory" label="工作中心分类" min-width="120" />
+      <el-table-column prop="businessUnit" label="业务单元" min-width="100" />
+      <el-table-column prop="resourceType" label="资源种类" min-width="100" />
+      <el-table-column prop="resourceSubtype" label="资源子类型" min-width="100" />
+      <el-table-column prop="resourceCapacity" label="资源能力" width="100" />
       <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
           <el-button v-auth="['basic:workCenter:detail']" link type="info" @click.stop="handleView(row)">查看</el-button>
@@ -64,26 +55,47 @@
         <el-form-item label="工作中心名称" prop="workCenterName">
           <el-input v-model="form.workCenterName" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="工作中心类型" prop="workCenterType">
-          <el-input v-model="form.workCenterType" placeholder="请输入" />
+        <el-form-item label="工作中心分类" prop="workCenterCategory">
+          <el-input v-model="form.workCenterCategory" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="工厂" prop="factory">
-          <el-input v-model="form.factory" placeholder="请输入" />
+        <el-form-item label="业务单元" prop="businessUnit">
+          <el-input v-model="form.businessUnit" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="计划组织" prop="planOrg">
-          <el-input v-model="form.planOrg" placeholder="请输入" />
+        <el-form-item label="工作日历" prop="workCalendar">
+          <el-input v-model="form.workCalendar" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="产能" prop="capacity">
-          <el-input-number v-model="form.capacity" :min="0" style="width: 100%" />
+        <el-form-item label="资源排序" prop="resourceOrder">
+          <el-input-number v-model="form.resourceOrder" :min="0" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="产能单位" prop="capacityUnit">
-          <el-input v-model="form.capacityUnit" placeholder="请输入" />
+        <el-form-item label="使用量" prop="usageQty">
+          <el-input-number v-model="form.usageQty" :min="0" :precision="4" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="启用" prop="enabled">
-          <el-switch v-model="form.enabled" :active-value="1" :inactive-value="0" />
+        <el-form-item label="使用量单位" prop="usageUnit">
+          <el-input v-model="form.usageUnit" placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" rows="3" placeholder="请输入" />
+        <el-form-item label="处理批量" prop="batchQty">
+          <el-input-number v-model="form.batchQty" :min="0" :precision="4" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="效率" prop="efficiency">
+          <el-input-number v-model="form.efficiency" :min="0" :precision="4" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="资源种类" prop="resourceType">
+          <el-input v-model="form.resourceType" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="资源子类型" prop="resourceSubtype">
+          <el-input v-model="form.resourceSubtype" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="资源能力" prop="resourceCapacity">
+          <el-input-number v-model="form.resourceCapacity" :min="0" :precision="4" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="工序不中断" prop="processNoInterrupt">
+          <el-switch v-model="form.processNoInterrupt" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+        <el-form-item label="工序不跨天" prop="processNoCrossDay">
+          <el-switch v-model="form.processNoCrossDay" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+        <el-form-item label="固定节拍点生产" prop="fixedTaktProduction">
+          <el-switch v-model="form.fixedTaktProduction" :active-value="1" :inactive-value="0" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -100,20 +112,11 @@
     <BatchEdit v-model:visible="batchEditVisible" :rows="(selectedRows as any)" @save="handleBatchSave">
       <el-table-column prop="workCenterCode" label="工作中心编码" width="120" />
       <el-table-column prop="workCenterName" label="工作中心名称" width="140" />
-      <el-table-column prop="workCenterType" label="工作中心类型" width="100" />
-      <el-table-column prop="factory" label="工厂" width="100" />
-      <el-table-column prop="capacity" label="产能" width="90" />
-      <el-table-column prop="capacityUnit" label="产能单位" width="90" />
-      <el-table-column prop="enabled" label="启用" width="80">
-        <template #default="{ row }">
-          <el-switch
-            :model-value="Number(row.enabled ?? 0)"
-            @update:model-value="(v: any) => { row.enabled = v ? 1 : 0 }"
-            :active-value="1"
-            :inactive-value="0"
-          />
-        </template>
-      </el-table-column>
+      <el-table-column prop="workCenterCategory" label="工作中心分类" width="120" />
+      <el-table-column prop="businessUnit" label="业务单元" width="100" />
+      <el-table-column prop="resourceType" label="资源种类" width="100" />
+      <el-table-column prop="resourceSubtype" label="资源子类型" width="110" />
+      <el-table-column prop="resourceCapacity" label="资源能力" width="100" />
     </BatchEdit>
   </div>
 </template>
@@ -131,8 +134,7 @@ import type { WorkCenterVO, WorkCenterDTO, WorkCenterQuery } from '@/types/basic
 const query = reactive<WorkCenterQuery>({
   workCenterCode: undefined,
   workCenterName: undefined,
-  workCenterType: undefined,
-  factory: undefined,
+  workCenterCategory: undefined,
   pageNum: 1,
   pageSize: 20,
 })
@@ -151,13 +153,20 @@ const selectedRows = ref<WorkCenterVO[]>([])
 const form = reactive<WorkCenterDTO>({
   workCenterCode: '',
   workCenterName: '',
-  workCenterType: '',
-  factory: '',
-  planOrg: '',
-  capacity: undefined,
-  capacityUnit: '',
-  enabled: 1,
-  remark: '',
+  workCenterCategory: '',
+  businessUnit: '',
+  workCalendar: '',
+  resourceOrder: undefined,
+  usageQty: undefined,
+  usageUnit: '',
+  batchQty: undefined,
+  efficiency: undefined,
+  resourceType: '',
+  resourceSubtype: '',
+  resourceCapacity: undefined,
+  processNoInterrupt: 0,
+  processNoCrossDay: 0,
+  fixedTaktProduction: 0,
 })
 
 const formRules = {
@@ -199,13 +208,20 @@ function handleEdit(row: WorkCenterVO) {
   Object.assign(form, {
     workCenterCode: row.workCenterCode,
     workCenterName: row.workCenterName,
-    workCenterType: row.workCenterType,
-    factory: row.factory,
-    planOrg: row.planOrg,
-    capacity: row.capacity,
-    capacityUnit: row.capacityUnit,
-    enabled: row.enabled ?? 1,
-    remark: row.remark,
+    workCenterCategory: row.workCenterCategory,
+    businessUnit: row.businessUnit,
+    workCalendar: row.workCalendar,
+    resourceOrder: row.resourceOrder,
+    usageQty: row.usageQty,
+    usageUnit: row.usageUnit,
+    batchQty: row.batchQty,
+    efficiency: row.efficiency,
+    resourceType: row.resourceType,
+    resourceSubtype: row.resourceSubtype,
+    resourceCapacity: row.resourceCapacity,
+    processNoInterrupt: row.processNoInterrupt ?? 0,
+    processNoCrossDay: row.processNoCrossDay ?? 0,
+    fixedTaktProduction: row.fixedTaktProduction ?? 0,
   })
   dialogVisible.value = true
 }
@@ -214,13 +230,20 @@ function resetForm() {
   Object.assign(form, {
     workCenterCode: '',
     workCenterName: '',
-    workCenterType: '',
-    factory: '',
-    planOrg: '',
-    capacity: undefined,
-    capacityUnit: '',
-    enabled: 1,
-    remark: '',
+    workCenterCategory: '',
+    businessUnit: '',
+    workCalendar: '',
+    resourceOrder: undefined,
+    usageQty: undefined,
+    usageUnit: '',
+    batchQty: undefined,
+    efficiency: undefined,
+    resourceType: '',
+    resourceSubtype: '',
+    resourceCapacity: undefined,
+    processNoInterrupt: 0,
+    processNoCrossDay: 0,
+    fixedTaktProduction: 0,
   })
   formRef.value?.clearValidate()
 }
@@ -247,10 +270,10 @@ function handleView(row: WorkCenterVO) {
   const lines = [
     `编码：${row.workCenterCode ?? '-'}`,
     `名称：${row.workCenterName ?? '-'}`,
-    `类型：${row.workCenterType ?? '-'}`,
-    `工厂：${row.factory ?? '-'}`,
-    `产能：${row.capacity ?? '-'} ${row.capacityUnit ?? ''}`,
-    `启用：${row.enabled === 1 ? '是' : '否'}`,
+    `分类：${row.workCenterCategory ?? '-'}`,
+    `业务单元：${row.businessUnit ?? '-'}`,
+    `资源：${row.resourceType ?? '-'} / ${row.resourceSubtype ?? '-'}`,
+    `资源能力：${row.resourceCapacity ?? '-'}`,
   ].join('\n')
   ElMessageBox.alert(lines, '工作中心详情', { confirmButtonText: '关闭' }).catch(() => {})
 }
@@ -280,13 +303,20 @@ async function handleBatchSave(rows: WorkCenterVO[]) {
     const dtos = rows.map(r => ({
       workCenterCode: r.workCenterCode,
       workCenterName: r.workCenterName,
-      workCenterType: r.workCenterType,
-      factory: r.factory,
-      planOrg: r.planOrg,
-      capacity: r.capacity,
-      capacityUnit: r.capacityUnit,
-      enabled: r.enabled,
-      remark: r.remark,
+      workCenterCategory: r.workCenterCategory,
+      businessUnit: r.businessUnit,
+      workCalendar: r.workCalendar,
+      resourceOrder: r.resourceOrder,
+      usageQty: r.usageQty,
+      usageUnit: r.usageUnit,
+      batchQty: r.batchQty,
+      efficiency: r.efficiency,
+      resourceType: r.resourceType,
+      resourceSubtype: r.resourceSubtype,
+      resourceCapacity: r.resourceCapacity,
+      processNoInterrupt: r.processNoInterrupt,
+      processNoCrossDay: r.processNoCrossDay,
+      fixedTaktProduction: r.fixedTaktProduction,
     }))
     await workCenterApi.batchUpdate(dtos)
     ElMessage.success('批量保存成功')

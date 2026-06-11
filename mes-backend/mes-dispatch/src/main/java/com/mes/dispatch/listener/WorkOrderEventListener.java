@@ -24,9 +24,9 @@ public class WorkOrderEventListener {
         log.info("监听到工单下发事件, workOrderId={}, 开始自动生成派工任务", workOrderId);
         try {
             dispatchTaskService.generateFromWorkOrder(workOrderId);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("自动生成派工任务失败, workOrderId={}", workOrderId, e);
-            // 不抛出异常，避免影响工单下发事务
+            throw e;
         }
     }
 }

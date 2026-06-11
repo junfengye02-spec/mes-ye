@@ -14,6 +14,7 @@ public class AbnormalSubmittedEvent extends ApplicationEvent {
     private final Long workOrderId;
     private final Long dispatchTaskId;
     private final String orderNo;
+    private final String workOrderNo;
     private final String eventCategory;
     private final String abnormalDesc;
 
@@ -23,6 +24,7 @@ public class AbnormalSubmittedEvent extends ApplicationEvent {
                                   Long workOrderId,
                                   Long dispatchTaskId,
                                   String orderNo,
+                                  String workOrderNo,
                                   String eventCategory,
                                   String abnormalDesc) {
         super(source);
@@ -31,6 +33,7 @@ public class AbnormalSubmittedEvent extends ApplicationEvent {
         this.workOrderId = workOrderId;
         this.dispatchTaskId = dispatchTaskId;
         this.orderNo = orderNo;
+        this.workOrderNo = workOrderNo;
         this.eventCategory = eventCategory;
         this.abnormalDesc = abnormalDesc;
     }

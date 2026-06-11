@@ -1,5 +1,6 @@
 package com.mes.plan.domain.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -34,8 +35,9 @@ public class OrderPlanDTO {
     @Schema(description = "新制维修类型")
     private String newOrRepairType;
 
-    @Schema(description = "类型（维修/检查/主机）")
-    private String workType;
+    @JsonAlias("workType")
+    @Schema(description = "业务类型（维修/检查/主机）")
+    private String businessType;
 
     @Schema(description = "机型")
     private String machineModel;
@@ -68,8 +70,9 @@ public class OrderPlanDTO {
     @Schema(description = "是否订单")
     private Boolean isOrder;
 
-    @Schema(description = "PCCL流程")
-    private String pcclFlow;
+    @JsonAlias("pcclFlow")
+    @Schema(description = "流程编码")
+    private String flowCode;
 
     @Schema(description = "计划开始时间")
     private LocalDateTime planStartTime;

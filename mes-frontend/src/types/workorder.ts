@@ -16,6 +16,7 @@ export interface WorkOrderVO extends BaseEntity {
   projectName?: string
   wbsElement?: string
   newOrRepairType?: string
+  businessType?: string
   workType?: string
   planQty?: number
   qtyUnit?: string
@@ -188,6 +189,7 @@ export interface WorkOrderDTO {
   projectName?: string
   wbsElement?: string
   newOrRepairType?: string
+  businessType?: string
   workType?: string
   planQty?: number
   qtyUnit?: string
@@ -215,6 +217,8 @@ export interface WorkOrderQuery extends PageQuery {
   productCode?: string
   productName?: string
   status?: string
+  businessType?: string
+  workType?: string
   planStartTime?: string
   planEndTime?: string
 }

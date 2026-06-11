@@ -386,3 +386,102 @@ git diff -- mes-backend/mes-common mes-backend/mes-dispatch mes-backend/mes-work
 ```
 
 Expected: only Phase 2 event, listener, status, DTO/entity/VO, test, migration, and plan-file changes are present.
+
+## 2026-05-28 Follow-up: 5.1 Abnormal Work-Order Link Completion
+
+- [x] 补齐了 `5.1` 的一个真实残口：
+  - 旧实现仅在 `AbnormalSubmittedEvent.dispatchTaskId` 存在时标记单个派工任务异常；
+  - 当异常联络单只关联 `workOrderId`、未指定 `dispatchTaskId` 时，该工单下活动派工不会被联动标记，和计划文档中“异常提交时自动标记关联派工任务状态”的要求仍有差距。
+- [x] `AbnormalEventListener` 现已支持工单级回退联动：
+  - 若事件带 `dispatchTaskId`，保持原有精确更新路径；
+  - 若仅带 `workOrderId`，会查询该工单下派工任务，并将 `ASSIGNED / IN_PROGRESS` 的活动派工统一标记为 `ABNORMAL`；
+  - `COMPLETED / CANCELLED / ABNORMAL` 仍保持跳过，避免污染终态记录。
+- [x] 当前态验证已经 fresh 通过：
+  - `AbnormalEventListenerTest` 新增 `workOrderId` 回退场景，证明活动派工会被批量标记，已完成派工不会被误改；
+  - 同时复验 `AbnormalContactServiceTest` / `AbnormalModuleTest` / `QualityEventListenerTest`，确认异常联络单到派工、质量的既有联动链路未回归。
+
+Verification run for this follow-up:
+
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-dispatch -am -Dtest=AbnormalEventListenerTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-dispatch,mes-quality,mes-abnormal -am -Dtest=AbnormalEventListenerTest,QualityEventListenerTest,AbnormalContactServiceTest,AbnormalModuleTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+## 2026-05-28 Follow-up: Fresh Proof for 1.2 Cascade Edge Cases
+
+- [x] `1.2` 派工完工级联到工单完工的边界语义已在当前代码上补充 fresh proof：
+  - `DispatchLifecycleEventListenerTest` 新增 `RELEASED` 工单场景，证明 `DispatchAllTasksCompletedEvent` 到达时，即使工单尚未被显式开工，也会先自动 `start()`，再自动 `complete()`，不会因为状态仍停留在 `RELEASED` 而丢失完工级联。
+- [x] `1.2` 订单计划自动完工的“不过早完成”语义已在当前代码上补充 fresh proof：
+  - `ProductionPlanEventListenerTest` 新增同一 `orderPlanId` 仍有其他未完工生产计划的场景，证明监听器只会更新当前生产计划，不会提前调用 `orderPlanService.complete()`。
+- [x] 这次 follow-up 没有引入新的生产代码改动：
+  - 当前实现已经满足该两条链路语义；
+  - 本次仅通过新增聚焦测试把它们锁成回归保护，便于后续继续清理剩余计划项时不再重复人工核对。
+
+Verification run for this follow-up:
+
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-workorder -am -Dtest=DispatchLifecycleEventListenerTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-plan -am -Dtest=ProductionPlanEventListenerTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+## 2026-05-28 Follow-up: 5.1 Frontend Link-Field Closure
+
+- [x] `5.1` 还存在一个真实使用层残口：
+  - 后端 `AbnormalContactDTO/VO` 与事件链已经支持 `workOrderId` / `dispatchTaskId`；
+  - 但异常联络单前端类型和录入页面此前仍只暴露自由文本 `orderNo`，实际用户无法在 UI 中录入这两个关联字段，导致“异常提交 -> 派工/质量联动”在真实使用上仍是半闭环。
+- [x] 前端异常联络页面现已补齐关联字段入口：
+  - `mes-frontend/src/types/abnormal.ts` 增加 `workOrderId` / `dispatchTaskId`；
+  - `mes-frontend/src/views/abnormal/AbnormalContactList.vue` 的新增/编辑表单增加 `关联工单ID`、`关联派工任务ID` 输入项；
+  - 详情抽屉同步展示这两个字段，便于人工核对联动对象。
+- [x] 当前态验证已经 fresh 通过：
+  - Playwright 新增页面级回归，证明异常联络单新增对话框确实展示关联字段；
+  - 新增请求链路回归，证明填写后的 `workOrderId` / `dispatchTaskId` 会进入 `POST /api/abnormal/contact` 请求体；
+  - `vue-tsc + vite build` 继续通过，未引入新的前端编译失败。
+
+Verification run for this follow-up:
+
+- `npm -C /Users/jf/Desktop/mesYe/mes-frontend run test:e2e -- tests/e2e/abnormal.spec.ts --project=chromium -g "新增异常对话框展示关联工单和派工字段"`
+- `npm -C /Users/jf/Desktop/mesYe/mes-frontend run test:e2e -- tests/e2e/abnormal.spec.ts --project=chromium -g "新增异常对话框会把关联工单和派工字段提交到请求体"`
+- `npm -C /Users/jf/Desktop/mesYe/mes-frontend run build`
+
+## 2026-05-28 Follow-up: 5.1 Abnormal Event Semantics Correction
+
+- [x] 继续收口了 `5.1` 的一个真实语义残口：
+  - `AbnormalSubmittedEvent` 先前只携带 `orderNo`；
+  - 但质量侧 `QualityEventListener` 会把它直接映射到 `RecheckRequest.productionOrderNo`，而现有码路与测试实际上把这个值当成工单/生产单号来消费，存在“订单号字段名、工单号语义”的错位。
+- [x] 当前代码已改为显式区分两种编号：
+  - `AbnormalSubmittedEvent` 新增 `workOrderNo`；
+  - `AbnormalContactServiceImpl.submit()` 在存在 `workOrderId` 时会查询并回填真实 `workOrderNo`；
+  - `QualityEventListener` 在异常联络触发复检时，优先使用 `event.workOrderNo` 作为 `productionOrderNo`，仅在旧数据缺少该字段时回退到 `orderNo`，保持兼容。
+- [x] 这次修补保持了最小变更和兼容边界：
+  - `orderNo` 仍保留在事件与实体中，避免打断既有调用方；
+  - 新逻辑只是在异常->质量链路中优先使用语义正确的工单号，不改动派工侧异常状态联动行为。
+- [x] 当前态验证已经 fresh 通过：
+  - `AbnormalContactServiceTest` 现在证明异常提报事件会同时携带 `orderNo` 与 `workOrderNo`；
+  - `QualityEventListenerTest` 证明质量监听器优先使用 `workOrderNo`，并对缺失 `workOrderNo` 的旧事件兼容回退到 `orderNo`；
+  - `AbnormalEventListenerTest` 复验通过，证明事件合同调整未破坏异常到派工状态联动。
+
+Verification run for this follow-up:
+
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-abnormal -am -Dtest=AbnormalContactServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-quality -am -Dtest=QualityEventListenerTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-dispatch -am -Dtest=AbnormalEventListenerTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+## 2026-05-28 Follow-up: 5.1 orderNo Consistency Closure
+
+- [x] `5.1` 中“`AbnormalContact.orderNo` 是自由文本”在当前代码上继续收口：
+  - 之前异常联络单虽然已经新增 `workOrderId` / `dispatchTaskId`，但 create/update 仍允许 `orderNo` 保持任意文本，与关联工单的真实订单号分叉；
+  - 这会导致异常数据本身和后续事件载荷在“关联工单存在时”仍可能不一致。
+- [x] `AbnormalContactServiceImpl` 现已在 create/update 时规范化工单引用：
+  - 当 `workOrderId` 存在时，先校验关联工单必须存在；
+  - 若工单上存在标准 `orderNo`，则：
+    - 用户未传 `orderNo` 时自动回填；
+    - 用户传了不同的 `orderNo` 时直接拒绝，避免异常联络单与工单主数据分叉。
+- [x] 这次修补仍保持最小边界：
+  - 没有强推数据库外键或迁移；
+  - 规则仅落在异常联络单服务层，优先把“有工单关联时的文本分叉”收住，不扩大到无工单关联的自由录入场景。
+- [x] 当前态验证已经 fresh 通过：
+  - `AbnormalContactServiceTest` 新增覆盖：
+    - `workOrderId` 存在时自动回填标准订单号；
+    - 手输 `orderNo` 与工单不一致时拒绝；
+    - update 场景同样会规范化 `orderNo`。
+
+Verification run for this follow-up:
+
+- `mvn -f /Users/jf/Desktop/mesYe/mes-backend/pom.xml -pl mes-abnormal -am -Dtest=AbnormalContactServiceTest -Dsurefire.failIfNoSpecifiedTests=false test`
