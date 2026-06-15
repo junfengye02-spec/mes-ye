@@ -30,6 +30,14 @@ START_BACKEND="${MES_START_BACKEND:-1}"
 START_FRONTEND="${MES_START_FRONTEND:-1}"
 START_DOCKER_DEPS="${MES_START_DOCKER_DEPS:-0}"
 WAIT_TIMEOUT="${MES_WAIT_TIMEOUT:-120}"
+START_PUBLIC_INGRESS="${MES_START_PUBLIC_INGRESS:-1}"
+VERIFY_PUBLIC_HTTPS="${MES_VERIFY_PUBLIC_HTTPS:-1}"
+PUBLIC_HTTPS_URL="${MES_PUBLIC_HTTPS_URL:-https://$DOMAIN/}"
+PUBLIC_INGRESS_HOST="${MES_PUBLIC_INGRESS_HOST:-127.0.0.1}"
+PUBLIC_INGRESS_PORT="${MES_PUBLIC_INGRESS_PORT:-80}"
+PUBLIC_INGRESS_NGINX_BIN="${MES_PUBLIC_INGRESS_NGINX_BIN:-/usr/local/nginx/sbin/nginx}"
+PUBLIC_INGRESS_NGINX_CONF="${MES_PUBLIC_INGRESS_NGINX_CONF:-/Users/jf/Documents/Codex/2026-05-07/cloudflare-0000238-xyz-nginx-apsmac-0000238/nginx-0000238-full.conf}"
+PUBLIC_INGRESS_ERROR_LOG="${MES_PUBLIC_INGRESS_ERROR_LOG:-/Users/jf/Documents/Codex/2026-05-07/cloudflare-0000238-xyz-nginx-apsmac-0000238/error.log}"
 
 GREEN=$'\033[0;32m'
 YELLOW=$'\033[1;33m'
@@ -102,6 +110,16 @@ restart_launchctl_job() {
 http_ready() {
   local url="$1"
   curl -fsS --max-time 3 "$url" >/dev/null 2>&1
+}
+
+http_resolved_status() {
+  local port="$1"
+  local ip="$2"
+  local url="$3"
+  curl -sS -o /tmp/mes-start-proxy-body.$$ -w '%{http_code}' \
+    --max-time 8 \
+    --resolve "$DOMAIN:$port:$ip" \
+    "$url"
 }
 
 wait_for_url() {
@@ -410,6 +428,75 @@ start_nginx() {
   fi
 }
 
+check_public_ingress_local() {
+  local frontend_status backend_status
+
+  frontend_status="$(http_resolved_status "$PUBLIC_INGRESS_PORT" "$PUBLIC_INGRESS_HOST" "http://$DOMAIN/" || true)"
+  if [[ "$frontend_status" =~ ^(200|301|302|304)$ ]]; then
+    log "MES public ingress frontend is reachable on local port $PUBLIC_INGRESS_PORT via Host $DOMAIN"
+  else
+    warn "MES public ingress frontend returned HTTP ${frontend_status:-curl-error} on local port $PUBLIC_INGRESS_PORT"
+  fi
+
+  backend_status="$(http_resolved_status "$PUBLIC_INGRESS_PORT" "$PUBLIC_INGRESS_HOST" "http://$DOMAIN$BACKEND_HEALTH_PATH" || true)"
+  if [[ "$backend_status" == "200" ]]; then
+    log "MES public ingress API health is reachable on local port $PUBLIC_INGRESS_PORT"
+  else
+    warn "MES public ingress API health returned HTTP ${backend_status:-curl-error} on local port $PUBLIC_INGRESS_PORT"
+  fi
+
+  rm -f /tmp/mes-start-proxy-body.$$ 2>/dev/null || true
+}
+
+check_public_https() {
+  [[ "$VERIFY_PUBLIC_HTTPS" == "1" ]] || {
+    warn "Skipping public HTTPS check because MES_VERIFY_PUBLIC_HTTPS=$VERIFY_PUBLIC_HTTPS"
+    return 0
+  }
+
+  local status
+  status="$(curl -sS -o /tmp/mes-start-public-https.$$ -w '%{http_code}' --max-time 15 "$PUBLIC_HTTPS_URL" || true)"
+  rm -f /tmp/mes-start-public-https.$$ 2>/dev/null || true
+
+  if [[ "$status" =~ ^(200|301|302|304)$ ]]; then
+    log "MES public HTTPS is reachable: $PUBLIC_HTTPS_URL returned HTTP $status"
+  else
+    warn "MES public HTTPS returned HTTP ${status:-curl-error}: $PUBLIC_HTTPS_URL"
+    warn "If local checks pass, check cloudflared and the public ingress nginx on port $PUBLIC_INGRESS_PORT."
+  fi
+}
+
+start_public_ingress() {
+  [[ "$START_PUBLIC_INGRESS" == "1" ]] || {
+    warn "Skipping public ingress nginx because MES_START_PUBLIC_INGRESS=$START_PUBLIC_INGRESS"
+    return 0
+  }
+
+  if [[ ! -x "$PUBLIC_INGRESS_NGINX_BIN" ]]; then
+    warn "Skipping public ingress nginx because binary is missing: $PUBLIC_INGRESS_NGINX_BIN"
+    return 0
+  fi
+
+  if [[ ! -f "$PUBLIC_INGRESS_NGINX_CONF" ]]; then
+    warn "Skipping public ingress nginx because config is missing: $PUBLIC_INGRESS_NGINX_CONF"
+    return 0
+  fi
+
+  log "Testing public ingress nginx config: $PUBLIC_INGRESS_NGINX_CONF"
+  "$PUBLIC_INGRESS_NGINX_BIN" -e "$PUBLIC_INGRESS_ERROR_LOG" -t -c "$PUBLIC_INGRESS_NGINX_CONF" -g "error_log $PUBLIC_INGRESS_ERROR_LOG;"
+
+  if port_is_open "$PUBLIC_INGRESS_HOST" "$PUBLIC_INGRESS_PORT"; then
+    log "Reloading public ingress nginx on $PUBLIC_INGRESS_HOST:$PUBLIC_INGRESS_PORT"
+    "$PUBLIC_INGRESS_NGINX_BIN" -e "$PUBLIC_INGRESS_ERROR_LOG" -s reload -c "$PUBLIC_INGRESS_NGINX_CONF" -g "error_log $PUBLIC_INGRESS_ERROR_LOG;"
+  else
+    log "Starting public ingress nginx on $PUBLIC_INGRESS_HOST:$PUBLIC_INGRESS_PORT"
+    "$PUBLIC_INGRESS_NGINX_BIN" -e "$PUBLIC_INGRESS_ERROR_LOG" -c "$PUBLIC_INGRESS_NGINX_CONF" -g "error_log $PUBLIC_INGRESS_ERROR_LOG;"
+  fi
+
+  check_public_ingress_local
+  check_public_https
+}
+
 print_summary() {
   cat <<EOF
 
@@ -418,7 +505,9 @@ ${GREEN}MES local proxy is configured.${NC}
   Frontend:      http://127.0.0.1:$FRONTEND_PORT
   Backend API:   http://127.0.0.1:$BACKEND_PORT/api
   Backend health:http://127.0.0.1:$BACKEND_PORT$BACKEND_HEALTH_PATH
+  Public HTTPS:  $PUBLIC_HTTPS_URL
   Nginx config:  $NGINX_CONF
+  Public ingress:$PUBLIC_INGRESS_NGINX_CONF
   Logs:          $LOG_DIR
 
 Verify:
@@ -439,6 +528,7 @@ main() {
   wait_for_url "MES frontend" "http://127.0.0.1:$FRONTEND_PORT" "$WAIT_TIMEOUT" || true
   wait_for_url "MES backend health" "http://127.0.0.1:$BACKEND_PORT$BACKEND_HEALTH_PATH" "$WAIT_TIMEOUT" || true
   start_nginx
+  start_public_ingress
   print_summary
 }
 

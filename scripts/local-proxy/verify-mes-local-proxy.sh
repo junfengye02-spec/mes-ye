@@ -12,6 +12,11 @@ BACKEND_HEALTH_PATH="${MES_BACKEND_HEALTH_PATH:-/api/actuator/health}"
 RESOLVE_IP="${MES_RESOLVE_IP:-127.0.0.1}"
 PUBLIC_IP_CHECK="${MES_PUBLIC_IP_CHECK:-0}"
 REAL_DOMAIN_CHECK="${MES_REAL_DOMAIN_CHECK:-0}"
+PUBLIC_INGRESS_CHECK="${MES_PUBLIC_INGRESS_CHECK:-1}"
+PUBLIC_INGRESS_HOST="${MES_PUBLIC_INGRESS_HOST:-127.0.0.1}"
+PUBLIC_INGRESS_PORT="${MES_PUBLIC_INGRESS_PORT:-80}"
+PUBLIC_HTTPS_CHECK="${MES_PUBLIC_HTTPS_CHECK:-1}"
+PUBLIC_HTTPS_URL="${MES_PUBLIC_HTTPS_URL:-https://$DOMAIN/}"
 
 GREEN=$'\033[0;32m'
 YELLOW=$'\033[1;33m'
@@ -52,6 +57,16 @@ curl_resolved_status() {
   curl -sS -o /tmp/mes-proxy-verify-body.$$ -w '%{http_code}' \
     --max-time 8 \
     --resolve "$DOMAIN:$LISTEN_PORT:$RESOLVE_IP" \
+    "$url"
+}
+
+curl_resolved_port_status() {
+  local port="$1"
+  local ip="$2"
+  local url="$3"
+  curl -sS -o /tmp/mes-proxy-verify-body.$$ -w '%{http_code}' \
+    --max-time 8 \
+    --resolve "$DOMAIN:$port:$ip" \
     "$url"
 }
 
@@ -138,6 +153,44 @@ check_real_domain_status() {
   check_http_status "MES real domain API health reverse proxy" "http://$DOMAIN:$LISTEN_PORT$BACKEND_HEALTH_PATH" '^200$'
 }
 
+check_public_ingress_status() {
+  [[ "$PUBLIC_INGRESS_CHECK" == "1" ]] || {
+    warn "Skipping public ingress check. Set MES_PUBLIC_INGRESS_CHECK=1 to enable it."
+    return 0
+  }
+
+  local frontend_status backend_status
+
+  frontend_status="$(curl_resolved_port_status "$PUBLIC_INGRESS_PORT" "$PUBLIC_INGRESS_HOST" "http://$DOMAIN/" || true)"
+  if [[ "$frontend_status" =~ ^(200|301|302|304)$ ]]; then
+    pass "MES public ingress frontend returned HTTP $frontend_status via Host $DOMAIN on local port $PUBLIC_INGRESS_PORT"
+  else
+    fail_check "MES public ingress frontend returned HTTP ${frontend_status:-curl-error}; url=http://$DOMAIN/"
+  fi
+
+  backend_status="$(curl_resolved_port_status "$PUBLIC_INGRESS_PORT" "$PUBLIC_INGRESS_HOST" "http://$DOMAIN$BACKEND_HEALTH_PATH" || true)"
+  if [[ "$backend_status" == "200" ]]; then
+    pass "MES public ingress API health returned HTTP $backend_status via Host $DOMAIN on local port $PUBLIC_INGRESS_PORT"
+  else
+    fail_check "MES public ingress API health returned HTTP ${backend_status:-curl-error}; url=http://$DOMAIN$BACKEND_HEALTH_PATH"
+  fi
+}
+
+check_public_https_status() {
+  [[ "$PUBLIC_HTTPS_CHECK" == "1" ]] || {
+    warn "Skipping public HTTPS check. Set MES_PUBLIC_HTTPS_CHECK=1 to enable it."
+    return 0
+  }
+
+  local status
+  status="$(curl_status "$PUBLIC_HTTPS_URL" || true)"
+  if [[ "$status" =~ ^(200|301|302|304)$ ]]; then
+    pass "MES public HTTPS returned HTTP $status: $PUBLIC_HTTPS_URL"
+  else
+    fail_check "MES public HTTPS returned HTTP ${status:-curl-error}; url=$PUBLIC_HTTPS_URL"
+  fi
+}
+
 main() {
   need_cmd curl || true
   check_dns
@@ -149,6 +202,8 @@ main() {
   check_resolved_status "MES domain frontend reverse proxy" "/" '^(200|301|302|304)$'
   check_resolved_status "MES domain API health reverse proxy" "$BACKEND_HEALTH_PATH" '^200$'
   check_real_domain_status
+  check_public_ingress_status
+  check_public_https_status
 
   rm -f /tmp/mes-proxy-verify-body.$$ /tmp/mes-proxy-nslookup.$$ 2>/dev/null || true
 
@@ -169,6 +224,7 @@ EOF
 
 ${GREEN}MES proxy verification passed.${NC}
   Domain URL: http://$DOMAIN:$LISTEN_PORT
+  Public URL: $PUBLIC_HTTPS_URL
   Verified with curl --resolve $DOMAIN:$LISTEN_PORT:$RESOLVE_IP
 
 EOF
