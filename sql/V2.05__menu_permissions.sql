@@ -28,13 +28,28 @@ UPDATE sys_menu SET permission = 'basic:workCenter:list'      WHERE id = 103;
 
 UPDATE sys_menu SET permission = 'team:production:list'       WHERE id = 201;
 
-UPDATE sys_menu SET permission = 'process:instruction:list'     WHERE id = 301;
-UPDATE sys_menu SET permission = 'process:processTemplate:list' WHERE id = 302;
-UPDATE sys_menu SET permission = 'process:processInfo:list'     WHERE id = 303;
-UPDATE sys_menu SET permission = 'process:workInstruction:list' WHERE id = 304;
-UPDATE sys_menu SET permission = 'process:sprayCondition:list'  WHERE id = 305;
-UPDATE sys_menu SET permission = 'process:machiningProgram:list' WHERE id = 306;
-UPDATE sys_menu SET permission = 'process:bom:list'             WHERE id = 307;
+UPDATE sys_menu SET menu_name = '执行指示',     permission = 'process:instruction:list',      sort_order = 5 WHERE id = 301;
+UPDATE sys_menu SET menu_name = '工序模板',     permission = 'process:processTemplate:list',  sort_order = 3 WHERE id = 302;
+UPDATE sys_menu SET menu_name = '工序库',       permission = 'process:processInfo:list',      sort_order = 2 WHERE id = 303;
+UPDATE sys_menu SET menu_name = '作业指导书',   permission = 'process:workInstruction:list',  sort_order = 4 WHERE id = 304;
+UPDATE sys_menu SET menu_name = '喷涂参数',     permission = 'process:sprayCondition:list',   sort_order = 7 WHERE id = 305;
+UPDATE sys_menu SET menu_name = '机加程序参数', permission = 'process:machiningProgram:list', sort_order = 8 WHERE id = 306;
+UPDATE sys_menu SET menu_name = '制造BOM',      permission = 'process:bom:list',              sort_order = 6 WHERE id = 307;
+UPDATE sys_menu SET permission = 'process:route:list'           WHERE id = 308;
+
+INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, path, component, menu_type, permission, sort_order, visible, is_template) VALUES
+(308, 0, 3, '工艺路线', '/process/route', 'views/process/RouteList', 'M', 'process:route:list', 1, 1, 1)
+ON DUPLICATE KEY UPDATE
+  tenant_id = VALUES(tenant_id),
+  parent_id = VALUES(parent_id),
+  menu_name = VALUES(menu_name),
+  path = VALUES(path),
+  component = VALUES(component),
+  menu_type = VALUES(menu_type),
+  permission = VALUES(permission),
+  sort_order = VALUES(sort_order),
+  visible = VALUES(visible),
+  is_template = VALUES(is_template);
 
 UPDATE sys_menu SET permission = 'plan:order:list'       WHERE id = 401;
 UPDATE sys_menu SET permission = 'plan:production:list'  WHERE id = 402;
@@ -113,7 +128,7 @@ INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission
 (20104, 0, 201, '删除',       'B', 'team:production:delete', 4, 0, 1),
 (20105, 0, 201, '启停',       'B', 'team:production:toggle', 5, 0, 1);
 
--- 工艺-指示书 (301)
+-- 工艺-执行指示 (301)
 INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission, sort_order, visible, is_template) VALUES
 (30101, 0, 301, '查看详情', 'B', 'process:instruction:detail',  1, 0, 1),
 (30102, 0, 301, '新增',     'B', 'process:instruction:create',  2, 0, 1),
@@ -128,28 +143,28 @@ INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission
 (30203, 0, 302, '修改',     'B', 'process:processTemplate:update', 3, 0, 1),
 (30204, 0, 302, '删除',     'B', 'process:processTemplate:delete', 4, 0, 1);
 
--- 工艺-工序信息 (303)
+-- 工艺-工序库 (303)
 INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission, sort_order, visible, is_template) VALUES
 (30301, 0, 303, '查看详情', 'B', 'process:processInfo:detail', 1, 0, 1),
 (30302, 0, 303, '新增',     'B', 'process:processInfo:create', 2, 0, 1),
 (30303, 0, 303, '修改',     'B', 'process:processInfo:update', 3, 0, 1),
 (30304, 0, 303, '删除',     'B', 'process:processInfo:delete', 4, 0, 1);
 
--- 工艺-指导书 (304)
+-- 工艺-作业指导书 (304)
 INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission, sort_order, visible, is_template) VALUES
 (30401, 0, 304, '查看详情', 'B', 'process:workInstruction:detail', 1, 0, 1),
 (30402, 0, 304, '新增',     'B', 'process:workInstruction:create', 2, 0, 1),
 (30403, 0, 304, '修改',     'B', 'process:workInstruction:update', 3, 0, 1),
 (30404, 0, 304, '删除',     'B', 'process:workInstruction:delete', 4, 0, 1);
 
--- 工艺-喷涂条件 (305)
+-- 工艺-喷涂参数 (305)
 INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission, sort_order, visible, is_template) VALUES
 (30501, 0, 305, '查看详情', 'B', 'process:sprayCondition:detail', 1, 0, 1),
 (30502, 0, 305, '新增',     'B', 'process:sprayCondition:create', 2, 0, 1),
 (30503, 0, 305, '修改',     'B', 'process:sprayCondition:update', 3, 0, 1),
 (30504, 0, 305, '删除',     'B', 'process:sprayCondition:delete', 4, 0, 1);
 
--- 工艺-机械加工程序 (306)
+-- 工艺-机加程序参数 (306)
 INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission, sort_order, visible, is_template) VALUES
 (30601, 0, 306, '查看详情', 'B', 'process:machiningProgram:detail', 1, 0, 1),
 (30602, 0, 306, '新增',     'B', 'process:machiningProgram:create', 2, 0, 1),
@@ -165,6 +180,21 @@ INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission
 (30705, 0, 307, '版本升级', 'B', 'process:bom:upgrade', 5, 0, 1),
 (30706, 0, 307, '发布',     'B', 'process:bom:publish', 6, 0, 1),
 (30707, 0, 307, '停用',     'B', 'process:bom:disable', 7, 0, 1);
+
+-- 工艺-工艺路线 (308)
+INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission, sort_order, visible, is_template) VALUES
+(30801, 0, 308, '查看详情', 'B', 'process:route:detail', 1, 0, 1),
+(30802, 0, 308, '新增',     'B', 'process:route:create', 2, 0, 1),
+(30803, 0, 308, '修改',     'B', 'process:route:update', 3, 0, 1),
+(30804, 0, 308, '删除',     'B', 'process:route:delete', 4, 0, 1),
+(30805, 0, 308, '启用',     'B', 'process:route:update', 5, 0, 1),
+(30806, 0, 308, '停用',     'B', 'process:route:update', 6, 0, 1)
+ON DUPLICATE KEY UPDATE
+  menu_name = VALUES(menu_name),
+  permission = VALUES(permission),
+  sort_order = VALUES(sort_order),
+  visible = VALUES(visible),
+  is_template = VALUES(is_template);
 
 -- 计划-订单计划 (401)
 INSERT INTO sys_menu (id, tenant_id, parent_id, menu_name, menu_type, permission, sort_order, visible, is_template) VALUES

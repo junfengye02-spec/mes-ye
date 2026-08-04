@@ -23,7 +23,7 @@
       :page-size="Number(query.pageSize) || 20"
       @page-change="handlePageChange"
     >
-      <template #title>指示书管理</template>
+      <template #title>执行指示</template>
       <template #toolbar>
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增

@@ -60,7 +60,7 @@ SELECT u.id, r.id FROM sys_user u, sys_role r WHERE u.username='zhaoliu' AND r.r
 -- 生产主管角色分配菜单（工单/派工/计划/基础）
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
 SELECT r.id, m.id FROM sys_role r, sys_menu m
-WHERE r.role_code='PRODUCTION_MANAGER' AND m.id IN (1,2,3,4,5,6,9,10,101,102,103,201,301,302,303,304,305,306,307,401,402,501,601,901,902,903,904,905,906,907,908,1001,1002,1003,1004,1005,1006,1007);
+WHERE r.role_code='PRODUCTION_MANAGER' AND m.id IN (1,2,3,4,5,6,9,10,101,102,103,201,301,302,303,304,305,306,307,308,401,402,501,601,901,902,903,904,905,906,907,908,1001,1002,1003,1004,1005,1006,1007);
 
 -- 质量管理员角色分配菜单
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
@@ -196,7 +196,7 @@ ON DUPLICATE KEY UPDATE
   work_center_id=VALUES(work_center_id), remark=VALUES(remark),
   created_by=VALUES(created_by), created_time=VALUES(created_time);
 
--- 工序信息
+-- 工序库
 INSERT INTO mes_process_info (process_no, process_name, process_code, product, g_code, product_category, machine_model, product_type, process_type, factory, business_org, work_center_id, team_id, handle_time, created_by, created_time) VALUES
 ('PI-CAST-001',  '铸造-涡轮叶片',   'PC-CAST-TB',  '涡轮叶片', 'G-HTA-001', '涡轮部件', 'GT-F5', '叶片', '生产工序', '上海工厂', '涡轮事业部', (SELECT id FROM mes_work_center WHERE work_center_code='WC-CAST' LIMIT 1),  (SELECT id FROM mes_production_team WHERE team_code='TM-CAST-A' LIMIT 1), 480.00, 'admin', @now),
 ('PI-MACH-001',  '粗加工-涡轮叶片', 'PC-MACH-TB1', '涡轮叶片', 'G-HTA-001', '涡轮部件', 'GT-F5', '叶片', '生产工序', '上海工厂', '涡轮事业部', (SELECT id FROM mes_work_center WHERE work_center_code='WC-MACH' LIMIT 1),  (SELECT id FROM mes_production_team WHERE team_code='TM-MACH-A' LIMIT 1), 120.00, 'admin', @now),
@@ -238,7 +238,7 @@ ON DUPLICATE KEY UPDATE
   person_name=VALUES(person_name), person_category=VALUES(person_category),
   gender=VALUES(gender), phone=VALUES(phone), email=VALUES(email);
 
--- 喷涂条件表
+-- 喷涂参数
 INSERT INTO mes_spray_condition (condition_no, powder_feed_rate, spray_distance, spray_gun_model, powder_feeder, powder_feeder_speed, oxygen_scfh, kerosene_gph, combustion_pressure, carrier_gas, equipment, powder_type, minister_approver, section_approver, leader_approver, created_by, created_time) VALUES
 ('SC-001', 45.00, 380.00, 'JP-8000', 'PF-1200', 3.50, 2000.00, 6.50, 150.00, '氮气N2', 'HVOF-01', 'YSZ 8wt%', '部长A', '工段长B', '系长C', 'admin', @now),
 ('SC-002', 38.00, 350.00, 'JP-5000', 'PF-1100', 3.00, 1800.00, 5.80, 140.00, '氮气N2', 'HVOF-02', 'CoNiCrAlY', '部长A', '工段长B', '系长C', 'admin', @now)
@@ -252,7 +252,7 @@ ON DUPLICATE KEY UPDATE
   section_approver=VALUES(section_approver), leader_approver=VALUES(leader_approver),
   created_by=VALUES(created_by), created_time=VALUES(created_time);
 
--- 机械加工程序表
+-- 机加程序参数
 INSERT INTO mes_machining_program (g_code, program_table, product_name, created_by, created_time) VALUES
 ('G-MP-001', 'PRG-TB-ROUGH-01', '涡轮叶片粗加工程序', 'admin', @now),
 ('G-MP-002', 'PRG-TB-FINISH-01', '涡轮叶片精加工程序', 'admin', @now),

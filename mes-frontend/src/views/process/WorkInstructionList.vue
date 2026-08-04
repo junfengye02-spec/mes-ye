@@ -17,7 +17,7 @@
       :page-size="Number(query.pageSize) || 20"
       @page-change="handlePageChange"
     >
-      <template #title>指导书管理</template>
+      <template #title>作业指导书</template>
       <template #toolbar>
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增

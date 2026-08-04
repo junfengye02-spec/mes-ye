@@ -20,7 +20,7 @@
       :page-size="Number(query.pageSize) || 20"
       @page-change="handlePageChange"
     >
-      <template #title>喷涂条件表</template>
+      <template #title>喷涂参数</template>
       <template #toolbar>
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增

@@ -25,7 +25,7 @@
       @page-change="handlePageChange"
       @selection-change="handleSelectionChange"
     >
-      <template #title>工序信息</template>
+      <template #title>工序库</template>
       <template #toolbar>
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增

@@ -17,7 +17,7 @@
       :page-size="Number(query.pageSize) || 20"
       @page-change="handlePageChange"
     >
-      <template #title>机械加工程序表</template>
+      <template #title>机加程序参数</template>
       <template #toolbar>
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增

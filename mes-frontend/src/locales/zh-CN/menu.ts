@@ -11,12 +11,13 @@ export default {
   },
   process: {
     _title: '工艺管理',
-    instruction: '指示书管理',
+    route: '工艺路线',
+    instruction: '执行指示',
     template: '工序模板',
-    info: '工序信息',
-    workInstruction: '指导书管理',
-    sprayCondition: '喷涂条件表',
-    machiningProgram: '机械加工程序表',
+    info: '工序库',
+    workInstruction: '作业指导书',
+    sprayCondition: '喷涂参数',
+    machiningProgram: '机加程序参数',
     bom: '制造BOM',
   },
   plan: {
