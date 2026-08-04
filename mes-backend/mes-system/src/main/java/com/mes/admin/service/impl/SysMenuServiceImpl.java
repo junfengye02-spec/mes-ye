@@ -10,6 +10,7 @@ import com.mes.common.exception.BusinessException;
 import com.mes.framework.security.LoginUser;
 import com.mes.framework.security.SecurityUtils;
 import com.mes.framework.security.StaffPortalRestrictionFilter;
+import com.mes.framework.tenant.TenantContextHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,14 +27,18 @@ public class SysMenuServiceImpl implements ISysMenuService {
 
     @Override
     public List<SysMenuVO> getTree() {
-        List<SysMenu> menus = menuMapper.selectList(
-                new LambdaQueryWrapper<SysMenu>().orderByAsc(SysMenu::getSortOrder));
+        Long tenantId = TenantContextHolder.requireTenantId();
+        List<SysMenu> menus = selectTreeMenus(tenantId);
+        if (menus.isEmpty() && !TenantContextHolder.PLATFORM_TENANT_ID.equals(tenantId)) {
+            menus = selectTreeMenus(TenantContextHolder.PLATFORM_TENANT_ID);
+        }
         return buildTree(menus);
     }
 
     @Override
     public List<SysMenuVO> getUserTree(Long userId) {
-        List<SysMenu> menus = menuMapper.selectMenusByUserId(userId);
+        Long tenantId = TenantContextHolder.requireTenantId();
+        List<SysMenu> menus = menuMapper.selectMenusByUserId(userId, tenantId);
         LoginUser u = SecurityUtils.getCurrentUser();
         if (u != null && StaffPortalRestrictionFilter.ACCOUNT_STAFF.equals(u.getAccountType())) {
             menus = menus.stream()
@@ -41,6 +46,15 @@ public class SysMenuServiceImpl implements ISysMenuService {
                     .collect(Collectors.toList());
         }
         return buildTree(menus);
+    }
+
+    private List<SysMenu> selectTreeMenus(Long tenantId) {
+        return menuMapper.selectList(
+                new LambdaQueryWrapper<SysMenu>()
+                        .eq(SysMenu::getTenantId, tenantId)
+                        .orderByAsc(SysMenu::getParentId)
+                        .orderByAsc(SysMenu::getSortOrder)
+                        .orderByAsc(SysMenu::getId));
     }
 
     @Override
@@ -91,7 +105,10 @@ public class SysMenuServiceImpl implements ISysMenuService {
     }
 
     private List<SysMenuVO> buildTree(List<SysMenu> menus) {
-        List<SysMenuVO> voList = menus.stream().map(this::toVO).collect(Collectors.toList());
+        List<SysMenuVO> voList = menus.stream()
+                .filter(menu -> !"B".equals(menu.getMenuType()))
+                .map(this::toVO)
+                .collect(Collectors.toList());
         Map<Long, List<SysMenuVO>> childMap = voList.stream()
                 .filter(m -> m.getParentId() != null && m.getParentId() != 0)
                 .collect(Collectors.groupingBy(SysMenuVO::getParentId));

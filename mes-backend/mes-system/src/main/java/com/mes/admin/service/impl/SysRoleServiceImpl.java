@@ -126,7 +126,8 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Override
     public List<Long> getRoleMenuIds(Long roleId) {
-        return menuMapper.selectMenuIdsByRoleId(roleId);
+        Long tenantId = resolveRoleTenantId(roleId);
+        return menuMapper.selectMenuIdsByRoleId(roleId, tenantId);
     }
 
     private SysRoleVO toVO(SysRole role) {
